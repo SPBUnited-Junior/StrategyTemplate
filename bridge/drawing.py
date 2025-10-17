@@ -35,6 +35,7 @@ class Image:
     def clear(self) -> None:
         """clear the image"""
         self.data = []
+        self.telemetry = []
 
     def draw_circle(
         self,
@@ -93,7 +94,7 @@ class Image:
     def draw_rect(
         self,
         left: float,
-        top: float,
+        down: float,
         width: float,
         heigh: float,
         color: tuple[int, int, int] = (127, 127, 127),
@@ -103,42 +104,35 @@ class Image:
             {
                 "type": "rect",
                 "x": left,
-                "y": top,
+                "y": down,
                 "width": width,
                 "height": heigh,
                 "color": "#{:02X}{:02X}{:02X}".format(*color),
             }
         )
 
-    # def draw_robot(
-    #     self,
-    #     pos: aux.Point,
-    #     angle: float = 0.0,
-    #     color: tuple[int, int, int] = (0, 0, 255),
-    # ) -> None:
-    #     """draw robot"""
-    #     robot_type = "robot_blu"
-    #     if color == (255, 255, 0):
-    #         robot_type = "robot_yel"
-    #     self.data.append(
-    #         {
-    #             "type": robot_type,
-    #             "x": pos.x,
-    #             "y": pos.y,
-    #             "rotation": angle,
-    #         }
-    #     )
-
     def print(
         self,
         pos: aux.Point,
         text: str,
         color: tuple[int, int, int] = (255, 255, 255),
-        need_to_scale: bool = True,
+        font_size: int = 100,
+        align: str = "middle",
     ) -> None:
-        """print text"""
-        # TODO
-        return
+        """print text
+        align: left | middle | right
+        """
+        self.data.append(
+            {
+                "type": "text",
+                "x": pos.x,
+                "y": pos.y,
+                "text": text,
+                "font_size": font_size,
+                "align": align,
+                "color": "#{:02X}{:02X}{:02X}".format(*color),
+            }
+        )
 
     def send_telemetry(self, name: str, new_telemetry: str) -> None:
         """Send new string to telemetry console"""

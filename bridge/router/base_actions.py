@@ -8,9 +8,9 @@ from typing import Optional
 
 import bridge.auxiliary.quickhull as qh
 from bridge import const
-from bridge.auxiliary import aux, fld, rbt, tau
-from bridge.auxiliary.entity import Entity
+from bridge.auxiliary import aux, fld, tau
 from bridge.router.action import Action, ActionDomain, ActionValues, limit_action
+from bridge.router.path_generation import calc_passthrough_point, correct_target_pos
 from bridge.strategy.strategy import GameStates
 
 # Actions: ActionDomain -> ActionValues
@@ -43,6 +43,8 @@ class Actions:
             self.ball_interact = ball_interact
             self.target_vel = target_vel
 
+            self.use_dribbler = False
+
         def behavior(self, domain: ActionDomain, current_action: ActionValues) -> None:
             cur_robot = domain.robot
             vec_err = self.target_pos - cur_robot.get_pos()
@@ -60,14 +62,16 @@ class Actions:
             u_y = cur_robot.pos_reg_y.process_(vec_err.y, -cur_vel.y, time() - cur_robot.prev_sended_time)
             current_action.vel = aux.Point(u_x, u_y)
             # return
-            cur_vel_abs = aux.rotate(current_action.vel, cur_robot.get_angle())
-            prev_vel_abs = aux.rotate(cur_robot.prev_sended_vel, cur_robot.prev_sended_angle)
-            if (cur_vel_abs - prev_vel_abs).mag() / (time() - cur_robot.prev_sended_time) > const.MAX_ACCELERATION:
+            cur_vel_abs = aux.rotate(current_action.vel, -cur_robot.get_angle())
+            prev_vel_abs = aux.rotate(cur_robot.prev_sended_vel, -cur_robot.prev_sended_angle)
+            if (cur_vel_abs - prev_vel_abs).mag() / (
+                time() - cur_robot.prev_sended_time
+            ) > const.MAX_ACCELERATION and cur_vel_abs.mag() > prev_vel_abs.mag():
                 # domain.field.router_image.draw_circle(aux.Point(0, 1000), size_in_mms=200)
                 current_action.vel = aux.rotate(
                     prev_vel_abs
                     + (cur_vel_abs - prev_vel_abs).unity() * const.MAX_ACCELERATION * (time() - cur_robot.prev_sended_time),
-                    -cur_robot.get_angle(),
+                    cur_robot.get_angle(),
                 )
 
             # current_action.vel = aux.Point(0,500)
@@ -76,31 +80,40 @@ class Actions:
             cur_robot.prev_sended_time = time()
             current_action.angle = self.target_angle
 
+            if self.use_dribbler:
+                current_action.dribbler_speed = 15
+
             DumbActions.AddFinalVelocityAction(self.target_pos, self.target_vel).process(domain, current_action)
 
     class GoToPoint(Action):
         """Go to point and avoid obstacles"""
 
         def __init__(
-            self, target_pos: aux.Point, target_angle: float, ball_interact: bool = False, ignore_ball: bool = False
+            self,
+            target_pos: aux.Point,
+            target_angle: float,
+            ball_interact: bool = False,
+            ignore_ball: bool = False,
+            target_vel: aux.Point = aux.Point(0, 0),
+            ignore_robots: dict[const.Color, list[int]] = {},
         ) -> None:
             self.target_pos = target_pos
             self.target_angle = target_angle
             self.ball_interact = ball_interact
             self.ignore_ball = ignore_ball
+            self.target_vel = target_vel
+            self.ignore_robots = ignore_robots
 
         def use_behavior_of(self, domain: ActionDomain, current_action: ActionValues) -> list["Action"]:
+            avoid_ball = domain.game_state in [GameStates.STOP, GameStates.PREPARE_KICKOFF] or (
+                domain.game_state in [GameStates.FREE_KICK, GameStates.KICKOFF] and not domain.we_active
+            )
+            self.target_pos = correct_target_pos(domain.field, domain.robot, self.target_pos, avoid_ball)
+
             angle0 = self.target_angle
             next_point = self.target_pos
-            if not aux.is_point_inside_poly(next_point, domain.field.hull):
-                next_point = aux.nearest_point_on_poly(next_point, domain.field.hull)
 
             if domain.robot.r_id != domain.field.gk_id:
-                if aux.is_point_inside_poly(next_point, domain.field.ally_goal.hull):
-                    next_point = aux.nearest_point_on_poly(next_point, domain.field.ally_goal.big_hull)
-                elif aux.is_point_inside_poly(next_point, domain.field.enemy_goal.hull):
-                    next_point = aux.nearest_point_on_poly(next_point, domain.field.enemy_goal.big_hull)
-
                 if aux.is_point_inside_poly(domain.robot.get_pos(), domain.field.ally_goal.hull):
                     next_point = aux.nearest_point_on_poly(domain.robot.get_pos(), domain.field.ally_goal.big_hull)
                     return [Actions.GoToPointIgnore(next_point, angle0)]
@@ -120,15 +133,18 @@ class Actions:
                     for j in range(len(convex_hull) - 2, 0, -1):
                         next_point = convex_hull[j]
 
-            avoid_ball = domain.game_state in [GameStates.STOP, GameStates.PREPARE_KICKOFF] or (
-                domain.game_state in [GameStates.FREE_KICK, GameStates.KICKOFF] and not domain.we_active
+            pth_wp = calc_passthrough_point(
+                domain, next_point, avoid_ball=avoid_ball, ignore_ball=self.ignore_ball, ignore_robots=self.ignore_robots
             )
-            pth_wp = calc_passthrough_wp(domain, next_point, avoid_ball=avoid_ball, ignore_ball=self.ignore_ball)
             if pth_wp is not None:
-                return [Actions.GoToPointIgnore(pth_wp, angle0)]
+                target_speed = min(const.MAX_SPEED, aux.dist(pth_wp, next_point))
+                target_vel = (pth_wp - domain.robot.get_pos()).unity() * target_speed
+                return [Actions.GoToPointIgnore(pth_wp, angle0, target_vel=target_vel)]
             if next_point != self.target_pos:
-                return [Actions.GoToPointIgnore(next_point, angle0)]
-            return [Actions.GoToPointIgnore(self.target_pos, angle0, self.ball_interact)]
+                target_speed = min(const.MAX_SPEED / 2, aux.dist(self.target_pos, next_point))
+                target_vel = (next_point - domain.robot.get_pos()).unity() * target_speed
+                return [Actions.GoToPointIgnore(next_point, angle0, target_vel=target_vel)]
+            return [Actions.GoToPointIgnore(self.target_pos, angle0, self.ball_interact, self.target_vel)]
 
     class BallPlacement(Action):
         """Move ball to target_point"""
@@ -190,7 +206,8 @@ class Actions:
         def use_behavior_of(self, domain: ActionDomain, current_action: ActionValues) -> list["Action"]:
             ball_pos = domain.field.ball.get_pos()
             align_pos = ball_pos - aux.rotate(aux.RIGHT, self.target_angle) * const.GRAB_ALIGN_DIST
-            return [Actions.GoToPoint(align_pos, self.target_angle, True)]
+            ignore_ball = len(aux.line_circle_intersect(domain.robot.get_pos(), align_pos, ball_pos, const.ROBOT_R, "S")) < 2
+            return [Actions.GoToPoint(align_pos, self.target_angle, True, ignore_ball)]
 
     class Velocity(Action):
         """Move robot with velocity and angle_speed"""
@@ -208,9 +225,6 @@ class Actions:
 
             if self.control_angle_by_speed:
                 current_action.beep = 1
-
-    twisted_flag = False
-    fast_twist_timer = None
 
     class Kick(Action):
         """Choose type of kick (from KickActions)"""
@@ -237,13 +251,19 @@ class KickActions:
         def __init__(
             self,
             target_pos: aux.Point,
-            voltage: float = const.VOLTAGE_SHOOT,
+            voltage: int = const.VOLTAGE_SHOOT,
             is_pass: bool = False,
             is_upper: bool = False,
         ) -> None:
             self.target_pos = target_pos
             self.voltage = voltage  # ignore if is_pass
             self.is_upper = is_upper
+
+            if self.voltage > const.VOLTAGE_SHOOT:
+                self.voltage = const.VOLTAGE_SHOOT
+
+            if self.is_upper:
+                self.voltage = const.VOLTAGE_UP
 
             self.pass_pos: Optional[aux.Point] = None
             if is_pass:
@@ -257,8 +277,8 @@ class KickActions:
 
             actions = [
                 Actions.BallGrab(kick_angle),
-                DumbActions.ShootAction(kick_angle, self.is_upper),
-                DumbActions.ControlVoltageAction(domain.field.ball.get_pos(), self.voltage, self.pass_pos),
+                DumbActions.ShootAction(self.target_pos, self.is_upper),
+                DumbActions.ControlVoltageAction(self.voltage, self.pass_pos),
             ]
 
             return actions
@@ -270,16 +290,17 @@ class DumbActions:
     class ShootAction(Action):
         """Shoot the target when kick is aligned"""
 
-        def __init__(self, target_angle: float, is_upper: bool = False, angle_bounds: Optional[float] = None) -> None:
-            self.target_angle = target_angle
+        def __init__(self, target_pos: aux.Point, is_upper: bool = False, angle_bounds: Optional[float] = None) -> None:
+            self.target_pos = target_pos
             self.autokick = 2 if is_upper else 1
             self.angle_bounds = angle_bounds
 
         def is_defined(self, domain: ActionDomain) -> bool:
+            kick_angle = aux.angle_to_point(domain.robot.get_pos(), self.target_pos)
             is_aligned = (
-                domain.robot.is_kick_aligned_by_angle(self.target_angle, angle_bounds=self.angle_bounds)
+                domain.robot.is_kick_aligned_by_angle(kick_angle, angle_bounds=self.angle_bounds)
                 if self.angle_bounds is not None
-                else domain.robot.is_kick_aligned_by_angle(self.target_angle)
+                else domain.robot.is_kick_aligned_by_angle(kick_angle)
             )
             return domain.field.is_ball_in(domain.robot) and is_aligned
 
@@ -289,27 +310,25 @@ class DumbActions:
     class ControlVoltageAction(Action):
         """Control voltage before shooting"""
 
-        def __init__(
-            self, ball_pos: aux.Point, voltage: float = const.VOLTAGE_SHOOT, pass_pos: Optional[aux.Point] = None
-        ) -> None:
+        def __init__(self, voltage: int = 15, pass_pos: Optional[aux.Point] = None) -> None:
             self.voltage = voltage
-            self.ball_pos = ball_pos
             self.pass_pos = pass_pos
 
         def is_defined(self, domain: ActionDomain) -> bool:
-            return aux.dist(domain.robot.get_pos(), self.ball_pos) < 1000
+            return aux.dist(domain.robot.get_pos(), domain.field.ball.get_pos()) < 1000
 
         def behavior(self, domain: ActionDomain, current_action: ActionValues) -> None:
             if self.pass_pos is not None:
                 self.voltage = get_pass_voltage(aux.dist(domain.robot.get_pos(), self.pass_pos))
 
-            current_action.kicker_voltage = int(self.voltage)
+            current_action.kicker_voltage = self.voltage
+            # NOTE test 15 when is_pass
 
     class AddFinalVelocityAction(Action):
         """Add velocity in final target"""
 
         def __init__(
-            self, target: aux.Point, final_velocity: aux.Point, max_dist: float = 1000, min_dist: float = 200
+            self, target: aux.Point, final_velocity: aux.Point, max_dist: float = 300, min_dist: float = 100
         ) -> None:
             self.target = target
             self.final_velocity = final_velocity
@@ -320,10 +339,10 @@ class DumbActions:
             return aux.dist(self.target, domain.robot.get_pos()) < self.max_dist
 
         def behavior(self, domain: ActionDomain, current_action: ActionValues) -> None:
-            cur_speed = self.final_velocity
             vec_to_target = self.target - domain.robot.get_pos()
-            if vec_to_target.mag() > self.min_dist:
-                cur_speed = self.final_velocity * ((self.max_dist - vec_to_target.mag()) / (self.max_dist - self.min_dist))
+            cur_speed = self.final_velocity * aux.minmax(
+                (self.max_dist - vec_to_target.mag()) / (self.max_dist - self.min_dist), 0, 1
+            )
 
             current_action.vel += cur_speed
 
@@ -339,7 +358,10 @@ class DumbActions:
 
 def get_pass_voltage(length: float) -> int:
     """Calc voltage for pass by length"""
-    return int(aux.minmax(0.0016 * length + 2.4, 4, const.VOLTAGE_SHOOT))
+    if const.IS_SIMULATOR_USED:
+        # TODO fix control decoder
+        return int(aux.minmax(0.003 * length + 1.8, 6, const.VOLTAGE_SHOOT))
+    return int(aux.minmax(0.0014 * length + 2.4, 6, const.VOLTAGE_SHOOT))
 
 
 def get_grab_speed(
@@ -386,96 +408,7 @@ def get_grab_speed(
     vel_r = vel_to_catch_r * (1 - board) + vel_to_align_r * board
     vel = vel_to_align + aux.rotate(aux.RIGHT, grab_angle) * vel_r
 
-    # if aux.dist(robot_pos, grab_point) < 500:
-    #     draw_grabbing_image(
-    #         field,
-    #         grab_point,
-    #         grab_angle,
-    #         robot_pos,
-    #         transl_vel,
-    #         vel_to_catch,
-    #         vel,
-    #     )
-
     return vel
-
-
-# def draw_grabbing_image(
-#     field: fld.Field,
-#     grab_point: aux.Point,
-#     grab_angle: float,
-#     robot_pos: aux.Point,
-#     vel_to_align: aux.Point,
-#     vel_to_catch: aux.Point,
-#     vel: aux.Point,
-# ) -> None:
-#     """Draw a screen easily debug grabbing a ball"""
-#     ball = field.ball.get_pos()
-
-#     cord_scale = 0.8
-#     vel_scale = 0.4
-#     size = 200
-#     angle = -grab_angle - math.pi / 2
-#     if ball.x > 0:
-#         middle = aux.Point(120, 680)
-#     else:
-#         middle = aux.Point(1080, 680)
-
-#     field.router_image.draw_rect(middle.x - size / 2, middle.y - size / 2, size, size, (200, 200, 200))
-#     field.router_image.print(
-#         middle - aux.Point(0, size / 2 + 10),
-#         "GRABBING A BALL",
-#         need_to_scale=False,
-#     )
-
-#     ball_screen = middle - aux.Point(0, size // 2 - 30)
-#     center_boarder = convert_to_screen(ball_screen, cord_scale, angle, ball, grab_point)
-#     center_boarder += aux.RIGHT / 2  # чтобы не мерцало, хз
-#     field.router_image.draw_line(ball_screen, center_boarder, size_in_pixels=3, need_to_scale=False)
-
-#     right_boarder = convert_to_screen(ball_screen, 1, -const.GRAB_OFFSET_ANGLE, ball_screen, center_boarder)
-#     field.router_image.draw_line(ball_screen, right_boarder, size_in_pixels=3, need_to_scale=False)
-
-#     left_boarder = convert_to_screen(ball_screen, 1, const.GRAB_OFFSET_ANGLE, ball_screen, center_boarder)
-#     field.router_image.draw_line(ball_screen, left_boarder, size_in_pixels=3, need_to_scale=False)
-
-#     robot_screen = convert_to_screen(ball_screen, cord_scale, angle, ball, robot_pos)
-#     cropped_robot = aux.Point(
-#         aux.minmax(robot_screen.x, middle.x - size / 2, middle.x + size / 2),
-#         aux.minmax(robot_screen.y, middle.y - size / 2, middle.y + size / 2),
-#     )
-#     field.router_image.draw_circle(cropped_robot, (0, 0, 0), 80, False)
-
-#     if cropped_robot == robot_screen:
-#         vel_to_align_screen = convert_to_screen(robot_screen, vel_scale, angle, aux.Point(0, 0), vel_to_align)
-#         field.router_image.draw_line(robot_screen, vel_to_align_screen, (100, 100, 200), 2, need_to_scale=False)
-#         vel_to_catch_screen = convert_to_screen(robot_screen, vel_scale, angle, aux.Point(0, 0), vel_to_catch)
-#         field.router_image.draw_line(robot_screen, vel_to_catch_screen, (200, 100, 100), 2, need_to_scale=False)
-#         vel_screen = convert_to_screen(robot_screen, vel_scale, angle, aux.Point(0, 0), vel)
-#         field.router_image.draw_line(robot_screen, vel_screen, (200, 100, 200), 3, need_to_scale=False)
-
-#     field.router_image.draw_circle(ball_screen, (255, 100, 100), 50, False)
-
-
-def spin_with_ball(w: float, flag: bool = False) -> tuple[aux.Point, float]:
-    """
-    Расчёт скорости робота для поворота с мячом с угловой скоростью w (рад/сек)
-    """
-    _w = w + 0.0
-    if 0.01 < abs(w) < 0.4:
-        _w = math.copysign(0.4, w)
-
-    if _w > 0:
-        delta_r = aux.Point(50, 25)
-    else:
-        delta_r = aux.Point(-50, 25)
-
-    if flag:
-        delta_r = aux.Point(0, 0)
-
-    vel = delta_r * _w
-
-    return vel, -_w
 
 
 def convert_to_screen(
@@ -491,144 +424,3 @@ def convert_to_screen(
     rotated_vec = aux.rotate(scaled_vec, angle)
     final_point = ball_screen + rotated_vec
     return final_point
-
-
-def calc_passthrough_wp(
-    domain: ActionDomain, target: aux.Point, *, avoid_ball: bool = False, ignore_ball: bool = False
-) -> Optional[aux.Point]:
-    """
-    Рассчитать ближайшую промежуточную путевую точку
-    согласно первому приближению векторного поля
-    """
-    robot = domain.robot
-    field = domain.field
-
-    obstacles_dist: list[tuple[Entity, float]] = []
-
-    if avoid_ball:
-        if aux.is_point_inside_circle(robot.get_pos(), field.ball.get_pos(), const.KEEP_BALL_DIST - 50):
-            return aux.nearest_point_on_circle(robot.get_pos(), field.ball.get_pos(), const.KEEP_BALL_DIST + 50)
-        ball = Entity(
-            field.ball.get_pos(),
-            field.ball.get_angle(),
-            const.KEEP_BALL_DIST - const.ROBOT_R,
-        )
-        if aux.is_point_inside_circle(target, field.ball.get_pos(), const.KEEP_BALL_DIST):
-            target = aux.nearest_point_on_circle(target, field.ball.get_pos(), const.KEEP_BALL_DIST)
-        obstacles_dist.append((ball, aux.dist(ball.get_pos(), robot.get_pos())))
-    elif not ignore_ball:
-        ball = field.ball
-
-        if (
-            len(aux.line_circle_intersect(robot.get_pos(), target, ball.get_pos(), const.ROBOT_R + ball.get_radius(), "S"))
-            > 0
-        ):
-            obstacles_dist.append((ball, aux.dist(ball.get_pos(), robot.get_pos())))
-
-    for obstacle in field.enemies + field.allies:
-        dist = (obstacle.get_pos() - robot.get_pos()).mag()
-        if obstacle.is_used() and obstacle.get_radius() + robot.get_radius() < dist < const.VIEW_DIST:
-            obstacles_dist.append((obstacle.to_entity(), dist))
-
-    sorted_obstacles = sorted(obstacles_dist, key=lambda x: x[1])
-
-    obstacles = []
-    for obst in sorted_obstacles:
-        obstacles.append(obst[0])
-
-    pth_point = calc_next_point(field, robot.get_pos(), target, domain.robot, obstacles)
-    if pth_point is None:
-        return None
-    field.path_image.draw_line(robot.get_pos(), pth_point[0], color=(0, 0, 0))
-    if pth_point[0] == target:
-        return None
-
-    return pth_point[0]
-
-
-def calc_next_point(
-    field: fld.Field,
-    position: aux.Point,
-    target: aux.Point,
-    robot: rbt.Robot,
-    obstacles: list[Entity],
-) -> Optional[tuple[aux.Point, float]]:
-    """Calculate next point for robot"""
-    remaining_obstacles: list[Entity] = obstacles.copy()
-    skipped_obstacles: list[Entity] = []
-    while len(remaining_obstacles) > 0:
-        obstacle = remaining_obstacles.pop(0)
-        skipped_obstacles.append(obstacle)
-
-        time_to_reach = aux.dist(obstacle.get_pos(), position) / const.MAX_SPEED
-        center = obstacle.get_pos() + obstacle.get_vel() * time_to_reach
-        radius = (
-            obstacle.get_radius()
-            + const.ROBOT_R
-            + const.ROBOT_R * (robot.get_vel().mag() / const.MAX_SPEED) * 1  # <-- coefficient of fear [0; 1] for fast speed
-            + time_to_reach * obstacle.get_vel().mag() * 0.5  # <-- coefficient of fear [0; 1], for moving obst
-        )
-        field.path_image.draw_circle(
-            center,
-            (127, 127, 127),
-            radius,
-        )
-        if len(aux.line_circle_intersect(position, target, center, radius, "S")) > 0:
-            tangents = aux.get_tangent_points(center, position, radius)
-            if tangents is None or len(tangents) < 2:
-                return None
-
-            tangents[0] = aux.point_on_line(
-                center,
-                tangents[0],
-                radius + const.ROBOT_R * 0.5,
-            )
-            tangents[1] = aux.point_on_line(
-                center,
-                tangents[1],
-                radius + const.ROBOT_R * 0.5,
-            )
-
-            path_before0 = calc_next_point(field, position, tangents[0], robot, skipped_obstacles[:-1])
-            path_before1 = calc_next_point(field, position, tangents[1], robot, skipped_obstacles[:-1])
-            path_after0 = calc_next_point(field, tangents[0], target, robot, remaining_obstacles)
-            path_after1 = calc_next_point(field, tangents[1], target, robot, remaining_obstacles)
-
-            if (path_before0 is None or path_after0 is None) and (path_before1 is not None and path_after1 is not None):
-                pth_point = path_before1[0]
-                length = path_before1[1] + path_after1[1]
-                return pth_point, length
-            if (path_before0 is not None and path_after0 is not None) and (path_before1 is None or path_after1 is None):
-                if path_after0 is None:
-                    return None
-                pth_point = path_before0[0]
-                length = path_before0[1] + path_after0[1]
-                return pth_point, length
-            if (path_before0 is not None and path_after0 is not None) and (
-                path_before1 is not None and path_after1 is not None
-            ):
-
-                length0 = path_before0[1] + path_after0[1]
-                length1 = path_before1[1] + path_after1[1]
-                in_zone0 = aux.is_point_inside_poly(path_before0[0], field.ally_goal.big_hull) or aux.is_point_inside_poly(
-                    path_before0[0], field.enemy_goal.big_hull
-                )
-                in_zone1 = aux.is_point_inside_poly(path_before1[0], field.ally_goal.big_hull) or aux.is_point_inside_poly(
-                    path_before1[0], field.enemy_goal.big_hull
-                )
-
-                if (length0 < length1 or in_zone1) and not in_zone0:
-                    pth_point = path_before0[0]
-                    length = path_before0[1] + path_after0[1]
-                    field.path_image.draw_line(position, pth_point, color=(255, 0, 255))
-                    return pth_point, length
-                if (length1 < length0 or in_zone0) and not in_zone1:
-                    pth_point = path_before1[0]
-                    length = path_before1[1] + path_after1[1]
-                    field.path_image.draw_line(position, pth_point, color=(255, 0, 255))
-                    return pth_point, length
-
-            return None
-
-    field.path_image.draw_line(position, target, color=(255, 0, 127))
-    return target, aux.dist(position, target)

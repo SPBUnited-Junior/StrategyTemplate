@@ -226,18 +226,20 @@ def doPassNearAllly(field: fld.Field, actions: list[Optional[Action]], idFrom: i
             # field.strategy_image.draw_circle(pointToPass, color=(255, 0, 0), size_in_mms=1000)
             actions[idFrom] =  Actions.Kick(pointToPass, is_pass=True)#TODO fix pass - ball go so slow
         else:
+            """if enemy r prevent pass """
             field.strategy_image.send_telemetry("status pass", "dont have straight pass point")
-            if actions[ourRsSortedByDistToBall[0].r_id] != None:
+            # actions[1].
+            if actions[ourRsSortedByDistToBall[0].r_id] is not None:
                 """do pass ahead"""
-                field.strategy_image.draw_line(field.ball.get_pos(), actions[ourRsSortedByDistToBall[0].r_id].target_pos, (150, 0, 255), 20)
-                actions[idFrom] = Actions.Kick(actions[ourRsSortedByDistToBall[0].r_id].target_pos, is_pass=True)
-    if actions[idFrom] == None:
+                field.strategy_image.draw_line(field.ball.get_pos(), actions[ourRsSortedByDistToBall[0].r_id].target_pos, (150, 0, 255), 20)#type:ignore
+                actions[idFrom] = Actions.Kick(actions[ourRsSortedByDistToBall[0].r_id], is_pass=True)#type:ignore
+    if actions[idFrom] is None:
         """if this r now cant do pass"""
         actions[idFrom] = Actions.GoToPoint(field.allies[idFrom].get_pos(), (field.ball.get_pos()-field.allies[idFrom].get_pos()).arg())#TODO change koef for slow rotate with ball
-    # if rToPass != None:
-    #     return rToPass.r_id
-    # else:
-    #     return None
+    if rToPass != None:
+        return rToPass.r_id
+    else:
+        return None
     return ourRsSortedByDistToBall[0].r_id
     # else: # consider this case
 

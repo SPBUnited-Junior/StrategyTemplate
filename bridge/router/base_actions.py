@@ -396,12 +396,13 @@ class DumbActions:
         def behavior(self, domain: ActionDomain, current_action: ActionValues) -> None:
             limit_action(domain, current_action, self.limit)
 
-    class slowRotateWithBall(Action):
+    class slowRotateWithBall(Action):#TODO make that depend from dist to aim use this action or other
         def __init__(
             self, target_angle: float, angle_bounds: float = math.pi/36
         ) -> None:
             self.target_angle = target_angle
-            self.angle_bounds = angle_bounds
+            self.angle_bounds = angle_bounds#accuracy of rotate for sim: math.pi/72 
+            self.rotateVel = 0.4
             
 
         def is_defined(self, domain: ActionDomain) -> bool:
@@ -411,9 +412,9 @@ class DumbActions:
             current_action.vel = aux.Point(0, 0)
             print("slow")
             if aux.wind_down_angle(domain.robot.get_angle() - self.target_angle) > self.angle_bounds:    
-                current_action.angle = -0.4
+                current_action.angle = -self.rotateVel
             elif aux.wind_down_angle(domain.robot.get_angle() - self.target_angle) < -self.angle_bounds:    
-                current_action.angle = 0.4
+                current_action.angle = self.rotateVel
             else:
                 current_action.angle = 0
             current_action.beep=1

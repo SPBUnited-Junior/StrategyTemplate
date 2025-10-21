@@ -73,6 +73,7 @@ class Strategy:
 
     def run(self, field: fld.Field, actions: list[Optional[Action]]) -> None:#TODO fix rotate with ball, here's 2 options: rotate at arc, or slow rotate with ball
         #TODO fix problem with that robots comes so close to each other,when they try take ball
+        # print(field.active_allies())
         if len(field.active_allies(True)) != 0:#if our Rs on field
             if field.ally_color == const.Color.BLUE:
                 """code for blue"""
@@ -130,7 +131,7 @@ class Strategy:
                                 # goToNearestScorePoint(field, actions, self.idFirstAttacker, 0)
                                 field.strategy_image.draw_line(field.enemy_goal.up, field.enemy_goal.down, (0, 0, 0), 30)
                         else:
-                            actions[self.idFirstAttacker] = Actions.BallGrab(math.pi/2)
+                            actions[self.idFirstAttacker] = Actions.BallGrab(0)
                         # field.strategy_image.send_telemetry("Curr Action", str(actions[self.idFirstAttacker]))
                         # print(actions[self.idFirstAttacker])
 

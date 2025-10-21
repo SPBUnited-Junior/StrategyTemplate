@@ -4,11 +4,11 @@ from typing import Optional
 
 from bridge import const
 from bridge.auxiliary import aux, fld, rbt  # type: ignore
-from bridge.const import State as GameStates
 from bridge.router.base_actions import Action, Actions, KickActions  # type: ignore
 from bridge.strategy.myFunc import findPointForScore
 
-def TIMEOUT(field: fld.Field, actions: list[Optional[Action]],  we_active: bool) -> None:
+
+def TIMEOUT(field: fld.Field, actions: list[Optional[Action]], we_active: bool) -> None:
     if len(field.active_allies(True)) > 0:
         one = field.gk_id
         two, three = GetIds(field, actions)
@@ -26,7 +26,7 @@ def TIMEOUT(field: fld.Field, actions: list[Optional[Action]],  we_active: bool)
                 actions[three] = Actions.GoToPoint(field.ally_goal.center_down + aux.Point(0, 700), 0)
 
 
-def PREPARE_PENALTY(field: fld.Field, actions: list[Optional[Action]],  we_active: bool) -> None:
+def PREPARE_PENALTY(field: fld.Field, actions: list[Optional[Action]], we_active: bool) -> None:
     if len(field.active_allies(True)) > 0:
         gkId = field.gk_id
         saId, faId = GetIds(field, actions)
@@ -42,15 +42,15 @@ def PREPARE_PENALTY(field: fld.Field, actions: list[Optional[Action]],  we_activ
             faId = gkId
 
         if gkId is not None:
-            gk_pos = field.allies[gkId].get_pos()
-            gk = field.enemies[gkId]
+            field.allies[gkId].get_pos()
+            field.enemies[gkId]
         if faId is not None:
-            atacker_first_pos = field.allies[faId].get_pos()
-            atacker_first = field.allies[faId]
+            field.allies[faId].get_pos()
+            field.allies[faId]
 
         if saId is not None:
             atacker_second_pos = field.allies[saId].get_pos()
-            atacker_second = field.allies[saId]
+            field.allies[saId]
 
         point_first = aux.Point(const.FIELD_DX / 2 * -field.polarity, const.FIELD_DY / 2)
         point_second = aux.Point(const.FIELD_DX / 2 * -field.polarity, -const.FIELD_DY / 2)
@@ -62,20 +62,23 @@ def PREPARE_PENALTY(field: fld.Field, actions: list[Optional[Action]],  we_activ
                 actions[faId] = Actions.GoToPoint(aux.Point(const.FIELD_DX / 2 * field.polarity, const.FIELD_DY / 2), 0)
                 # pass
             if saId is not None:
-                actions[saId] = Actions.GoToPoint(aux.Point(200 * -const.POLARITY), (field.ball.get_pos() - atacker_second_pos).arg())
+                actions[saId] = Actions.GoToPoint(
+                    aux.Point(200 * -const.POLARITY), (field.ball.get_pos() - atacker_second_pos).arg()
+                )
                 # pass
         else:
-            #code for GK, its for time:
+            # code for GK, its for time:
             if gkId is not None:
                 actions[gkId] = Actions.GoToPoint(field.ally_goal.frw, 0)
-            #////
+            # ////
             if faId is not None:
                 actions[faId] = Actions.GoToPoint(point_first, 0)
             if saId is not None:
                 actions[saId] = Actions.GoToPoint(point_second, 0)
-            actions[gkId] = Actions.GoToPoint(field.ally_goal.frw   , 0)
+            actions[gkId] = Actions.GoToPoint(field.ally_goal.frw, 0)
 
-def PENALTY(field: fld.Field, actions: list[Optional[Action]],  we_active: bool) -> None:
+
+def PENALTY(field: fld.Field, actions: list[Optional[Action]], we_active: bool) -> None:
     if len(field.active_allies(True)) > 0:
         gkId = field.gk_id
         saId, faId = GetIds(field, actions)
@@ -91,15 +94,15 @@ def PENALTY(field: fld.Field, actions: list[Optional[Action]],  we_active: bool)
             faId = gkId
 
         if gkId is not None:
-            gk_pos = field.allies[gkId].get_pos()
-            gk = field.enemies[gkId]
+            field.allies[gkId].get_pos()
+            field.enemies[gkId]
         if faId is not None:
-            atacker_first_pos = field.allies[faId].get_pos()
-            atacker_first = field.allies[faId]
+            field.allies[faId].get_pos()
+            field.allies[faId]
 
         if saId is not None:
-            atacker_second_pos = field.allies[saId].get_pos()
-            atacker_second = field.allies[saId]
+            field.allies[saId].get_pos()
+            field.allies[saId]
         ball = field.ball.get_pos()
 
         point_first = aux.Point(const.FIELD_DX / 2 * -field.polarity, const.FIELD_DY / 2)
@@ -107,22 +110,23 @@ def PENALTY(field: fld.Field, actions: list[Optional[Action]],  we_active: bool)
         if we_active:
             actions[gkId] = Actions.GoToPoint(field.ally_goal.frw, 0)
             if faId is not None:
-                actions[faId] = Actions.GoToPoint  (-point_first, 0)
+                actions[faId] = Actions.GoToPoint(-point_first, 0)
             point_for_score: Optional[aux.Point] = findPointForScore(field, ball)
             if point_for_score is not None and saId is not None:
                 actions[saId] = Actions.Kick(point_for_score)
 
         else:
-            #code for GK, its for time:
+            # code for GK, its for time:
             actions[gkId] = Actions.GoToPoint(field.ally_goal.center, 0)
-            #////
+            # ////
             if faId is not None:
                 actions[faId] = Actions.GoToPoint(point_first, 0)
             if saId is not None:
                 actions[saId] = Actions.GoToPoint(point_second, 0)
             actions[gkId] = Actions.GoToPoint(field.ally_goal.frw, 0)
 
-def PREPARE_KICKOFF(field: fld.Field, actions: list[Optional[Action]],  we_active: bool) -> None:
+
+def PREPARE_KICKOFF(field: fld.Field, actions: list[Optional[Action]], we_active: bool) -> None:
     if len(field.active_allies(True)) > 0:
         gkId = field.gk_id
         saId, faId = GetIds(field, actions)
@@ -142,15 +146,21 @@ def PREPARE_KICKOFF(field: fld.Field, actions: list[Optional[Action]],  we_activ
                 actions[faId] = Actions.GoToPoint(aux.Point(600 * -const.POLARITY), 0)
             actions[gkId] = Actions.GoToPoint(field.ally_goal.frw, 0)
             if saId is not None:
-                actions[saId] = Actions.GoToPoint(aux.Point(200 * -const.POLARITY), (field.ball.get_pos() - field.allies[saId].get_pos()).arg())
+                actions[saId] = Actions.GoToPoint(
+                    aux.Point(200 * -const.POLARITY), (field.ball.get_pos() - field.allies[saId].get_pos()).arg()
+                )
         else:
             y = 130
             x = math.sqrt(600 * 600 - y * y) * -const.POLARITY
             if faId is not None:
-                actions[faId] = Actions.GoToPoint(aux.Point(x, y), (field.ball.get_pos() - field.allies[faId].get_pos()).arg())
+                actions[faId] = Actions.GoToPoint(
+                    aux.Point(x, y), (field.ball.get_pos() - field.allies[faId].get_pos()).arg()
+                )
             actions[gkId] = Actions.GoToPoint(field.ally_goal.frw, 0)
             if saId is not None:
-                actions[saId] = Actions.GoToPoint(aux.Point(x, -y), (field.ball.get_pos() - field.allies[saId].get_pos()).arg()) 
+                actions[saId] = Actions.GoToPoint(
+                    aux.Point(x, -y), (field.ball.get_pos() - field.allies[saId].get_pos()).arg()
+                )
             actions[gkId] = Actions.GoToPoint(field.ally_goal.frw, 0)
 
             # points_first = aux.get_tangent_points(field.allies[faId].get_pos(), field.allies[gkId].get_pos() + aux.Point(0, 100), 100.0)
@@ -164,16 +174,18 @@ def PREPARE_KICKOFF(field: fld.Field, actions: list[Optional[Action]],  we_activ
             #     point_second = points_first[1]
             # else:
             #     point_second = points_first[0]
-            
+
             # field.strategy_image.draw_line(field.ball.get_pos(), field.allies[gkId].get_pos() + aux.Point(0, -100) - (field.ball.get_pos() - field.allies[gkId].get_pos() + aux.Point(0, -100)) * 100)
             # field.strategy_image.draw_line(field.ball.get_pos(), field.allies[gkId].get_pos() + aux.Point(0, 100) - (field.ball.get_pos() - field.allies[gkId].get_pos() + aux.Point(0, 100)) * 100)
             # field.strategy_image.draw_line(field.ball.get_pos(), point_first + (field.allies[faId].get_pos() - field.ball.get_pos() + aux.Point(0, -100)) * 100, (0, 0, 0))
             # field.strategy_image.draw_line(field.ball.get_pos(), point_second + (field.allies[saId].get_pos() - field.ball.get_pos() + aux.Point(0, 100)) * 100, (0, 0, 0))
-def KICKOFF(field: fld.Field, actions: list[Optional[Action]],  we_active: bool) -> None:
+
+
+def KICKOFF(field: fld.Field, actions: list[Optional[Action]], we_active: bool) -> None:
     if len(field.active_allies(True)) > 0:
         gkId = field.gk_id
         saId, faId = GetIds(field, actions)
-        
+
         if saId is None and faId is not None:
             saId = faId
         elif faId is None and saId is None:
@@ -189,33 +201,38 @@ def KICKOFF(field: fld.Field, actions: list[Optional[Action]],  we_active: bool)
             if point_to_kick is not None:
                 if saId is not None:
                     actions[saId] = Actions.Kick(point_to_kick)
-            else: 
+            else:
                 if saId is not None and faId is not None and saId != faId:
-                    actions[saId] = Actions.Kick(field.allies[faId].get_pos(), is_pass= True)
+                    actions[saId] = Actions.Kick(field.allies[faId].get_pos(), is_pass=True)
                 elif saId is not None and faId is not None and saId == faId:
-                    actions[saId] = Actions.Kick(field.allies[gkId].get_pos(), is_pass= True)
+                    actions[saId] = Actions.Kick(field.allies[gkId].get_pos(), is_pass=True)
                 elif faId is not None:
-                    actions[faId] = Actions.Kick(field.allies[gkId].get_pos(), is_pass= True)
+                    actions[faId] = Actions.Kick(field.allies[gkId].get_pos(), is_pass=True)
                 else:
                     actions[gkId] = Actions.Kick(field.enemy_goal.frw)
         else:
             y = 130
             x = math.sqrt(600 * 600 - y * y) * -const.POLARITY
             if faId != saId and faId is not None:
-                actions[faId] = Actions.GoToPoint(aux.Point(x, y), (field.ball.get_pos() - field.allies[faId].get_pos()).arg())
+                actions[faId] = Actions.GoToPoint(
+                    aux.Point(x, y), (field.ball.get_pos() - field.allies[faId].get_pos()).arg()
+                )
             if saId is not None:
-                actions[saId] = Actions.GoToPoint(aux.Point(x, -y), (field.ball.get_pos() - field.allies[saId].get_pos()).arg()) 
+                actions[saId] = Actions.GoToPoint(
+                    aux.Point(x, -y), (field.ball.get_pos() - field.allies[saId].get_pos()).arg()
+                )
             actions[gkId] = Actions.GoToPoint(field.ally_goal.frw, 0)
 
+
 def GetIds(field: fld.Field, actions: list[Optional[Action]]) -> tuple[Optional[int], Optional[int]]:
-    '''
+    """
     Возвращает id роботов
 
     id:
         1: вратарь
         2: первый атак.
         3: второй атак.
-    '''
+    """
     mass_idx: Optional[list]
     mass_idx = [robot.r_id for robot in field.active_allies()]
     gk = field.gk_id

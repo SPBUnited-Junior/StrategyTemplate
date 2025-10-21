@@ -65,7 +65,7 @@ class Robot(entity.Entity):
         # !v REAL
         if self.r_id == const.GK:
             # gains_full = [6, 0.07, 0.05, const.MAX_SPEED]#experement
-            gains_full = [5, 0.035, 0.05, const.MAX_SPEED]#some faster
+            gains_full = [5, 0.035, 0.05, const.MAX_SPEED]  # some faster
             # gains_full = [2.5, 0.07, 0.05, const.MAX_SPEED]
         else:
             gains_full = [2.5, 0.07, 0.05, const.MAX_SPEED]

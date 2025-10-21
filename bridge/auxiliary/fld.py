@@ -33,9 +33,9 @@ class Goal:
                     │                                 frw                                 │
                     ◉──────────────────────────────────◉──────────────────────────────────◉
                  frw_down                                                              frw_up
-                                                       ||
-                                                       ||
-                                                       \/ eye_frw
+                                                       |
+                                                       |
+                                                       V eye_frw
         """
         # Абсолютный центр
         self.center = aux.Point(goal_dx, 0)
@@ -60,37 +60,18 @@ class Goal:
 
         # Оболочка штрафной зоны
         self.hull = [
-            aux.FIELD_INF * self.eye_forw.x,
             self.center_up,
             self.frw_up,
             self.frw_down,
             self.center_down,
-        ]
-
-        self.big_hull = [
             aux.FIELD_INF * self.eye_forw.x,
-            self.center_up + self.eye_up * const.ROBOT_R * 1.5,
-            self.frw_up + (self.eye_forw + self.eye_up) * const.ROBOT_R * 1.5,
-            self.frw_down + (self.eye_forw - self.eye_up) * const.ROBOT_R * 1.5,
-            self.center_down - self.eye_up * const.ROBOT_R * 1.5,
-        ]
+        ]  # NOTE порядок важен для объезда!!!
+
+        self.wall_hull = aux.offset_polygon(self.hull, const.ROBOT_R * 1.2)
+        self.big_hull = aux.offset_polygon(self.hull, const.ROBOT_R * 1.2)
 
         stop_delta = 500
-        self.stop_hull = [
-            aux.FIELD_INF * self.eye_forw.x,
-            self.center_up + self.eye_up * stop_delta,
-            self.frw_up + (self.eye_forw + self.eye_up) * stop_delta,
-            self.frw_down + (self.eye_forw - self.eye_up) * stop_delta,
-            self.center_down - self.eye_up * stop_delta,
-        ]
-
-        self.big_stop_hull = [
-            aux.FIELD_INF * self.eye_forw.x,
-            self.center_up + self.eye_up * (stop_delta + const.ROBOT_R * 1.5),
-            self.frw_up + (self.eye_forw + self.eye_up) * (stop_delta + const.ROBOT_R * 1.5),
-            self.frw_down + (self.eye_forw - self.eye_up) * (stop_delta + const.ROBOT_R * 1.5),
-            self.center_down - self.eye_up * (stop_delta + const.ROBOT_R * 1.5),
-        ]
+        self.stop_hull = aux.offset_polygon(self.hull, stop_delta)
 
 
 class Field:
@@ -128,6 +109,7 @@ class Field:
             self.polarity = const.POLARITY * -1
         else:
             self.polarity = const.POLARITY
+        # polarity = sign(ally_goal.center.x)
 
         self.ball = entity.Entity(aux.GRAVEYARD_POS, 0, const.BALL_R, 0.2)
         self.b_team = [
@@ -180,6 +162,7 @@ class Field:
             aux.Point(-const.FIELD_DX, -const.FIELD_DY),
             aux.Point(-const.FIELD_DX, const.FIELD_DY),
         ]
+        self.big_hull = aux.offset_polygon(self.hull, const.ROBOT_R)
 
         self._active_allies: list[rbt.Robot] = []
         self._active_enemies: list[rbt.Robot] = []
@@ -196,14 +179,14 @@ class Field:
         self.router_image.clear()
         self.path_image.clear()
 
-    def active_allies(self, include_gk: bool = False) -> list[rbt.Robot]:
+    def active_allies(self, include_gk: bool) -> list[rbt.Robot]:
         """return allies on field"""
         robots = self._active_allies.copy()
         if include_gk and self.allies[self.gk_id].is_used():
             robots.append(self.allies[self.gk_id])
         return robots
 
-    def active_enemies(self, include_gk: bool = False) -> list[rbt.Robot]:
+    def active_enemies(self, include_gk: bool) -> list[rbt.Robot]:
         """return enemies on field"""
         robots = self._active_enemies.copy()
         if include_gk and self.enemies[self.enemy_gk_id].is_used():
@@ -330,16 +313,13 @@ class Field:
             self.ball.get_vel().mag() * (cos(vec_to_point.arg() - self.ball.get_vel().arg()) ** 5)
             > const.INTERCEPT_SPEED * 5
             and self.robot_with_ball is None
-            and abs(vec_to_point.arg() - self.ball.get_vel().arg()) < align
+            and abs(aux.wind_down_angle(vec_to_point.arg() - self.ball.get_vel().arg())) < align
         )
 
     def is_ball_moves_to_goal(self) -> bool:
         """
         Определить, движется ли мяч в сторону ворот
         """
-        if self.ball_start_point is None:
-            return False
-
         inter = aux.get_line_intersection(
             self.ally_goal.center_up,
             self.ally_goal.center_down,
@@ -347,15 +327,12 @@ class Field:
             self.ball.get_pos(),
             "SR",
         )
-        return inter is not None and self.is_ball_moves()
+        return inter is not None and self.ball.get_vel().mag() > 100
 
     def is_ball_moves_to_enemy_goal(self) -> bool:
         """
         Определить, движется ли мяч в сторону ворот
         """
-        if self.ball_start_point is None:
-            return False
-
         inter = aux.get_line_intersection(
             self.enemy_goal.up,
             self.enemy_goal.down,

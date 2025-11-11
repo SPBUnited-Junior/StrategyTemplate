@@ -30,10 +30,10 @@ class Strategy:
         self.idDoPass: Optional[int] = None
         self.oldIdDoPass: Optional[int] = None
         self.GKLastState: Optional[str] = None
-        self.idFirstAttacker: int = 0
-        self.idSecondAttacker: int = 2
+        self.idFirstAttacker: int = 4
+        self.idSecondAttacker: int = 5
         self.TimeWeTryDoPass: Optional[float] = None
-        self.whatWeDoAtThisRun: whatWeDoStates = whatWeDoStates.BothPlay
+        self.whatWeDoAtThisRun: whatWeDoStates = whatWeDoStates.Play
 
     def process(self, field: fld.Field) -> list[Optional[Action]]:
         """Game State Management"""
@@ -47,24 +47,24 @@ class Strategy:
         for _ in range(const.TEAM_ROBOTS_MAX_COUNT):
             actions.append(None)
 
+        # self.we_active = True
+
         # TODO make game states
         match field.game_state:
             case GameStates.RUN:
                 self.run(field, actions)
             case GameStates.TIMEOUT:
-                states.TIMEOUT(field, actions, self.we_active)
+                states.TIMEOUT(field, actions, self.we_active, self.idFirstAttacker, self.idSecondAttacker)
             case GameStates.HALT:  # GOOD
                 return [None] * const.TEAM_ROBOTS_MAX_COUNT
             case GameStates.PREPARE_PENALTY:
-                states.PREPARE_PENALTY(field, actions, self.we_active)
+                states.PREPARE_PENALTY(field, actions, self.we_active, self.idFirstAttacker, self.idSecondAttacker)
             case GameStates.PENALTY:
-                states.PENALTY(
-                    field, actions, self.we_active
-                )  # one r(our or not) kick ball from center of field, GK other team defend goal
+                states.PENALTY(field, actions, self.we_active, self.idFirstAttacker, self.idSecondAttacker)  # one r(our or not) kick ball from center of field, GK other team defend goal
             case GameStates.PREPARE_KICKOFF:
-                states.PREPARE_KICKOFF(field, actions, self.we_active)  # our Rs on our part of field
+                states.PREPARE_KICKOFF(field, actions, self.we_active, self.idFirstAttacker, self.idSecondAttacker)  # our Rs on our part of field
             case GameStates.KICKOFF:
-                states.KICKOFF(field, actions, self.we_active)  # our Rs on our part of field
+                states.KICKOFF(field, actions, self.we_active, self.idFirstAttacker, self.idSecondAttacker)  # our Rs on our part of field
             case GameStates.FREE_KICK:
                 self.run(field, actions)
             case GameStates.STOP:
@@ -77,11 +77,12 @@ class Strategy:
         # TODO fix problem with that robots comes so close to each other,when they try take ball
         # print(field.active_allies(False))
         if len(field.active_allies(True)) != 0:  # if our Rs on field
-            if field.ally_color == const.Color.BLUE:
+            if field.ally_color == const.Color.YELLOW:
                 """code for blue"""
                 # print(field.game_state)#for real
                 if self.whatWeDoAtThisRun == whatWeDoStates.Play or self.whatWeDoAtThisRun == whatWeDoStates.BothPlay:
                     # print(self.idDoPass)
+                    print(field.active_allies(False))
                     self.attacker(field, actions, self.idFirstAttacker, self.idSecondAttacker)
                     self.attacker(field, actions, self.idSecondAttacker, self.idFirstAttacker)
                     if field.allies[const.GK].is_used():
@@ -123,7 +124,9 @@ class Strategy:
                         print(self.idDoPass, self.idGettingPass)
 
                     case whatWeDoStates.SimpleTest:
-                        actions[0] = Actions.BallGrab((-field.ball.get_pos() + field.enemy_goal.center).arg())  # work
+                        # actions[0] = Actions.BallGrab((-field.ball.get_pos() + field.enemy_goal.center).arg())  # work
+                        actions[2] = Actions.Kick(field.enemy_goal.center)
+                        # actions[2] = Actions.GoToPoint(aux.Point(0, 0), 0)
 
                     case whatWeDoStates.TestRotateWithBall:
                         thisR = field.allies[self.idFirstAttacker]

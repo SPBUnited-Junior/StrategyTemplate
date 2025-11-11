@@ -18,6 +18,16 @@ class Strategy:
         self,
     ) -> None:
         self.we_active = False
+        #Индексы союзных роботов
+        self.goalkeeper_idx = 0
+        self.idx1 = 1
+        self.idx2 = 2
+
+        #Индексы вражеских роботов
+        self.goalkeeper_idx_enemy = 0
+        self.idx_enemy1 = 1
+        self.idx_enemy2 = 2
+
 
     def process(self, field: fld.Field) -> list[Optional[Action]]:
         """Game State Management"""
@@ -95,13 +105,38 @@ class Strategy:
         """
         pass
 
-    def process_defender():
+    def process_defender(self, field: fld.Field, actions: list[Optional[Action]]) -> None:
+        ball = field.ball.get_pos()
+        nearest_enemy_dist = 5000.0
+        nearest_enemy_point = aux.Point(0, 0)
+
+        for i in field.active_enemies(False):
+            if aux.dist(i.get_pos(), ball) < nearest_enemy_dist:
+                nearest_enemy_dist = aux.dist(i.get_pos(), ball)
+                nearest_enemy_point = i.get_pos()
+        
+        dist_to_robot_with_ball = (ball - nearest_enemy_dist).unity() *200 + ball
+
+        bottom_crossbar = field.ally_goal.down + aux.Point(0, 100) #Небольшое расстояние от нижней штанги к углу
+        up_crossbar = field.ally_goal.up - aux.Point(0, 100)  #Небольшое расстояние от верхней штанги к углу
+
+        bottom_block = aux.closest_point_on_line(nearest_enemy_point, bottom_crossbar, dist_to_robot_with_ball, "R")
+        up_block = aux.closest_point_on_line(nearest_enemy_point, up_crossbar, dist_to_robot_with_ball, "R")
+
+        if aux.dist(dist_to_robot_with_ball, bottom_block) > aux.dist(dist_to_robot_with_ball, up_block):
+            actions[self.idx1] = Actions.GoToPoint(up_block, 3.14)
+        else:
+            actions[self.idx1] = Actions.GoToPoint(bottom_block, 3.14)
+            if  nearest_enemy_point == aux.Point(0, 0):
+                actions[self.idx1] = Actions.GoToPoint(field.ally_goal.center + aux.Point(-1000, 0), 3.14)
+
+
+
         """
         The logic by which the attacker acts
 
         includes (it is necessary to list the main points of the defender's strategy):
         """
-        pass
 
     def precess_catch_a_pas():
         pass

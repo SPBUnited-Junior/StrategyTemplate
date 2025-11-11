@@ -78,3 +78,30 @@ class Strategy:
         - actions[9] = Actions.BallGrab(0.0)
                 The robot number 9 grabs the ball at an angle of 0.0 (it looks to the right, along the OX axis)
         """
+
+    def process_goalkeeper():
+        """
+        The logic by which the goalkeeper acts
+
+        includes (it is necessary to list the main points of the goalkeeper's strategy):
+        """
+        pass
+
+    def process_attacker():
+        """
+        The logic by which the attacker acts
+
+        includes (it is necessary to list the main points of the attacker's strategy):
+        """
+        pass
+
+    def process_defender():
+        """
+        The logic by which the attacker acts
+
+        includes (it is necessary to list the main points of the defender's strategy):
+        """
+        pass
+
+    def precess_catch_a_pas():
+        pass

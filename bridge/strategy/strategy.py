@@ -10,7 +10,6 @@ from bridge.auxiliary import aux, fld, rbt  # type: ignore
 from bridge.const import State as GameStates
 from bridge.router.base_actions import Action, Actions, KickActions, get_pass_voltage  # type: ignore
 
-
 class Strategy:
     """Main class of strategy"""
 
@@ -31,9 +30,36 @@ class Strategy:
         self.idx_enemy1 = 1
         self.idx_enemy2 = 2
 
+        # статические переменные
+        self.point_kick_goal = None # точки в воротах, в которую будет бить атакующий
+        self.dist_line_goal = 0 #размер максимально длинного открытого отрезка в воротах
+
+        self.ball = aux.Point(0, 0) # мяч
+
 
 
     def process(self, field: fld.Field) -> list[Optional[Action]]:
+        """
+        Подсчет статических переменных (self)
+        """
+
+        ### расчет точки в воротах, в которую будет бить атакующий ###
+        enemies = []
+        for rbt in field.active_enemies(1):
+            enemies.append(rbt.get_pos())
+
+        kick_inf_list = self.check_goal_point(
+            field,
+            field.ball.get_pos(),
+            enemies#
+        )
+
+        self.point_kick_goal = kick_inf_list[0]
+        self.dist_line_goal = kick_inf_list[1]
+
+        ### полложение мяча ###
+        self.ball = field.ball.get_pos()
+
         """Game State Management"""
         if field.game_state not in [GameStates.KICKOFF, GameStates.PENALTY]:
             if field.active_team in [const.Color.ALL, field.ally_color]:
@@ -112,41 +138,47 @@ class Strategy:
         includes (it is necessary to list the main points of the attacker's strategy):
         """
         
-        ball = field.ball.get_pos()
-
-        kick_inf_list: aux.Point = self.check_goal_point(
-            field,
-            ball,
-            [field.enemies[0].get_pos(), field.enemies[1].get_pos(), field.enemies[2].get_pos()]#[field.active_enemies]
-        )
-
-        point_kick_goal = kick_inf_list[0]; #оптимальная точка в воротах в которую нужно бить
-        dist_kick_goal = kick_inf_list[1]; #размер максимально длинного открытого отрезка в воротах
-        print(point_kick_goal)
-        if point_kick_goal is None:
+        if self.point_kick_goal is None:
             """
             Если вражеские ворота полностью заблокированы или
             мяч слишком далеко для удара по воротам
 
-            бъем в ворота
+            даем пас другому роботу
             """
-            voltage = get_pass_voltage(aux.dist(ball, robot_catch_ball.get_pos()))
-            Action_attacker = KickActions.Straight(robot_catch_ball.get_pos(), voltage)
-            
 
+            Action_attacker = self.kick_ball_to_pas(field, robot_catch_ball)
+            
         else:
             """
             Если вражеские ворота открыты и 
             мяч достаточно близко для удара
 
-            даем пас другому роботу
+            бъем в ворота
             """
-            Action_attacker = KickActions.Straight(point_kick_goal)
-            field.strategy_image.draw_circle(point_kick_goal, (255, 0, 0), 25)
+
+            Action_attacker = self.kick_ball_to_goal(field)
+
         return Action_attacker
     
+    def kick_ball_to_goal(self, field: fld.Field):
+        """
+        Бъем в ворота
+        Проверка на то чтобы point not is None 
+        """
 
+        point_kick_goal = self.point_kick_goal
+        if self.point_kick_goal is None:
+            point_kick_goal = field.enemy_goal.center
 
+        return KickActions.Straight(point_kick_goal)
+    
+    def kick_ball_to_pas(self, field: fld.Field,  robot_catch_ball: rbt.Robot):
+        """
+        Даем пас роботу
+        """
+        voltage = get_pass_voltage(aux.dist(self.ball, robot_catch_ball.get_pos()))
+        return KickActions.Straight(robot_catch_ball.get_pos(), voltage)
+    
     def process_defender():
         """
         The logic by which the attacker acts
@@ -155,8 +187,10 @@ class Strategy:
         """
         pass
 
-    def precess_catch_a_pas():
+    def process_catch_a_pas():
         pass
+
+
 
 
     #### Вспомогательные функции ####

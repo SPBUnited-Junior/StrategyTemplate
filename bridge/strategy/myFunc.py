@@ -142,12 +142,13 @@ def filterPointsForPass(field: fld.Field, points: list[aux.Point], pointFromOpen
     return filteredPointsForPass
 
 
-def openForPass(field: fld.Field, idRWhichOpen: int, actions: list[Optional[Action]]) -> None:
+def openForPass(field: fld.Field, idRWhichOpen: int, actions: list[Optional[Action]]) -> Optional[aux.Point]:
     ballPos = field.ball.get_pos()
     thisR = field.allies[idRWhichOpen]
     thisRPos = thisR.get_pos()
     maybePointsForOpening = []
     vectFromBallToR = thisRPos - ballPos
+    nearestPointForOpening = None
     # vectForRotate =
     # step = 200
     # for i in range(step, int(vectFromBallToR.mag()), step):
@@ -183,6 +184,8 @@ def openForPass(field: fld.Field, idRWhichOpen: int, actions: list[Optional[Acti
         # field.strategy_image.draw_line(ballPos, nearestPointForOpening, (0, 0, 0), 20)
         actions[idRWhichOpen] = Actions.GoToPoint(nearestPointForOpening, (ballPos - thisR.get_pos()).arg())
 
+    return nearestPointForOpening
+
 
 def getPointToPassAndRToPass(
     field: fld.Field,
@@ -191,7 +194,7 @@ def getPointToPassAndRToPass(
     enemys: list[rbt.Robot],
     pointFrom: aux.Point,
     idFrom: int = const.GK,
-) -> tuple[rbt.Robot | None, aux.Point | None]:
+    ) -> tuple[rbt.Robot | None, aux.Point | None]:
     rToPass: Optional[rbt.Robot] = None
     pointToPass = None
     ballPos = field.ball.get_pos()
@@ -248,12 +251,17 @@ def doPassNearAllly(field: fld.Field, actions: list[Optional[Action]], idFrom: i
         rToPass, pointToPass = getPointToPassAndRToPass(field, actions, ourRsSortedByDistToBall, enemys, pointFrom, idFrom)
         ourRsSortedByDistToBall[0].r_id
 
-        if pointToPass != None:
+        if pointToPass != None and rToPass != None:
             """if enemy r dont prevent pass"""
             field.strategy_image.send_telemetry("status pass", "have point")
             # field.strategy_image.draw_line(pointFrom, pointToPass, color=(255, 0, 0))
             # field.strategy_image.draw_circle(pointToPass, color=(255, 0, 0), size_in_mms=1000)
-            actions[idFrom] = Actions.Kick(pointToPass, is_pass=True)  # TODO fix pass - ball go so slow
+            pointToOpenForPass = openForPass(field, rToPass.r_id, actions)
+            if (rToPass.get_vel()).mag() > 100 and not pointToOpenForPass is None:
+                """if this r moving, we must kick ball ahead"""
+                """TODO maybe we do openForPass several times for one run - bad"""
+                pointToPass = pointToOpenForPass
+            actions[idFrom] = Actions.Kick(pointToPass, is_pass=True)# type: ignore
         else:
             """if enemy r prevent pass"""
             field.strategy_image.send_telemetry("status pass", "dont have straight pass point")
@@ -261,7 +269,7 @@ def doPassNearAllly(field: fld.Field, actions: list[Optional[Action]], idFrom: i
             if actions[ourRsSortedByDistToBall[0].r_id] is not None:
                 """do pass ahead"""
                 field.strategy_image.draw_line( field.ball.get_pos(), actions[ourRsSortedByDistToBall[0].r_id].target_pos, (150, 0, 255), 20)  # type:ignore
-                actions[idFrom] = Actions.Kick(actions[ourRsSortedByDistToBall[0].r_id].target_pos, is_pass=True)  # type:ignore
+                actions[idFrom] = Actions.Kick(actions[ourRsSortedByDistToBall[0].r_id].target_pos, is_pass=False, is_upper=True)  # type:ignore
     if actions[idFrom] is None:
         """if this r now cant do pass"""
         actions[idFrom] = Actions.GoToPoint(

@@ -4,12 +4,43 @@
 import math  # type: ignore
 from time import time  # type: ignore
 from typing import Optional
+from enum import Enum
 
 from bridge import const
 from bridge.auxiliary import aux, fld, rbt  # type: ignore
 from bridge.const import State as GameStates
 from bridge.router.base_actions import Action, Actions, KickActions, get_pass_voltage  # type: ignore
 
+"""
+ONE ITERATION of strategy
+NOTE: robots will not start acting until this function returns an array of actions,
+        if an action is overwritten during the process, only the last one will be executed)
+
+Examples of getting coordinates:
+- field.allies[8].get_pos(): aux.Point -   coordinates  of the 8th  robot from the allies
+- field.enemies[14].get_angle(): float - rotation angle of the 14th robot from the opponents
+
+- field.ally_goal.center: Point - center of the ally goal
+- field.enemy_goal.hull: list[Point] - polygon around the enemy goal area
+
+
+Examples of robot control:
+- actions[2] = Actions.GoToPoint(aux.Point(1000, 500), math.pi / 2)
+        The robot number 2 will go to the point (1000, 500), looking in the direction π/2 (up, along the OY axis)
+
+- actions[3] = Actions.Kick(field.enemy_goal.center)
+        The robot number 3 will hit the ball to 'field.enemy_goal.center' (to the center of the enemy goal)
+
+- actions[9] = Actions.BallGrab(0.0)
+        The robot number 9 grabs the ball at an angle of 0.0 (it looks to the right, along the OX axis)
+
+"""
+
+class FlagToPasses(Enum): #флаги для состояние приянтия мячей
+    FALSE = 0 # не ловим 
+    TRUE = 1 # ловим
+    RELEASE = 2 # поймали и отпускаем
+ 
 class Strategy:
     """Main class of strategy"""
 
@@ -34,7 +65,16 @@ class Strategy:
         self.point_kick_goal = None # точки в воротах, в которую будет бить атакующий
         self.dist_line_goal = 0 #размер максимально длинного открытого отрезка в воротах
 
+        self.old_ball = aux.Point(0, 0) #положение мяча когда он начал катиться
         self.ball = aux.Point(0, 0) # мяч
+
+        # переменные для паса
+        self.dist_to_pas = 2000 # расстояние до удара
+        self.dist_cath_ball = 300 #расстояние на которое робот можнт отехать при ловле мяча
+        self.passes_status = FlagToPasses.FALSE # флаг состояний
+        self.time_stop_dribbler = 0.5 # время для остнаовки дриблера после паса
+        self.timer_stop_dribbler = 0 #для остановки дриблера
+        self.dist_after_catch = 140 # растояние на которое нужно отехать от мяча, после его поимки и остановки дриблера
 
 
 
@@ -51,7 +91,7 @@ class Strategy:
         kick_inf_list = self.check_goal_point(
             field,
             field.ball.get_pos(),
-            enemies#
+            enemies
         )
 
         self.point_kick_goal = kick_inf_list[0]
@@ -93,35 +133,20 @@ class Strategy:
                 # The router will automatically prevent robots from getting too close to the ball
                 self.run(field, actions)
 
+        
         return actions
 
     def run(self, field: fld.Field, actions: list[Optional[Action]]) -> None:
-        """
-        ONE ITERATION of strategy
-        NOTE: robots will not start acting until this function returns an array of actions,
-              if an action is overwritten during the process, only the last one will be executed)
 
-        Examples of getting coordinates:
-        - field.allies[8].get_pos(): aux.Point -   coordinates  of the 8th  robot from the allies
-        - field.enemies[14].get_angle(): float - rotation angle of the 14th robot from the opponents
-
-        - field.ally_goal.center: Point - center of the ally goal
-        - field.enemy_goal.hull: list[Point] - polygon around the enemy goal area
-
-
-        Examples of robot control:
-        - actions[2] = Actions.GoToPoint(aux.Point(1000, 500), math.pi / 2)
-                The robot number 2 will go to the point (1000, 500), looking in the direction π/2 (up, along the OY axis)
-
-        - actions[3] = Actions.Kick(field.enemy_goal.center)
-                The robot number 3 will hit the ball to 'field.enemy_goal.center' (to the center of the enemy goal)
-
-        - actions[9] = Actions.BallGrab(0.0)
-                The robot number 9 grabs the ball at an angle of 0.0 (it looks to the right, along the OX axis)
-
-        """
-        actions[1] = self.process_attacker(field, field.allies[1], field.allies[2])
-
+        if self.passes_status == FlagToPasses.FALSE:
+            actions[1] = self.kick_ball_to_pas(field, field.allies[2])
+        else:
+            actions[1] = Actions.GoToPoint(field.allies[1].get_pos(), field.allies[1].get_angle())
+        if self.check_cath_ball(field, field.allies[2]):
+            actions[2] = self.process_catch_ball(field, field.allies[2])
+        else:
+            actions[2] = Actions.GoToPoint(aux.Point(0, 0), (self.ball - field.allies[2].get_pos()).arg())
+        print(self.passes_status, field.ball_start_point, field.ball.get_vel().mag())
 
     def process_goalkeeper():
         """
@@ -187,11 +212,64 @@ class Strategy:
         """
         pass
 
-    def process_catch_a_pas():
-        pass
+    def process_catch_ball(self, field: fld.Field, robot: rbt.Robot):
+        """
+        Логика принятия всех летящих в робота мячей
+
+        Проверка того что мяч летит в робота происходит
+        вне функции, с помощью check_cath_a_ball()
+        """
+        if self.passes_status != FlagToPasses.RELEASE:
+            """
+            Если мяч ещё летит то
+            подстравиваемься под него
+            """
+            self.passes_status = FlagToPasses.TRUE
+            pos = aux.closest_point_on_line(field.ball_start_point, self.ball, robot.get_pos(), "R")
+            Action = Actions.CatchBall(pos, (self.ball - robot.get_pos()).arg(), 15)
+            if field.is_ball_in(robot):
+                """
+                Ждем когда мы поймаем мяч
+                """
+                self.passes_status = FlagToPasses.RELEASE
+                self.timer_stop_dribbler = time()
+
+        else:
+            """
+            когда мы поймали мяч
+            останавливаем дриблер
+            и отезжаем назад от мяча
+            """
+            Action = Actions.GoToPoint(robot.get_pos(), robot.get_angle())
+            if time() - self.timer_stop_dribbler > self.time_stop_dribbler:
+                pos = robot.get_pos() + (robot.get_pos() - self.ball).unity() * (const.ROBOT_R * 1.5)
+                Action = Actions.GoToPoint(pos, robot.get_angle())
+                if aux.dist(robot.get_pos(), self.ball) > self.dist_after_catch:
+                    self.passes_status = FlagToPasses.FALSE
+            
+        return Action
 
 
+        
+    def check_cath_ball(self, field: fld.Field, robot: rbt.Robot) -> aux.Point:
+        """
+        Проверяем летит ли мяч в сторону робота
+        """
+        pos_cath = aux.closest_point_on_line(field.ball_start_point, self.ball, robot.get_pos(), "R")
+        field.strategy_image.draw_circle(field.ball_start_point, (255, 0, 255), 30)
 
+        if(
+            (pos_cath is None
+            or aux.dist(pos_cath, robot.get_pos()) > self.dist_cath_ball
+            or aux.dist(self.ball, robot.get_pos()) > self.dist_to_pas
+            or field.ball.get_vel().mag() < 200)
+            and self.passes_status != FlagToPasses.RELEASE
+        ):
+            self.passes_status = FlagToPasses.FALSE
+            print(False)
+            return False
+        print(True)
+        return True
 
     #### Вспомогательные функции ####
     def check_goal_point(

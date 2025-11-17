@@ -240,6 +240,16 @@ class Actions:
 
         def use_behavior_of(self, domain: ActionDomain, current_action: ActionValues) -> list["Action"]:
             return [KickActions.Straight(*self.kick_args)]
+    
+    class CatchBall(Action):
+        def __init__(self,target_pos: aux.Point, target_angle: float, dribbler_speed: int = 15) -> None:
+            self.target_pos = target_pos
+            self.target_angle = target_angle
+            self.dribbler_speed = dribbler_speed
+
+        def use_behavior_of(self, domain: ActionDomain, current_action: ActionValues) -> list[Action]:
+            current_action.dribbler_speed = self.dribbler_speed
+            return [Actions.GoToPoint(self.target_pos, self.target_angle, False, True)]
 
 
 class KickActions:

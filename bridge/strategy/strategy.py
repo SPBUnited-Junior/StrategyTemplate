@@ -247,7 +247,7 @@ class Strategy:
                 actions[self.idx1] = Actions.GoToPoint(field.ally_goal.center + aux.Point(-1000, 0), 3.14)
 
         #Блокировка паса
-        actions[self.idx2] = Actions.GoToPoint(aux.closest_point_on_line(robot_position2, robot_position1_enemy, robot_position2_enemy, "S"), (ball - robot_position2).arg())
+        actions[self.idx2] = Actions.GoToPoint(aux.closest_point_on_line(robot_position2_enemy, robot_position1_enemy, robot_position2, "S"), (ball - robot_position2).arg())
         
         return actions
 

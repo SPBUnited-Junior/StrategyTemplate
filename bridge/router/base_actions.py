@@ -301,10 +301,11 @@ class KickActions:
     class delayedSLowKick(Kick):
         def use_behavior_of(self, domain: ActionDomain, current_action: ActionValues) -> list["Action"]:
             kick_angle = aux.angle_to_point(domain.field.ball.get_pos(), self.target_pos)
+            distToAim = aux.dist(domain.field.ball.get_pos(), self.target_pos)
 
             actions = [
                 Actions.BallGrab(kick_angle),
-                DumbActions.slowRotateWithBall(target_angle=kick_angle),
+                DumbActions.slowRotateWithBall(target_angle=kick_angle, distToAim=distToAim),
                 DumbActions.delayedShootAction(kick_angle, self.is_upper),
                 DumbActions.ControlVoltageAction(self.voltage, self.pass_pos),
             ]
@@ -416,9 +417,18 @@ class DumbActions:
             limit_action(domain, current_action, self.limit)
 
     class slowRotateWithBall(Action):  # TODO make that depend from dist to aim use this action or other
-        def __init__(self, target_angle: float, angle_bounds: float = math.pi / 36) -> None:
+        def __init__(self, target_angle: float, distToAim: float, angle_bounds: float = math.pi / 18) -> None:
             self.target_angle = target_angle
-            self.angle_bounds = angle_bounds  # accuracy of rotate for sim: math.pi/72
+            # print(angle_bounds*180/math.pi)
+            # self.angle_bounds = angle_bounds-(1000-distToAim)/5000/180*math.pi  # accuracy of rotate for sim
+            minDeltaAngle = 3
+            maxAngle = angle_bounds*180/math.pi-minDeltaAngle
+            difference = (distToAim)/(const.FIELD_DX)*maxAngle/100
+            if difference*180/math.pi > maxAngle:
+                difference = maxAngle*math.pi/180
+            self.angle_bounds = angle_bounds-difference  # accuracy of rotate for REAL
+            # print(self.angle_bounds*180/math.pi, difference*180/math.pi, distToAim)
+
             self.rotateVel = 0.4
 
         def is_defined(self, domain: ActionDomain) -> bool:
@@ -434,7 +444,7 @@ class DumbActions:
             if not is_aligned:
                 DumbActions.timer1 = time() + 10**10
                 DumbActions.oldAligned = False
-            return domain.field.is_ball_in(domain.robot) and not is_aligned and not time() - DumbActions.timer1 > 0.1
+            return domain.field.is_ball_in(domain.robot) and not is_aligned and not time() - DumbActions.timer1 > 0.2
 
         def behavior(self, domain: ActionDomain, current_action: ActionValues) -> None:
             current_action.vel = aux.Point(0, 0)

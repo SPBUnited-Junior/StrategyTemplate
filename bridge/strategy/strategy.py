@@ -31,9 +31,9 @@ class Strategy:
         self.oldIdDoPass: Optional[int] = None
         self.GKLastState: Optional[str] = None
         self.idFirstAttacker: int = 4
-        self.idSecondAttacker: int = 2
+        self.idSecondAttacker: int = 5
         self.TimeWeTryDoPass: Optional[float] = None
-        self.whatWeDoAtThisRun: whatWeDoStates = whatWeDoStates.TestPass
+        self.whatWeDoAtThisRun: whatWeDoStates = whatWeDoStates.TestRotateWithBall
 
     def process(self, field: fld.Field) -> list[Optional[Action]]:
         """Game State Management"""
@@ -171,20 +171,21 @@ class Strategy:
 
                     case whatWeDoStates.SimpleTest:
                         # actions[0] = Actions.BallGrab((-field.ball.get_pos() + field.enemy_goal.center).arg())  # work
-                        # actions[2] = Actions.Kick(field.enemy_goal.center)
-                        actions[4] = Actions.GoToPoint(aux.Point(0, 0), 0)
+                        actions[2] = Actions.Kick(field.enemy_goal.center)
+                        # actions[4] = Actions.GoToPoint(aux.Point(0, 0), 0)
 
                     case whatWeDoStates.TestRotateWithBall:
                         thisR = field.allies[self.idFirstAttacker]
                         if field.is_ball_in(thisR):
-                            pointForScore = findPointForScore(field, thisR.get_pos())
-                            if pointForScore != None:
-                                actions[self.idFirstAttacker] = Actions.Kick(pointForScore)
-                            else:
-                                # goToNearestScorePoint(field, actions, self.idFirstAttacker, 0)
-                                field.strategy_image.draw_line(field.enemy_goal.up, field.enemy_goal.down, (0, 0, 0), 30)
+                            actions[self.idFirstAttacker] = Actions.Kick(field.enemy_goal.center)
+                            # pointForScore = findPointForScore(field, thisR.get_pos())
+                            # if pointForScore != None:
+                            #     actions[self.idFirstAttacker] = Actions.Kick(pointForScore)
+                            # else:
+                            #     # goToNearestScorePoint(field, actions, self.idFirstAttacker, 0)
+                            #     field.strategy_image.draw_line(field.enemy_goal.up, field.enemy_goal.down, (0, 0, 0), 30)
                         else:
-                            actions[self.idFirstAttacker] = Actions.BallGrab(0)
+                            actions[self.idFirstAttacker] = Actions.BallGrab(-math.pi/2)
                         # field.strategy_image.send_telemetry("Curr Action", str(actions[self.idFirstAttacker]))
                         # print(actions[self.idFirstAttacker])
 

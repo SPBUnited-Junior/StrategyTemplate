@@ -62,8 +62,8 @@ class Strategy:
         self.idx_enemy2 = 2
 
         # статические переменные
-        self.point_kick_goal = None # точки в воротах, в которую будет бить атакующий
-        self.dist_line_goal = 0 #размер максимально длинного открытого отрезка в воротах
+        self.point_kick_goal : aux.Point | None = aux.Point(0, 0) # точки в воротах, в которую будет бить атакующий
+        self.dist_line_goal = 0.0 #размер максимально длинного открытого отрезка в воротах
 
         self.old_ball = aux.Point(0, 0) #положение мяча когда он начал катиться
         self.ball = aux.Point(0, 0) # мяч
@@ -73,7 +73,7 @@ class Strategy:
         self.dist_cath_ball = 300 #расстояние на которое робот можнт отехать при ловле мяча
         self.passes_status = FlagToPasses.FALSE # флаг состояний
         self.time_stop_dribbler = 0.5 # время для остнаовки дриблера после паса
-        self.timer_stop_dribbler = 0 #для остановки дриблера
+        self.timer_stop_dribbler = 0.0 #для остановки дриблера
         self.dist_after_catch = 140 # растояние на которое нужно отехать от мяча, после его поимки и остановки дриблера
 
 
@@ -85,7 +85,7 @@ class Strategy:
 
         ### расчет точки в воротах, в которую будет бить атакующий ###
         enemies = []
-        for rbt in field.active_enemies(1):
+        for rbt in field.active_enemies(True):
             enemies.append(rbt.get_pos())
 
         kick_inf_list = self.check_goal_point(
@@ -148,7 +148,7 @@ class Strategy:
             actions[2] = Actions.GoToPoint(aux.Point(0, 0), (self.ball - field.allies[2].get_pos()).arg())
         print(self.passes_status, field.ball_start_point, field.ball.get_vel().mag())
 
-    def process_goalkeeper():
+    def process_goalkeeper(self) -> None:
         """
         The logic by which the goalkeeper acts
 
@@ -156,7 +156,7 @@ class Strategy:
         """
         pass
 
-    def process_attacker(self, field: fld.Field, attacker: rbt.Robot, robot_catch_ball: rbt.Robot):
+    def process_attacker(self, field: fld.Field, attacker: rbt.Robot, robot_catch_ball: rbt.Robot) -> Action:
         """
         The logic by which the attacker acts
 
@@ -185,19 +185,19 @@ class Strategy:
 
         return Action_attacker
     
-    def kick_ball_to_goal(self, field: fld.Field):
+    def kick_ball_to_goal(self, field: fld.Field) -> Action:
         """
         Бъем в ворота
         Проверка на то чтобы point not is None 
         """
 
         point_kick_goal = self.point_kick_goal
-        if self.point_kick_goal is None:
+        if point_kick_goal is None:
             point_kick_goal = field.enemy_goal.center
 
         return KickActions.Straight(point_kick_goal)
     
-    def kick_ball_to_pas(self, field: fld.Field,  robot_catch_ball: rbt.Robot):
+    def kick_ball_to_pas(self, field: fld.Field,  robot_catch_ball: rbt.Robot) -> Action:
         """
         Даем пас роботу
         """
@@ -252,7 +252,7 @@ class Strategy:
         return actions
 
 
-    def process_catch_ball(self, field: fld.Field, robot: rbt.Robot):
+    def process_catch_ball(self, field: fld.Field, robot: rbt.Robot) -> Action:
         """
         Логика принятия всех летящих в робота мячей
 
@@ -266,32 +266,32 @@ class Strategy:
             """
             self.passes_status = FlagToPasses.TRUE
             pos = aux.closest_point_on_line(field.ball_start_point, self.ball, robot.get_pos(), "R")
-            Action = Actions.CatchBall(pos, (self.ball - robot.get_pos()).arg(), 15)
+            Action_robot: Action = Actions.CatchBall(pos, (self.ball - robot.get_pos()).arg(), 15)
             if field.is_ball_in(robot):
                 """
                 Ждем когда мы поймаем мяч
                 """
                 self.passes_status = FlagToPasses.RELEASE
                 self.timer_stop_dribbler = time()
-
+            
         else:
             """
             когда мы поймали мяч
             останавливаем дриблер
             и отезжаем назад от мяча
             """
-            Action = Actions.GoToPoint(robot.get_pos(), robot.get_angle())
+            Action_robot = Actions.GoToPoint(robot.get_pos(), robot.get_angle())
             if time() - self.timer_stop_dribbler > self.time_stop_dribbler:
                 pos = robot.get_pos() + (robot.get_pos() - self.ball).unity() * (const.ROBOT_R * 1.5)
-                Action = Actions.GoToPoint(pos, robot.get_angle())
+                Action_robot = Actions.GoToPoint(pos, robot.get_angle())
                 if aux.dist(robot.get_pos(), self.ball) > self.dist_after_catch:
                     self.passes_status = FlagToPasses.FALSE
             
-        return Action
+        return Action_robot
 
 
         
-    def check_cath_ball(self, field: fld.Field, robot: rbt.Robot) -> aux.Point:
+    def check_cath_ball(self, field: fld.Field, robot: rbt.Robot) -> bool:
         """
         Проверяем летит ли мяч в сторону робота
         """
@@ -317,7 +317,7 @@ class Strategy:
         field: fld.Field,
         ball: aux.Point,
         list_enemy: list[aux.Point],
-    ) -> tuple[aux.Point, float]:
+    ) -> tuple[aux.Point | None, float]:
         """
         Строим косательные к вражеским роботам от ball
         строим отрезки в воротах которые защищены вражескими роботами
@@ -357,7 +357,7 @@ class Strategy:
             field_up = field.enemy_goal.down
 
         mid = None
-        left: float = min(result_cords[0][0], field_down.y) if result_cords else None
+        left: float = min(result_cords[0][0], field_down.y) if result_cords else field_down.y #раньше был None
         right: float = field_up.y
         count = 0
         arg_attacker = (field.enemy_goal.center - ball).arg()
@@ -408,7 +408,7 @@ class Strategy:
         Находит оптимальную точку для паса, сравнивая расстояния.
         """
         maxim = 0
-        minim_goal_dist = 10000
+        minim_goal_dist = 10000.0
         res = aux.Point(0, 0)
         for x in range(int(ball.x) - 1100, int(ball.x) + 1100, 100):
             for y in range(int(ball.y) - 1100, int(ball.y) + 1100, 100):
@@ -440,7 +440,6 @@ class Strategy:
                     and (mid is None or aux.dist(cand, aux.closest_point_on_line(ball, mid, cand)) > const.ROBOT_R + 100)
                 ):
                     res = cand
-                    maxim = self.check_point(field, cand, enemy_list)[0]
                     minim_goal_dist = aux.dist(cand, field.enemy_goal.center)
         field.strategy_image.draw_circle(res, (255, 0, 0), 30)
         return res

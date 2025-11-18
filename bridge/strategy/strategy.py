@@ -355,3 +355,52 @@ class Strategy:
                 mid = aux.Point(field_up.x, (left + right) // 2)
 
         return mid, maximum
+    
+    def _optimal_point(
+        self,
+        robot: aux.Point,
+        ball: aux.Point,
+        enemy_list: list[aux.Point],
+        mid: aux.Point,
+        field: fld.Field,
+    ) -> aux.Point:
+        """
+        Находит оптимальную точку для паса, сравнивая расстояния.
+        """
+        maxim = 0
+        minim_goal_dist = 10000
+        res = aux.Point(0, 0)
+        for x in range(int(ball.x) - 1100, int(ball.x) + 1100, 100):
+            for y in range(int(ball.y) - 1100, int(ball.y) + 1100, 100):
+                if abs(x) > 2250:
+                    continue
+                if abs(y) > 1500:
+                    continue 
+                cand = aux.Point(x, y)
+                if ((const.GOAL_DX - const.GOAL_PEN_DX) - abs(cand.x) < 100) and (abs(cand.y) - abs(const.GOAL_PEN_DY / 2) < 100):
+                    cond = 0
+                    continue
+                #field.strategy_image.draw_circle(cand, (255, 0, 255), 30)
+                minim: float = 10000
+                flag_to_point = True
+                if aux.dist(cand, ball) < 500 or aux.dist(cand, ball) > 1200:
+                    flag_to_point = False
+                    continue
+                for enemy in enemy_list:
+                    if aux.dist(enemy, cand) < 500:
+                        flag_to_point = False
+                        break
+                    minim = min((enemy - aux.closest_point_on_line(ball, cand, enemy, "S")).mag(), minim)
+                if (
+                    #self.check_point(field, cand, enemy_list)[0] > maxim
+                    aux.dist(cand, field.enemy_goal.center) < minim_goal_dist
+                    and aux.closest_point_on_line(robot, cand, ball).mag() > 200
+                    and minim > const.ROBOT_R + 150 
+                    and flag_to_point
+                    and (mid is None or aux.dist(cand, aux.closest_point_on_line(ball, mid, cand)) > const.ROBOT_R + 100)
+                ):
+                    res = cand
+                    maxim = self.check_point(field, cand, enemy_list)[0]
+                    minim_goal_dist = aux.dist(cand, field.enemy_goal.center)
+        field.strategy_image.draw_circle(res, (255, 0, 0), 30)
+        return res

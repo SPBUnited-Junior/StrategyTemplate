@@ -335,8 +335,10 @@ class DumbActions:
         def behavior(self, domain: ActionDomain, current_action: ActionValues) -> None:
             current_action.auto_kick = self.autokick
 
+    timer2: float = time() + 10**10
     timer1: float = time() + 10**10
     oldAligned: bool = False
+    oldIs_ball_in: bool = False
 
     class delayedShootAction(Action):
         """Shoot the target when kick is aligned"""
@@ -352,15 +354,16 @@ class DumbActions:
                 if self.angle_bounds is not None
                 else domain.robot.is_kick_aligned_by_angle(self.target_angle)
             )
+            isBallIn = domain.field.is_ball_in(domain.robot)
             #print("is_aligned =", is_aligned)
-            if is_aligned and not DumbActions.oldAligned:
-                DumbActions.oldAligned = True
-                DumbActions.timer1 = time()
-            if not is_aligned:
-                DumbActions.timer1 = time() + 10**10
-                DumbActions.oldAligned = False
+            if isBallIn and not DumbActions.oldIs_ball_in:
+                DumbActions.oldIs_ball_in = True
+                DumbActions.timer2 = time()
+            if not isBallIn:
+                DumbActions.timer2 = time() + 10**10
+                DumbActions.oldIs_ball_in = False
             #print(time() - DumbActions.timer1 > 0.1)
-            return domain.field.is_ball_in(domain.robot) and is_aligned and time() - DumbActions.timer1 > 0.1
+            return isBallIn and is_aligned and time() - DumbActions.timer2 > 0.1
 
         def behavior(self, domain: ActionDomain, current_action: ActionValues) -> None:
             # DumbActions.timer1 = time()+10**10
@@ -416,20 +419,19 @@ class DumbActions:
         def behavior(self, domain: ActionDomain, current_action: ActionValues) -> None:
             limit_action(domain, current_action, self.limit)
 
-    class slowRotateWithBall(Action):  # TODO make that depend from dist to aim use this action or other
+    class slowRotateWithBall(Action):
+        """slow rotate with ball untill we look at aim"""
         def __init__(self, target_angle: float, distToAim: float, angle_bounds: float = math.pi / 18) -> None:
             self.target_angle = target_angle
             # print(angle_bounds*180/math.pi)
-            # self.angle_bounds = angle_bounds-(1000-distToAim)/5000/180*math.pi  # accuracy of rotate for sim
             minDeltaAngle = 3
             maxAngle = angle_bounds*180/math.pi-minDeltaAngle
             difference = (distToAim)/(const.FIELD_DX)*maxAngle/100
             if difference*180/math.pi > maxAngle:
+                """if we overreact at angle"""
                 difference = maxAngle*math.pi/180
-            self.angle_bounds = angle_bounds-difference  # accuracy of rotate for REAL
-            # print(self.angle_bounds*180/math.pi, difference*180/math.pi, distToAim)
-
-            self.rotateVel = 0.4
+            self.angle_bounds = angle_bounds-difference#accuracy of rotate
+            self.rotateVel = 0.4#rad/sec
 
         def is_defined(self, domain: ActionDomain) -> bool:
             is_aligned = (
@@ -437,7 +439,6 @@ class DumbActions:
                 if self.angle_bounds is not None
                 else domain.robot.is_kick_aligned_by_angle(self.target_angle)
             )
-            #print("is_aligned =", is_aligned)
             if is_aligned and not DumbActions.oldAligned:
                 DumbActions.oldAligned = True
                 DumbActions.timer1 = time()
@@ -448,7 +449,6 @@ class DumbActions:
 
         def behavior(self, domain: ActionDomain, current_action: ActionValues) -> None:
             current_action.vel = aux.Point(0, 0)
-            #print("slow")
             if aux.wind_down_angle(domain.robot.get_angle() - self.target_angle) > self.angle_bounds:
                 current_action.angle = -self.rotateVel
             elif aux.wind_down_angle(domain.robot.get_angle() - self.target_angle) < -self.angle_bounds:
@@ -463,7 +463,7 @@ def get_pass_voltage(length: float) -> int:
     if const.IS_SIMULATOR_USED:
         # TODO fix control decoder
         return int(aux.minmax(0.003 * length + 1.8, 6, const.VOLTAGE_SHOOT))
-    return int(aux.minmax(0.0014 * length + 2.4, 6, const.VOLTAGE_SHOOT))
+    return int(aux.minmax(0.0014 * length + 2.4, 5, const.VOLTAGE_SHOOT))
 
 
 def get_grab_speed(

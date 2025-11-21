@@ -84,6 +84,10 @@ class Strategy:
         
         """
         #print(GameStates)
+        field.active_enemies # масив роботов на поле
+
+        #robot_position1.is_used # true на поле
+
         """Game State Management"""
         voltage_kik = 5 
 
@@ -297,7 +301,7 @@ class Strategy:
         else:
             goal_position = field.ally_goal.center
 
-        position_goal = aux.is_point_inside_poly(goal_position, field.ally_goal.hull)
+        position_goal = aux.is_point_inside_poly(goal_position, field.ally_goal.hull) # проверяем находится ли мяч в воротах
 
         if position_goal == False:
             goal_position = field.ally_goal.center

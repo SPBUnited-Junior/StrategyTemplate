@@ -83,7 +83,30 @@ class Strategy:
     def process(self, field: fld.Field) -> list[Optional[Action]]:
         """
         Подсчет статических переменных (self)
+        
         """
+        #print(GameStates)
+        """Game State Management"""
+        voltage_kik = 5 
+
+        robot_position_goalkeeper = field.allies[self.goalkeeper_idx].get_pos()
+        robot_position1 = field.allies[self.idx1].get_pos()
+        robot_position2 = field.allies[self.idx2].get_pos()
+
+        robot_position_goalkeeper_enemy = field.enemies[self.goalkeeper_idx_enemy].get_pos()
+        robot_position1_enemy = field.enemies[self.idx_enemy1].get_pos()
+        robot_position2_enemy = field.enemies[self.idx_enemy2].get_pos()
+
+        if field.game_state not in [GameStates.KICKOFF, GameStates.PENALTY]:
+            if field.active_team in [const.Color.ALL, field.ally_color]:
+                self.we_active = True
+            else:
+                self.we_active = False
+
+        actions: list[Optional[Action]] = []
+        for _ in range(const.TEAM_ROBOTS_MAX_COUNT):
+            actions.append(None)
+
 
         ### расчет точки в воротах, в которую будет бить атакующий ###
         enemies = []
@@ -113,28 +136,127 @@ class Strategy:
         for _ in range(const.TEAM_ROBOTS_MAX_COUNT):
             actions.append(None)
 
-        field.game_state = GameStates.RUN
-        match field.game_state:
-            case GameStates.RUN:
-                self.run(field, actions)
-            case GameStates.TIMEOUT:
-                pass
-            case GameStates.HALT:
-                return [None] * const.TEAM_ROBOTS_MAX_COUNT
-            case GameStates.PREPARE_PENALTY:
-                pass
-            case GameStates.PENALTY:
-                pass
-            case GameStates.PREPARE_KICKOFF:
-                pass
-            case GameStates.KICKOFF:
-                pass
-            case GameStates.FREE_KICK:
-                pass
-            case GameStates.STOP:
-                # The router will automatically prevent robots from getting too close to the ball
-                self.run(field, actions)
+        if field.game_state == GameStates.RUN:
+            self.run(field, actions)
+            
+        elif field.game_state == GameStates.TIMEOUT:
+            pass
+        elif field.game_state == GameStates.HALT:
+            actions[self.idx1] = Actions.Stop()
+            actions[self.idx2] = Actions.Stop()
+            return actions
+           
+        elif field.game_state == GameStates.PREPARE_PENALTY and  not self.we_active:
+            kik_angle1 = robot_position1_enemy - robot_position1
+            kik_angle2 = robot_position2_enemy - robot_position2
+            pos_kikoff1 = aux.Point(800, 0)
+            pos_kikoff2 = aux.Point(1200, 0)
+            actions[self.idx1] = Actions.GoToPoint(pos_kikoff1, kik_angle1.arg())
+            actions[self.idx2] = Actions.GoToPoint(pos_kikoff2, kik_angle2.arg())
+            return actions
+        
+        elif field.game_state == GameStates.PREPARE_PENALTY and  self.we_active:
+            kik_angle1 = robot_position1_enemy - robot_position1
+            kik_angle2 = robot_position2_enemy - robot_position2
+            pos_kikoff1 = aux.Point(-800, 0)
+            pos_kikoff2 = aux.Point(-1200, 0)
+            actions[self.idx1] = Actions.GoToPoint(pos_kikoff1, kik_angle1.arg())
+            actions[self.idx2] = Actions.GoToPoint(pos_kikoff2, kik_angle2.arg())
 
+            return actions
+        
+        
+        elif field.game_state == GameStates.PENALTY and not self.we_active:
+            position_penalty1 = self.ball
+            angle_penalty1 = self.ball - robot_position1
+            #ctions[self.idx1] = Actions.GoToPoint(position_penalty1, angle_penalty1.arg())
+
+            return actions
+
+        elif field.game_state == GameStates.PENALTY and self.we_active:
+            g_up_xy_attacker = field.enemy_goal.up - field.enemy_goal.eye_up * 35   #определяется угол ворот противоположный от враторя
+            g_down_xy_attacker = field.enemy_goal.down + field.enemy_goal.eye_up * 35
+
+            up_attacker = (g_up_xy_attacker - robot_position_goalkeeper_enemy).mag()
+            down_attacker = (robot_position_goalkeeper_enemy - g_down_xy_attacker).mag()
+
+
+
+            if up_attacker > down_attacker:
+                position_attacker_gate = g_up_xy_attacker
+            else:
+                position_attacker_gate = g_down_xy_attacker
+        
+            actions[self.idx1] = Actions.Kick(position_attacker_gate, voltage_kik)
+
+            return actions
+
+        elif field.game_state == GameStates.PREPARE_KICKOFF:
+            kik_angle1 = robot_position1_enemy - robot_position1
+            kik_angle2 = robot_position2_enemy - robot_position2
+
+            pos_kikoff1 = aux.Point(500 * field.polarity, 0)   
+            pos_kikoff2 = aux.Point(1000 * field.polarity, 0)
+
+            actions[self.idx1] = Actions.GoToPoint(pos_kikoff1, kik_angle1.arg())
+            actions[self.idx2] = Actions.GoToPoint(pos_kikoff2, kik_angle2.arg())
+            
+            return actions
+    
+            
+        elif field.game_state == GameStates.KICKOFF and  not self.we_active:
+            kik_angle1 = robot_position1_enemy - robot_position1
+            kik_angle2 = robot_position2_enemy - robot_position2
+            pos_kikoff1 = aux.Point(500, 0)
+            pos_kikoff2 = aux.Point(000, 0)
+            actions[self.idx1] = Actions.GoToPoint(pos_kikoff1, kik_angle1.arg())
+            actions[self.idx2] = Actions.GoToPoint(pos_kikoff2, kik_angle2.arg())
+            return actions
+
+        elif field.game_state == GameStates.KICKOFF and self.we_active:
+            self.run(field, actions)
+            print(456789)
+            return actions
+
+        elif field.game_state == GameStates.FREE_KICK:
+            self.run(field, actions)
+            pass
+
+        elif field.game_state == GameStates.STOP:
+            ball_pos = field.ball.get_pos()
+                        
+            robot_to_ball1 = ball_pos - robot_position1
+            robot_to_ball2 = ball_pos - robot_position2
+
+            robot1_angle = (self.ball - robot_position1).arg()
+            robot2_angle = (self.ball - robot_position2).arg() # вратарская зона
+                        
+            #if robot_to_ball1.mag() > 50:
+            #    deltac = 50 + robot_to_ball1.x
+            #    pos_stop1 = aux.Point(ball.x + deltac, robot_to_ball1.y)
+            #    actions[self.idx1] = Actions.GoToPoint(pos_stop1, robot_to_ball1.arg())
+            #else:
+            #    
+            #    actions[self.idx1] = Actions.Stop()
+            #if robot_to_ball2.mag() > 50:
+            #    deltac = 30 - robot_to_ball2.y
+            #    deltac2 = 50 + robot_to_ball2.x
+            #    pos_stop2 = aux.Point(ball.x + deltac2 , robot_to_ball2.y - deltac)
+            #    
+            #    actions[self.idx2] = Actions.GoToPoint(pos_stop2, robot_to_ball2.arg())
+            #else:
+            #    actions[self.idx2] = Actions.Stop()
+            #
+            position = field.ally_goal.center + field.ally_goal.eye_forw * 400
+            #position1 = self._defer(robot_pos1, ball, field)
+            if aux.dist(position, self.ball) < 500:
+                position = (robot_position2 - self.ball).unity() * 500
+
+            actions[self.idx1] = Actions.GoToPoint(robot_position1, robot1_angle)
+            actions[self.idx2] = Actions.GoToPoint(robot_position2, robot2_angle)
+            return actions
+        
+        return actions
         
         return actions
 

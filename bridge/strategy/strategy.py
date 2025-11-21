@@ -72,8 +72,10 @@ class Strategy:
         self.dist_to_pas = 2000 # расстояние до удара
         self.dist_cath_ball = 300 #расстояние на которое робот можнт отехать при ловле мяча
         self.passes_status = FlagToPasses.FALSE # флаг состояний
-        self.time_stop_dribbler = 0.5 # время для остнаовки дриблера после паса
+        self.time_stop_dribbler = 0.2 # время для остнаовки дриблера после паса
         self.timer_stop_dribbler = 0.0 #для остановки дриблера
+        self.time_work_dribbler = 0.3  #время для остановки мяча в дриблере после паса
+        self.timer_work_dribbler = 0.0 #для работы дриблера чтобы остановить мяч
         self.dist_after_catch = 140 # растояние на которое нужно отехать от мяча, после его поимки и остановки дриблера
 
 
@@ -139,13 +141,13 @@ class Strategy:
     def run(self, field: fld.Field, actions: list[Optional[Action]]) -> None:
 
         if self.passes_status == FlagToPasses.FALSE:
-            actions[1] = self.kick_ball_to_pas(field, field.allies[2])
+            actions[1] = self.kick_ball_to_pas(field, field.allies[0])
         else:
             actions[1] = Actions.GoToPoint(field.allies[1].get_pos(), field.allies[1].get_angle())
-        if self.check_cath_ball(field, field.allies[2]):
-            actions[2] = self.process_catch_ball(field, field.allies[2])
+        if self.check_cath_ball(field, field.allies[0]):
+            actions[0] = self.process_catch_ball(field, field.allies[0])
         else:
-            actions[2] = Actions.GoToPoint(aux.Point(0, 0), (self.ball - field.allies[2].get_pos()).arg())
+            actions[0] = Actions.GoToPoint(aux.Point(0, 0), (self.ball - field.allies[0].get_pos()).arg())
         print(self.passes_status, field.ball_start_point, field.ball.get_vel().mag())
 
     def process_goalkeeper(self) -> None:
@@ -272,6 +274,7 @@ class Strategy:
                 Ждем когда мы поймаем мяч
                 """
                 self.passes_status = FlagToPasses.RELEASE
+                self.timer_work_dribbler = time()
                 self.timer_stop_dribbler = time()
             
         else:
@@ -280,13 +283,19 @@ class Strategy:
             останавливаем дриблер
             и отезжаем назад от мяча
             """
-            Action_robot = Actions.GoToPoint(robot.get_pos(), robot.get_angle())
+            if time() - self.timer_work_dribbler < self.time_work_dribbler:
+                Action_robot = Actions.CatchBall(robot.get_pos(), robot.get_angle(), 15)
+                self.timer_stop_dribbler = time()
+                return Action_robot
+            
+            Action_robot = Actions.CatchBall(robot.get_pos(), robot.get_angle(), 0)
+
             if time() - self.timer_stop_dribbler > self.time_stop_dribbler:
                 pos = robot.get_pos() + (robot.get_pos() - self.ball).unity() * (const.ROBOT_R * 1.5)
                 Action_robot = Actions.GoToPoint(pos, robot.get_angle())
                 if aux.dist(robot.get_pos(), self.ball) > self.dist_after_catch:
-                    self.passes_status = FlagToPasses.FALSE
-            
+                    self.passes_status = FlagToPasses.FALSE 
+
         return Action_robot
 
 

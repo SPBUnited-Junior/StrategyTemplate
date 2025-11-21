@@ -137,7 +137,7 @@ class Strategy:
         return actions
 
     def run(self, field: fld.Field, actions: list[Optional[Action]]) -> None:
-
+        
         if self.passes_status == FlagToPasses.FALSE:
             actions[1] = self.kick_ball_to_pas(field, field.allies[2])
         else:
@@ -146,6 +146,9 @@ class Strategy:
             actions[2] = self.process_catch_ball(field, field.allies[2])
         else:
             actions[2] = Actions.GoToPoint(aux.Point(0, 0), (self.ball - field.allies[2].get_pos()).arg())
+        
+        
+        self.process_defender(field, actions)
         print(self.passes_status, field.ball_start_point, field.ball.get_vel().mag())
 
     def process_goalkeeper(self) -> None:
@@ -204,7 +207,7 @@ class Strategy:
         voltage = get_pass_voltage(aux.dist(self.ball, robot_catch_ball.get_pos()))
         return KickActions.Straight(robot_catch_ball.get_pos(), voltage)
     
-    def process_defender(self, field: fld.Field) -> list[Optional[Action]]:
+    def process_defender(self, field: fld.Field, actions: list[Optional[Action]]) -> None:
         """
         The logic by which the attacker acts
 
@@ -218,6 +221,10 @@ class Strategy:
         robot_position1_enemy = field.enemies[self.idx_enemy1].get_pos()
         robot_position2_enemy = field.enemies[self.idx_enemy2].get_pos()
 
+        #Point1 = aux.circles_inter(robot_position1_enemy, robot_position2_enemy, aux.dist(robot_position1_enemy, robot_position2_enemy), aux.dist(robot_position1_enemy, robot_position2_enemy))[0]
+        #Point2 = aux.circles_inter(robot_position1_enemy, robot_position2_enemy, aux.dist(robot_position1_enemy, robot_position2_enemy), aux.dist(robot_position1_enemy, robot_position2_enemy))[1]
+
+        #middle_point = aux.get_line_intersection(robot_position1_enemy, robot_position2_enemy, Point1, Point2, "L")
 
         ball = field.ball.get_pos()
         nearest_enemy_dist = 5000.0
@@ -236,20 +243,18 @@ class Strategy:
 
         bottom_block = aux.closest_point_on_line(nearest_enemy_point, bottom_crossbar, dist_to_robot_with_ball, "R")
         up_block = aux.closest_point_on_line(nearest_enemy_point, up_crossbar, dist_to_robot_with_ball, "R")
-        actions: list[Optional[Action]] = []
 
         #Вычисление точки для блокировки удара
+        
         if aux.dist(dist_to_robot_with_ball, bottom_block) > aux.dist(dist_to_robot_with_ball, up_block):
-            actions[self.idx1] = Actions.GoToPoint(up_block, 3.14)
+            actions[self.idx1] = Actions.GoToPoint(up_block, (ball-robot_position1).arg())
         else:
-            actions[self.idx1] = Actions.GoToPoint(bottom_block, 3.14)
+            actions[self.idx1] = Actions.GoToPoint(bottom_block, (ball-robot_position1).arg())
             if  nearest_enemy_point == aux.Point(0, 0):
                 actions[self.idx1] = Actions.GoToPoint(field.ally_goal.center + aux.Point(-1000, 0), 3.14)
-
+        
         #Блокировка паса
         actions[self.idx2] = Actions.GoToPoint(aux.closest_point_on_line(robot_position2_enemy, robot_position1_enemy, robot_position2, "S"), (ball - robot_position2).arg())
-        
-        return actions
 
 
     def process_catch_ball(self, field: fld.Field, robot: rbt.Robot) -> Action:

@@ -158,11 +158,7 @@ class Strategy:
         elif field.game_state == GameStates.PREPARE_PENALTY and  not self.we_active:
             kik_angle1 = robot_position1_enemy - robot_position1
             kik_angle2 = robot_position2_enemy - robot_position2
-<<<<<<< HEAD
             pos_kikoff1 = aux.Point(800  * field.polarity, 0)
-=======
-            pos_kikoff1 = aux.Point(800 * field.polarity, 0)
->>>>>>> 0ed12bb03090a2075a3bf84dbcfd00bac86c4528
             pos_kikoff2 = aux.Point(1200 * field.polarity, 0)
             actions[self.idx1] = Actions.GoToPoint(pos_kikoff1, kik_angle1.arg())
             actions[self.idx2] = Actions.GoToPoint(pos_kikoff2, kik_angle2.arg())
@@ -172,11 +168,8 @@ class Strategy:
             kik_angle2 = robot_position2_enemy - robot_position2
             pos_kikoff1 = aux.Point(800 * field.polarity, 0)
             pos_kikoff2 = aux.Point(1200 * field.polarity, 0)
-<<<<<<< HEAD
             actions[self.idx1] = Actions.GoToPoint(pos_kikoff1, kik_angle1.arg())
             actions[self.idx2] = Actions.GoToPoint(pos_kikoff2, kik_angle2.arg())
-=======
->>>>>>> 0ed12bb03090a2075a3bf84dbcfd00bac86c4528
 
             actions[self.idx1] = Actions.GoToPoint(pos_kikoff1, kik_angle1.arg())
             actions[self.idx2] = Actions.GoToPoint(pos_kikoff2, kik_angle2.arg())       
@@ -264,13 +257,13 @@ class Strategy:
     def run(self, field: fld.Field, actions: list[Optional[Action]]) -> None:
         
         if self.passes_status == FlagToPasses.FALSE:
-            actions[1] = KickActions.Straight(self.optimal_point(field, field.allies[0].get_pos(), self.ball, self.enemies, self.point_kick_goal), get_pass_voltage(aux.dist(self.ball, field.allies[0].get_pos())))
+            actions[1] = KickActions.Straight(self.optimal_point(field, field.allies[2].get_pos(), self.ball, self.enemies, self.point_kick_goal), get_pass_voltage(aux.dist(self.ball, field.allies[2].get_pos())))
         else:
             actions[1] = Actions.GoToPoint(field.allies[1].get_pos(), field.allies[1].get_angle())
-        if self.check_cath_ball(field, field.allies[0]):
-            actions[0] = self.process_catch_ball(field, field.allies[0])
+        if self.check_cath_ball(field, field.allies[2]):
+            actions[2] = self.process_catch_ball(field, field.allies[2])
         else:
-            actions[2] = Actions.GoToPoint(aux.Point(0, 0), (self.ball - field.allies[2].get_pos()).arg())
+            actions[2] = Actions.GoToPoint(self.optimal_point(field, field.allies[2].get_pos(), self.ball, self.enemies, self.point_kick_goal), (self.ball - field.allies[2].get_pos()).arg())
         print(self.passes_status, field.ball_start_point, field.ball.get_vel().mag())
         self.process_goalkeeper(field,actions)
 
@@ -280,7 +273,7 @@ class Strategy:
 
         includes (it is necessary to list the main points of the goalkeeper's strategy):
         """
-        voltage_kik = 5 
+        voltage_kik = 5
 
         robot_position_goalkeeper = field.allies[self.goalkeeper_idx].get_pos()
         robot_position1 = field.allies[self.idx1].get_pos()

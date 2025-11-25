@@ -80,6 +80,9 @@ class Strategy:
         self.timer_work_dribbler = 0.0 #для работы дриблера чтобы остановить мяч
         self.dist_after_catch = 120 # растояние на которое нужно отехать от мяча, после его поимки и остановки дриблера
 
+        self.robot_catch_ball: rbt.Robot | None = None
+        self.nearest_robot: rbt.Robot | None = None
+
 
 
     def process(self, field: fld.Field) -> list[Optional[Action]]:
@@ -92,8 +95,6 @@ class Strategy:
 
         #p+9obot_position1.is_used # true на поле
 
-        print("Ваня пипукааааааааааа")
-        print('Ваня где рабочий кооооооооооод')
         """Game State Management"""
         voltage_kik = 5 
 
@@ -257,14 +258,24 @@ class Strategy:
     def run(self, field: fld.Field, actions: list[Optional[Action]]) -> None:
         
         if self.passes_status == FlagToPasses.FALSE:
-            actions[1] = KickActions.Straight(self.optimal_point(field, field.allies[2].get_pos(), self.ball, self.enemies, self.point_kick_goal), get_pass_voltage(aux.dist(self.ball, field.allies[2].get_pos())))
-        else:
-            actions[1] = Actions.GoToPoint(field.allies[1].get_pos(), field.allies[1].get_angle())
-        if self.check_cath_ball(field, field.allies[2]):
-            actions[2] = self.process_catch_ball(field, field.allies[2])
-        else:
-            actions[2] = Actions.GoToPoint(self.optimal_point(field, field.allies[2].get_pos(), self.ball, self.enemies, self.point_kick_goal), (self.ball - field.allies[2].get_pos()).arg())
-        print(self.passes_status, field.ball_start_point, field.ball.get_vel().mag())
+            self.nearest_robot =  fld.find_nearest_robot(self.ball, field.active_allies(False))
+
+            for robot in field.active_allies(False):
+                if robot != self.nearest_robot:
+                    self.robot_catch_ball = robot
+
+        if self.nearest_robot != None and self.robot_catch_ball != None:
+            optimal_point = self.optimal_point(field, self.robot_catch_ball.get_pos(), self.ball, self.enemies, self.point_kick_goal)
+            if self.passes_status == FlagToPasses.FALSE:
+                actions[self.nearest_robot.r_id] = self.kick_ball_to_pas(field, self.robot_catch_ball)
+            else:
+                actions[self.nearest_robot.r_id] = Actions.GoToPoint(self.optimal_point(field, self.nearest_robot.get_pos(), self.ball, self.enemies, self.point_kick_goal), (self.ball - self.nearest_robot.get_pos()).arg())
+            if self.check_cath_ball(field, self.robot_catch_ball):
+                actions[self.robot_catch_ball.r_id] = self.process_catch_ball(field, self.robot_catch_ball)
+            else:
+                actions[self.robot_catch_ball.r_id] = Actions.GoToPoint(optimal_point, (self.ball - self.robot_catch_ball.get_pos()).arg())
+
+            print(self.robot_catch_ball.r_id, self.passes_status, field.ball_start_point, field.ball.get_vel().mag())
         self.process_goalkeeper(field,actions)
 
     def process_goalkeeper(self, field: fld.Field, actions: list[Optional[Action]]) -> None:
@@ -459,18 +470,19 @@ class Strategy:
             останавливаем дриблер
             и отезжаем назад от мяча
             """
+            Action_robot = Actions.CatchBall(robot.get_pos(), robot.get_angle(), 0)
+
+            if aux.dist(robot.get_pos(), self.ball) > self.dist_after_catch:
+                self.passes_status = FlagToPasses.FALSE 
+
             if time() - self.timer_work_dribbler < self.time_work_dribbler:
                 Action_robot = Actions.CatchBall(robot.get_pos(), robot.get_angle(), 15)
                 self.timer_stop_dribbler = time()
                 return Action_robot
-            
-            Action_robot = Actions.CatchBall(robot.get_pos(), robot.get_angle(), 0)
 
             if time() - self.timer_stop_dribbler > self.time_stop_dribbler:
                 pos = robot.get_pos() + (robot.get_pos() - self.ball).unity() * (const.ROBOT_R * 1.5)
                 Action_robot = Actions.GoToPoint(pos, robot.get_angle())
-                if aux.dist(robot.get_pos(), self.ball) > self.dist_after_catch:
-                    self.passes_status = FlagToPasses.FALSE 
 
         return Action_robot
 

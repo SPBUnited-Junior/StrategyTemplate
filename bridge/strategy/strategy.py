@@ -83,11 +83,13 @@ class Strategy:
         Подсчет статических переменных (self)
         
         """
-        #print(GameStates)
+        print(GameStates)
         field.active_enemies # масив роботов на поле
 
-        #robot_position1.is_used # true на поле
+        #p+9obot_position1.is_used # true на поле
 
+        print("Ваня пипукааааааааааа")
+        print('Ваня где рабочий кооооооооооод')
         """Game State Management"""
         voltage_kik = 5 
 
@@ -261,6 +263,7 @@ class Strategy:
         
         self.process_defender(field, actions)
         print(self.passes_status, field.ball_start_point, field.ball.get_vel().mag())
+        self.process_goalkeeper(field,actions)
 
     def process_goalkeeper(self, field: fld.Field, actions: list[Optional[Action]]) -> None:
         """
@@ -293,7 +296,6 @@ class Strategy:
             goal_position_gates = g_down_xy_goal     #закончилось
 
         angle_goal_ball = (goal_position_gates - robot_position_goalkeeper).arg()
-
     
         # Определяем позицию для вратаря
         if field.ball_start_point is not None:
@@ -316,7 +318,7 @@ class Strategy:
             actions[self.goalkeeper_idx] = KickActions.Straight(goal_position_gates, voltage_kik, False, True)
 
     
-        if field.is_ball_in(field.allies[self.gk_idx]):
+        if field.is_ball_in(field.allies[self.goalkeeper_idx]):
             #actions[self.gk_idx] = Actions.Kick(goal_position_gates, voltage_kik,is_upper=True)
             actions[self.goalkeeper_idx] = KickActions.Straight(goal_position_gates, voltage_kik, False, True)
             

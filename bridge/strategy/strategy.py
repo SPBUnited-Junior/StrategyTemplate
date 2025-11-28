@@ -260,8 +260,9 @@ class Strategy:
             # self.idDoPass = thisRID
             self.idGettingPass = None
 
-        if actions[thisRID] is not None:
-            actions[thisRID] = actions[thisRID].compose(DribblerActions.SetDribblerSpeed(15))
+        actionThisR = actions[thisRID]
+        if actionThisR is not None:
+            actions[thisRID] = actionThisR.compose(DribblerActions.SetDribblerSpeed(15))
 
     def attacker(
         self, field: fld.Field, actions: list[Optional[Action]], idxThisR: int, idxOtherAttacker: int

@@ -6,7 +6,7 @@ from bridge import const
 from bridge.auxiliary import aux, fld, rbt  # type: ignore
 
 # from bridge.const import State as GameStates
-from bridge.router.base_actions import Action, Actions, KickActions  # type: ignore
+from bridge.router.base_actions import Action, Actions, KickActions, DribblerActions  # type: ignore
 
 
 class whatWeDoStates(Enum):

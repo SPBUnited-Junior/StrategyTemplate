@@ -9,7 +9,7 @@ import bridge.strategy.states as states
 from bridge import const
 from bridge.auxiliary import aux, fld, rbt  # type: ignore
 from bridge.const import State as GameStates
-from bridge.router.base_actions import Action, Actions, KickActions  # type: ignore
+from bridge.router.base_actions import Action, Actions, KickActions, DribblerActions  # type: ignore
 from bridge.strategy.myFunc import (
     GK,
     doPassNearAllly,
@@ -30,10 +30,10 @@ class Strategy:
         self.idDoPass: Optional[int] = None
         self.oldIdDoPass: Optional[int] = None
         self.GKLastState: Optional[str] = None
-        self.idFirstAttacker: int = 0
-        self.idSecondAttacker: int = 1
+        self.idFirstAttacker: int = 2
+        self.idSecondAttacker: int = 4
         self.TimeWeTryDoPass: Optional[float] = None
-        self.whatWeDoAtThisRun: whatWeDoStates = whatWeDoStates.TestPass
+        self.whatWeDoAtThisRun: whatWeDoStates = whatWeDoStates.TestRotateWithBall
 
     def process(self, field: fld.Field) -> list[Optional[Action]]:
         """Game State Management"""
@@ -83,7 +83,7 @@ class Strategy:
         # TODO fix problem with that robots comes so close to each other,when they try take ball
         # print(field.active_allies(False))
         if len(field.active_allies(True)) != 0:  # if our Rs on field
-            if field.ally_color == const.Color.BLUE:
+            if field.ally_color == const.Color.YELLOW:
                 """code for blue"""
                 # print(field.game_state)#for real
                 if self.whatWeDoAtThisRun == whatWeDoStates.Play or self.whatWeDoAtThisRun == whatWeDoStates.BothPlay:
@@ -103,6 +103,7 @@ class Strategy:
                 match self.whatWeDoAtThisRun:
 
                     case whatWeDoStates.TestPass:
+                        field.strategy_image.draw_circle(field.ball.get_pos(), size_in_mms=50)
                         # for test pass
                         ballPos = field.ball.get_pos()
                         nearestR = fld.find_nearest_robot(ballPos, field.active_allies(False))
@@ -127,13 +128,14 @@ class Strategy:
                             elif self.idDoPass == idxThisR and aux.dist(ballPos, thisRPos) < 250:
                                 """if this R do pass"""
                                 status = "if this R do pass"
-                                if self.TimeWeTryDoPass is not None and time() - self.TimeWeTryDoPass > 100:
-                                    actions[idxThisR] = Actions.Kick(otherAttackerR.get_pos(), is_pass=True, is_upper=True)
-                                    self.TimeWeTryDoPass = None
-                                    self.idGettingPass = None
-                                    self.idDoPass = None
-                                    print("null")
-                                elif field.is_ball_in(thisR):
+                                # if self.TimeWeTryDoPass is not None and time() - self.TimeWeTryDoPass > 100:
+                                #     actions[idxThisR] = Actions.Kick(otherAttackerR.get_pos(), is_pass=True, is_upper=True)
+                                #     self.TimeWeTryDoPass = None
+                                #     self.idGettingPass = None
+                                #     self.idDoPass = None
+                                #     print("null")
+                                # elif field.is_ball_in(thisR):
+                                if field.is_ball_in(thisR):
                                     """do pass"""
                                     # print("do pass")
                                     self.idGettingPass = doPassNearAllly(field, actions, idxThisR)
@@ -141,7 +143,7 @@ class Strategy:
                                 #     """grab ball"""
                                 #     # print("gab ball")
                                 #     actions[self.idDoPass] = Actions.BallGrab((field.ball.get_pos() - field.allies[self.idDoPass].get_pos()).arg() )
-                                else:
+                                elif field.is_ball_moves():
                                     self.idDoPass = None
                                     # print("pass done")
                                     """pass done"""
@@ -164,23 +166,25 @@ class Strategy:
                                     actions[idxThisR] = Actions.GoToPoint(
                                         thisRPos, (field.allies[idxOtherAttacker].get_pos() - thisR.get_pos()).arg()
                                     )
-                            else:
-                                if idxThisR == 4:
-                                    actions[idxThisR] = Actions.GoToPoint(aux.RIGHT, 0)
-                                else:
-                                    actions[idxThisR] = Actions.GoToPoint(aux.RIGHT*500, 0)
+                            # else:
+                            #     if idxThisR == 4:
+                            #         actions[idxThisR] = Actions.GoToPoint(aux.RIGHT, 0)
+                            #     else:
+                            #         actions[idxThisR] = Actions.GoToPoint(aux.RIGHT*500, 0)
                         if oldIdDoPass != self.idDoPass or oldIdGettingPass != self.idGettingPass:
                             print(self.idDoPass, self.idGettingPass)
 
                     case whatWeDoStates.SimpleTest:
                         # actions[0] = Actions.BallGrab((-field.ball.get_pos() + field.enemy_goal.center).arg())  # work
-                        actions[2] = Actions.Kick(field.enemy_goal.center)
-                        # actions[4] = Actions.GoToPoint(aux.Point(0, 0), 0)
-
+                        # actions[2] = Actions.Kick(field.enemy_goal.center)
+                        # field.allies[2].set_dribbler_speed(15)
+                        # actions[2] = Actions.GoToPoint(aux.Point(0, 0), 0)
+                        actions[2] = Actions.GoToPoint(aux.Point(0, 0), 0).compose(DribblerActions.SetDribblerSpeed(15))
                     case whatWeDoStates.TestRotateWithBall:
                         thisR = field.allies[self.idFirstAttacker]
                         if field.is_ball_in(thisR):
-                            actions[self.idFirstAttacker] = Actions.Kick(aux.Point(0, 0))
+                            actions[self.idFirstAttacker] = Actions.Kick(field.enemy_goal.center)
+                            # actions[self.idFirstAttacker] = Actions.Kick(aux.Point(0, 0))
                             # pointForScore = findPointForScore(field, thisR.get_pos())
                             # if pointForScore != None:
                             #     actions[self.idFirstAttacker] = Actions.Kick(pointForScore)
@@ -222,7 +226,7 @@ class Strategy:
         thisRPos = thisR.get_pos()
         oldBallPos = field.ball_start_point
         ballPos = field.ball.get_pos()
-        field.allies[thisRID].set_dribbler_speed(15)
+        # field.allies[thisRID].set_dribbler_speed(15)
 
         if self.idDoPass != None:
             """r not yet kick ball"""
@@ -233,9 +237,9 @@ class Strategy:
                 # else:
                 #     pointForWaitingForPass = thisR.get_pos()
                 #     actions[thisRID] = Actions.GoToPoint(pointForWaitingForPass, (field.allies[self.idDoPass].get_pos() - thisR.get_pos()).arg())
-        elif not field.is_ball_in(field.allies[thisRID]) and field.is_ball_moves():
+        elif not field.is_ball_in(field.allies[thisRID]) or field.is_ball_moves():
             # field.strategy_image.send_telemetry("status pass", "getting pass")
-            """getting pass"""
+            """if ball already kicked"""
             if not aux.is_point_on_line(thisRPos, oldBallPos, ballPos, "R"):
                 interseptBallPoint = aux.closest_point_on_line(oldBallPos, ballPos, thisRPos, "R")
                 if interseptBallPoint != ballPos:
@@ -249,12 +253,15 @@ class Strategy:
             else:
                 actions[thisRID] = Actions.BallGrab((field.ball.get_pos()-field.allies[thisRID].get_pos()).arg())
             # actions[thisRID] = Actions.BallGrab((-field.ball.get_pos() + field.enemy_goal.center).arg())  # work - r catch ball with that angle that he look straight at enemy goal
-        else:
+        elif field.is_ball_in(field.allies[thisRID]) and not field.is_ball_moves():
             """get pass"""
             # field.strategy_image.send_telemetry("status pass", "get pass")
             # actions[idxThisR] = Actions.Kick(findPointForScore(field))
             # self.idDoPass = thisRID
             self.idGettingPass = None
+
+        if actions[thisRID] is not None:
+            actions[thisRID] = actions[thisRID].compose(DribblerActions.SetDribblerSpeed(15))
 
     def attacker(
         self, field: fld.Field, actions: list[Optional[Action]], idxThisR: int, idxOtherAttacker: int
@@ -272,7 +279,7 @@ class Strategy:
         otherAttackerR = field.allies[idxOtherAttacker]
         ballPos = field.ball.get_pos()
 
-        field.allies[idxThisR].set_dribbler_speed(0)
+        # field.allies[idxThisR].set_dribbler_speed(0)
 
         if not field.allies[idxOtherAttacker].is_used():
             """if this attacker alone on field"""
@@ -285,8 +292,8 @@ class Strategy:
                     pointForR = aux.closest_point_on_line(ballPos, mostLikelyPointForScore, thisR.get_pos())
                     if not aux.is_point_on_line(thisR.get_pos(), ballPos, mostLikelyPointForScore, "S"):
                         """if this r not block maybe score, block"""
-                        actions[idxThisR] = Actions.GoToPoint(pointForR, (ballPos - thisR.get_pos()).arg())
-                        field.allies[idxThisR].set_dribbler_speed(15)
+                        actions[idxThisR] = Actions.GoToPoint(pointForR, (ballPos - thisR.get_pos()).arg()).compose(DribblerActions.SetDribblerSpeed(15))
+                        # field.allies[idxThisR].set_dribbler_speed(15)
                     else:
                         """if this r block maybe score, try grab ball"""
                         # nearestEnemyR = fld.find_nearest_robot(field.ball.get_pos(), enemys)
@@ -435,8 +442,8 @@ class Strategy:
                     # enemyRsPos.remove(fld.find_nearest_robot(ballPos, enemyRsPos))
                     enemyRPos = enemyRsPos[0]
                     pointGo = aux.point_on_line(ballPos, enemyRPos.get_pos(), 300)
-                    actions[idxThisR] = Actions.GoToPoint(pointGo, (thisRPos - enemyRPos.get_pos()).arg())
-                    field.allies[idxThisR].set_dribbler_speed(15)
+                    actions[idxThisR] = Actions.GoToPoint(pointGo, (thisRPos - enemyRPos.get_pos()).arg()).compose(DribblerActions.SetDribblerSpeed(15))
+                    # field.allies[idxThisR].set_dribbler_speed(15)
                 else:
                     """if this ally r nearest to ball"""
                     status += "if this ally r nearest to ball"
@@ -459,8 +466,8 @@ class Strategy:
                         ):
                             """if this r not block maybe score, block"""
                             status += "if this r not block maybe score, block"
-                            actions[idxThisR] = Actions.GoToPoint(pointForR, (ballPos - thisR.get_pos()).arg())
-                            field.allies[idxThisR].set_dribbler_speed(15)
+                            actions[idxThisR] = Actions.GoToPoint(pointForR, (ballPos - thisR.get_pos()).arg()).compose(DribblerActions.SetDribblerSpeed(15))
+                            # field.allies[idxThisR].set_dribbler_speed(15)
                         else:
                             """if this r block maybe score, try grab ball"""
                             status += "if this r block maybe score, try grab ball"
@@ -483,8 +490,8 @@ class Strategy:
                         enemyRPos = enemyRsPos[1]
                         # pointGo = aux.closest_point_on_line(enemyRPos, ballPos, rPos, "R")
                         pointGo = aux.point_on_line(ballPos, enemyRPos.get_pos(), 400)
-                        actions[idxThisR] = Actions.GoToPoint(pointGo, (thisRPos - enemyRPos.get_pos()).arg())
-                        field.allies[idxThisR].set_dribbler_speed(15)
+                        actions[idxThisR] = Actions.GoToPoint(pointGo, (thisRPos - enemyRPos.get_pos()).arg()).compose(DribblerActions.SetDribblerSpeed(15))
+                        # field.allies[idxThisR].set_dribbler_speed(15)
                     else:
                         openForPass(field, idxThisR, actions)
             else:
@@ -509,7 +516,7 @@ class Strategy:
                     # pointGo = aux.closest_point_on_line(enemyRPos, ballPos, rPos, "R")
                     # TODO resolve problem with choose enemy, which we will block
                     pointGo = aux.point_on_line(ballPos, nearestEnemyR.get_pos(), 300)
-                    actions[idxThisR] = Actions.GoToPoint(pointGo, (thisRPos - nearestEnemyR.get_pos()).arg())
-                    field.allies[idxThisR].set_dribbler_speed(15)
+                    actions[idxThisR] = Actions.GoToPoint(pointGo, (thisRPos - nearestEnemyR.get_pos()).arg()).compose(DribblerActions.SetDribblerSpeed(15))
+                    # field.allies[idxThisR].set_dribbler_speed(15)
         # print(status, idxThisR)
         field.strategy_image.send_telemetry("statusAttacker" + str(idxThisR), status)

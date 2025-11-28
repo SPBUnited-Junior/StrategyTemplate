@@ -243,6 +243,15 @@ class Actions:
             #print(self.kick_args)
             # return [KickActions.Straight(*self.kick_args)]
             return [KickActions.delayedSLowKick(*self.kick_args)]
+        
+    class Dribbler(Action):
+
+        def __init__(self, dribbler_speed: int) -> None:
+            self.dribblerSpeed: int = dribbler_speed
+
+        def use_behavior_of(self, domain: ActionDomain, current_action: ActionValues) -> list["Action"]:
+            return []
+
 
 
 class KickActions:
@@ -311,9 +320,33 @@ class KickActions:
             ]
 
             return actions
+    
+class DribblerActions:
+    class Dribbler(Action):
+        def __init__(self, dribblerSpeed: int)-> None:
+            self.dribblerSpeed = dribblerSpeed
+
+    class SetDribblerSpeed(Dribbler):
+        def behavior(self, domain: ActionDomain, current_action: ActionValues) -> None:
+            current_action.dribbler_speed =  self.dribblerSpeed
+
+            
+            
 
 class DumbActions:
     """User-unavailable actions, are used in Actions"""
+
+    class DribblerOn(Action):
+        """Shoot the target when kick is aligned"""
+
+        def __init__(self, dribbler_speed: int) -> None:
+            self.dribbler_speed = dribbler_speed
+
+        def is_defined(self, domain: ActionDomain) -> bool:
+            return True
+
+        def behavior(self, domain: ActionDomain, current_action: ActionValues) -> None:
+            current_action.dribbler_speed = self.dribbler_speed
 
     class ShootAction(Action):
         """Shoot the target when kick is aligned"""

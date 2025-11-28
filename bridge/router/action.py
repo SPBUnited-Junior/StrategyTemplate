@@ -42,6 +42,9 @@ class Action:
         """Scope"""
         return True
 
+    def compose(self, action: "Action") -> "Action":
+        return ComposedAction(self, action)
+
     def behavior(self, domain: ActionDomain, current_action: ActionValues) -> None:
         """Behavior"""
 
@@ -63,3 +66,12 @@ def limit_action(_: ActionDomain, current_action: ActionValues, speed: float = c
     """Limit robot speed"""
     if current_action.vel.mag() > speed:
         current_action.vel = current_action.vel.unity() * speed
+
+class ComposedAction(Action):
+    def __init__(self, first: Action, second: Action):
+        self.first = first
+        self.second = second
+
+    def use_behavior_of(self, domain: ActionDomain, current_action: ActionValues) -> list[Action]:
+        """Condition for performing an action"""
+        return [self.first, self.second]

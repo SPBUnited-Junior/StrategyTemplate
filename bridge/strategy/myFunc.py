@@ -289,7 +289,7 @@ def GK(
 ) -> str:  # TODO change string variable on enum class
     GKState = None
 
-    field.allies[const.GK].set_dribbler_speed(0)
+    # field.allies[const.GK].set_dribbler_speed(0)
 
     oldBallPos = field.ball_start_point
     ballPos = field.ball.get_pos()
@@ -347,8 +347,8 @@ def GK(
         if pointForGK != None:
             field.strategy_image.draw_circle(pointForGK, color=(0, 0, 255), size_in_mms=50)
             # print(pointForGK)
-            actions[const.GK] = Actions.GoToPointIgnore(pointForGK, (ballPos - GKPos).arg())
-            field.allies[const.GK].set_dribbler_speed(15)  # TODO check in real we need it?
+            actions[const.GK] = Actions.GoToPointIgnore(pointForGK, (ballPos - GKPos).arg()).compose(DribblerActions.SetDribblerSpeed(15))
+            # field.allies[const.GK].set_dribbler_speed(15)  # TODO check in real we need it?
         else:
             """err"""
             print("ERROR IN GK")

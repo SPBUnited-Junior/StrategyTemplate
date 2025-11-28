@@ -51,15 +51,15 @@ class Strategy:
 
         # Индексы роботов
 
-        self.goalkeeper_idx = 0
-        self.idx1 = 1
-        self.idx2 = 2
+        self.goalkeeper_idx = 1
+        self.idx1 = 0
+        self.idx2 = 3
 
         # Индексы роботов соперника
 
         self.goalkeeper_idx_enemy = 0
-        self.idx_enemy1 = 1
-        self.idx_enemy2 = 2
+        self.idx_enemy1 = 2
+        self.idx_enemy2 = 4
 
         self.enemies : list[aux.Point] = [] # массив позиций вражеских роботов
 
@@ -258,8 +258,18 @@ class Strategy:
     def run(self, field: fld.Field, actions: list[Optional[Action]]) -> None:
         
 
-        actions = self.process_attacker(field, actions)
-        actions = self.process_goalkeeper(field, actions)
+        #actions = self.process_attacker(field, actions)
+        self.process_goalkeeper(field, actions)
+        dist_ally = aux.dist(fld.find_nearest_robot(self.ball, field.active_allies(False)).get_pos(), self.ball)
+        dist_enemy = aux.dist(fld.find_nearest_robot(self.ball, field.active_enemies(False)).get_pos(), self.ball)
+
+        if (dist_ally > dist_enemy and ((self.ball.x < 0 and field.ally_goal.center.x < 0) or (self.ball.x > 0 and field.ally_goal.center.x > 0))):
+            self.process_defender(field, actions)
+            print(1)
+        else:
+            self.process_attacker(field, actions)
+            print(2)
+        
 
     def process_goalkeeper(self, field: fld.Field, actions: list[Optional[Action]]) -> None:
         """
@@ -616,8 +626,8 @@ class Strategy:
                 if (
                     #self.check_point(field, cand, enemy_list)[0] > maxim
                     aux.dist(cand, field.enemy_goal.center) < minim_goal_dist
-                    and aux.closest_point_on_line(robot, cand, ball).mag() > 130
-                    and minim > const.ROBOT_R + 50
+                    and aux.closest_point_on_line(robot, cand, ball).mag() > 60
+                    and minim > const.ROBOT_R + 150
                     and flag_to_point
                     and (mid is None or aux.dist(cand, aux.closest_point_on_line(ball, mid, cand)) > const.ROBOT_R + 100)
                 ):

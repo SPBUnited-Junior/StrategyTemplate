@@ -153,6 +153,9 @@ class Strategy:
         for _ in range(const.TEAM_ROBOTS_MAX_COUNT):
             actions.append(None)
 
+        self.we_active = False
+        field.game_state = GameStates.PREPARE_KICKOFF
+        print(field.game_state, self.we_active)
         self.process_goalkeeper(field, actions)
         self.we_active = False
         field.game_state = GameStates.RUN
@@ -219,16 +222,16 @@ class Strategy:
         elif field.game_state == GameStates.KICKOFF and  not self.we_active:
             kik_angle1 = robot_position1_enemy - robot_position1
             kik_angle2 = robot_position2_enemy - robot_position2
-            pos_kikoff1 = aux.Point(500, 0)
-            pos_kikoff2 = aux.Point(1000, 0)
+            pos_kikoff1 = aux.Point(500 * field.polarity, 0)
+            pos_kikoff2 = aux.Point(1000 * field.polarity, 0)
             actions[self.idx1] = Actions.GoToPoint(pos_kikoff1, kik_angle1.arg())
             actions[self.idx2] = Actions.GoToPoint(pos_kikoff2, kik_angle2.arg())
 
         elif field.game_state == GameStates.KICKOFF and self.we_active:
-            self.run(field, actions)
+            self.process_attacker(field, actions)
 
         elif field.game_state == GameStates.FREE_KICK and self.we_active:
-            self.run(field, actions)
+            self.process_attacker(field, actions)
 
         elif field.game_state == GameStates.FREE_KICK and not self.we_active:
             self.process_defender(field, actions, 450)
@@ -252,7 +255,6 @@ class Strategy:
             actions[self.idx1] = Actions.GoToPoint(pos_attacker1, angle_attacker1)
             actions[self.idx2] = Actions.GoToPoint(pos_attacker2, angle_attacker2)
         
-        print(field.game_state, self.we_active)
         return actions
 
     def run(self, field: fld.Field, actions: list[Optional[Action]]) -> None:

@@ -17,6 +17,7 @@ class whatWeDoStates(Enum):
     TestPass = 2
     SimpleTest = 3
     TestRotateWithBall = 4
+    NewIsBallInTest = 5
 
 
 # class State(Enum):#do GK

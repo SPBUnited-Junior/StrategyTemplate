@@ -396,7 +396,7 @@ class DumbActions:
                 DumbActions.timer2 = time() + 10**10
                 DumbActions.oldIs_ball_in = False
             #print(time() - DumbActions.timer1 > 0.1)
-            return isBallIn and is_aligned and time() - DumbActions.timer2 > 0.1
+            return isBallIn and is_aligned and time() - DumbActions.timer2 > 0.2
 
         def behavior(self, domain: ActionDomain, current_action: ActionValues) -> None:
             # DumbActions.timer1 = time()+10**10

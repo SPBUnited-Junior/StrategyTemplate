@@ -31,7 +31,7 @@ class Strategy:
         self.oldIdDoPass: Optional[int] = None
         self.GKLastState: Optional[str] = None
         self.idFirstAttacker: int = 2
-        self.idSecondAttacker: int = 4
+        self.idSecondAttacker: int = 0
         self.TimeWeTryDoPass: Optional[float] = None
         self.whatWeDoAtThisRun: whatWeDoStates = whatWeDoStates.TestRotateWithBall
 
@@ -179,7 +179,7 @@ class Strategy:
                         # actions[2] = Actions.Kick(field.enemy_goal.center)
                         # field.allies[2].set_dribbler_speed(15)
                         # actions[2] = Actions.GoToPoint(aux.Point(0, 0), 0)
-                        actions[2] = Actions.GoToPoint(aux.Point(0, 0), 0).compose(DribblerActions.SetDribblerSpeed(15))
+                        actions[0] = Actions.GoToPoint(aux.Point(0, 0), 0).compose(DribblerActions.SetDribblerSpeed(15))
                     case whatWeDoStates.TestRotateWithBall:
                         thisR = field.allies[self.idFirstAttacker]
                         if field.is_ball_in(thisR):
@@ -195,6 +195,12 @@ class Strategy:
                             actions[self.idFirstAttacker] = Actions.BallGrab(-math.pi/2)
                         # field.strategy_image.send_telemetry("Curr Action", str(actions[self.idFirstAttacker]))
                         # print(actions[self.idFirstAttacker])
+                    case whatWeDoStates.NewIsBallInTest:
+                        thisR = field.allies[self.idFirstAttacker]
+                        dist2Ball = (thisR.get_pos() - field.ball.get_pos()).mag()
+                        angle2Ball = abs(aux.wind_down_angle((field.ball.get_pos() - thisR.get_pos()).arg() - thisR.get_angle()))
+                        print(round(dist2Ball), const.BALL_GRABBED_DIST, round(angle2Ball/math.pi*180, 2), round(const.BALL_GRABBED_ANGLE/math.pi*180))
+                        print(int(dist2Ball<const.BALL_GRABBED_DIST), int(angle2Ball<const.BALL_GRABBED_ANGLE), int(dist2Ball<const.BALL_GRABBED_DIST and angle2Ball<const.BALL_GRABBED_ANGLE))
 
             else:
                 """code for yellow"""

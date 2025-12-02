@@ -3,6 +3,7 @@
 """
 
 from enum import Enum
+from math import pi
 
 from environment.setup_environment import get_from_env, get_from_env_specific_type
 
@@ -179,7 +180,7 @@ KEEP_BALL_DIST = 300 + ROBOT_R
 
 # is_ball_in
 GRAB_ALIGN_DIST = 130
-BALL_GRABBED_ANGLE = 0.8
+BALL_GRABBED_ANGLE = pi/6#0.8
 BALL_GRABBED_DIST = 110
 # is_kick_aligned
 KICK_ALIGN_DIST_MULT = 1.5

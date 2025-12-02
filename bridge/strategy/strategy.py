@@ -411,21 +411,31 @@ class Strategy:
         
         dist_to_robot_with_ball = (ball - nearest_enemy_point).unity() * dist_to_ball + ball
 
-        bottom_crossbar = field.ally_goal.down + aux.Point(0, 100) # Небольшое расстояние от нижней штанги к углу
-        up_crossbar = field.ally_goal.up - aux.Point(0, 100)  # Небольшое расстояние от верхней штанги к углу
+        bottom_crossbar = field.ally_goal.down + aux.Point(0, 400*field.polarity) # Небольшое расстояние от нижней штанги к углу
+        up_crossbar = field.ally_goal.up - aux.Point(0, 400*field.polarity)  # Небольшое расстояние от верхней штанги к углу
 
         bottom_block = aux.closest_point_on_line(nearest_enemy_point, bottom_crossbar, dist_to_robot_with_ball, "R")
         up_block = aux.closest_point_on_line(nearest_enemy_point, up_crossbar, dist_to_robot_with_ball, "R")
 
         # Вычисление точки для блокировки удара
         
-        if aux.dist(dist_to_robot_with_ball, bottom_block) > aux.dist(dist_to_robot_with_ball, up_block):
-            actions[self.idx1] = Actions.GoToPoint(up_block, (ball-robot_position1).arg())
+
+        if field.polarity == 1:
+            if aux.dist(dist_to_robot_with_ball, bottom_block) > aux.dist(dist_to_robot_with_ball, up_block):
+                actions[self.idx1] = Actions.GoToPoint(up_block, (ball-robot_position1).arg())
+            else:
+                actions[self.idx1] = Actions.GoToPoint(bottom_block, (ball-robot_position1).arg())
+                if  nearest_enemy_point == aux.Point(0, 0):
+                    actions[self.idx1] = Actions.GoToPoint(field.ally_goal.center + aux.Point(-1000, 0), 3.14)
         else:
-            actions[self.idx1] = Actions.GoToPoint(bottom_block, (ball-robot_position1).arg())
-            if  nearest_enemy_point == aux.Point(0, 0):
-                actions[self.idx1] = Actions.GoToPoint(field.ally_goal.center + aux.Point(-1000, 0), 3.14)
-        
+            if aux.dist(dist_to_robot_with_ball, up_block) > aux.dist(dist_to_robot_with_ball, bottom_block):
+                actions[self.idx1] = Actions.GoToPoint(bottom_block, (ball-robot_position1).arg())
+            else:
+                actions[self.idx1] = Actions.GoToPoint(up_block, (ball-robot_position1).arg())
+                if  nearest_enemy_point == aux.Point(0, 0):
+                    actions[self.idx1] = Actions.GoToPoint(field.ally_goal.center + aux.Point(-1000, 0), 3.14)
+
+            
         #Блокировка паса
         actions[self.idx2] = Actions.GoToPoint(aux.point_on_line(robot_position1_enemy, robot_position2_enemy, aux.dist(robot_position1_enemy, robot_position2_enemy)/2), (ball - robot_position2).arg())
 

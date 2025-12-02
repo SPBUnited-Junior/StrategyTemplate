@@ -51,15 +51,15 @@ class Strategy:
 
         # Индексы роботов
 
-        self.goalkeeper_idx = 10
+        self.goalkeeper_idx = 2
         self.idx1 = 0
         self.idx2 = 1
 
         # Индексы роботов соперника
 
         self.goalkeeper_idx_enemy = 0
-        self.idx_enemy1 = 2
-        self.idx_enemy2 = 4
+        self.idx_enemy1 = 1
+        self.idx_enemy2 = 2
 
         self.enemies : list[aux.Point] = [] # массив позиций вражеских роботов
 
@@ -82,6 +82,9 @@ class Strategy:
 
         self.robot_catch_ball: rbt.Robot | None = None
         self.nearest_robot: rbt.Robot | None = None
+
+        #для состояний 
+        self.dist_to_ball = 450 
 
 
 
@@ -146,8 +149,10 @@ class Strategy:
         for _ in range(const.TEAM_ROBOTS_MAX_COUNT):
             actions.append(None)
 
-        self.we_active = True
-        field.game_state = GameStates.PENALTY
+        self.process_goalkeeper(field, actions)
+        self.we_active = False
+        field.game_state = GameStates.FREE_KICK
+        
         if field.game_state == GameStates.RUN:
             self.run(field, actions)
             
@@ -218,41 +223,30 @@ class Strategy:
         elif field.game_state == GameStates.KICKOFF and self.we_active:
             self.run(field, actions)
 
-        elif field.game_state == GameStates.FREE_KICK:
+        elif field.game_state == GameStates.FREE_KICK and self.we_active:
             self.run(field, actions)
 
+        elif field.game_state == GameStates.FREE_KICK and not self.we_active:
+            self.process_defender(field, actions, 450)
+
         elif field.game_state == GameStates.STOP:
-            ball_pos = field.ball.get_pos()
-                        
-            robot_to_ball1 = ball_pos - robot_position1
-            robot_to_ball2 = ball_pos - robot_position2
+            self.flag = False
+            pos_attacker1 =  self.ball + (field.ally_goal.center - self.ball).unity() * self.dist_to_ball
+            angle_attacker1 = (self.ball - robot_position1).arg()
+            pos_attacker2 = field.ally_goal.center + field.ally_goal.eye_forw * 800
+            angle_attacker2 = (self.ball - robot_position2).arg()
 
-            robot1_angle = (self.ball - robot_position1).arg()
-            robot2_angle = (self.ball - robot_position2).arg() # вратарская зона
-                        
-            #if robot_to_ball1.mag() > 50:
-            #    deltac = 50 + robot_to_ball1.x
-            #    pos_stop1 = aux.Point(ball.x + deltac, robot_to_ball1.y)
-            #    actions[self.idx1] = Actions.GoToPoint(pos_stop1, robot_to_ball1.arg())
-            #else:
-            #    
-            #    actions[self.idx1] = Actions.Stop()
-            #if robot_to_ball2.mag() > 50:
-            #    deltac = 30 - robot_to_ball2.y
-            #    deltac2 = 50 + robot_to_ball2.x
-            #    pos_stop2 = aux.Point(ball.x + deltac2 , robot_to_ball2.y - deltac)
-            #    
-            #    actions[self.idx2] = Actions.GoToPoint(pos_stop2, robot_to_ball2.arg())
-            #else:
-            #    actions[self.idx2] = Actions.Stop()
-            #
-            position = field.ally_goal.center + field.ally_goal.eye_forw * 400
-            #position1 = self._defer(robot_pos1, ball, field)
-            if aux.dist(position, self.ball) < 500:
-                position = (robot_position2 - self.ball).unity() * 500
+            if aux.dist(pos_attacker1, self.ball) < 500:
+                pos_attacker1 = self.ball + (field.ally_goal.center - self.ball).unity() * self.dist_to_ball
 
-            actions[self.idx1] = Actions.GoToPoint(robot_position1, robot1_angle)
-            actions[self.idx2] = Actions.GoToPoint(robot_position2, robot2_angle)
+            if aux.dist(pos_attacker2, self.ball) < 500:
+                pos_attacker2 = (robot_position2 - self.ball).unity() * 500
+
+            if abs(field.enemy_goal.center.x - pos_attacker1.x) < 800:
+                pos_attacker1 = field.enemy_goal.up - field.ally_goal.eye_forw * 800
+
+            actions[self.idx1] = Actions.GoToPoint(pos_attacker1, angle_attacker1)
+            actions[self.idx2] = Actions.GoToPoint(pos_attacker2, angle_attacker2)
         
         print(field.game_state, self.we_active)
         return actions
@@ -261,7 +255,6 @@ class Strategy:
         
 
         #actions = self.process_attacker(field, actions)
-        self.process_goalkeeper(field, actions)
         dist_ally = aux.dist(fld.find_nearest_robot(self.ball, field.active_allies(False)).get_pos(), self.ball)
         dist_enemy = aux.dist(fld.find_nearest_robot(self.ball, field.active_enemies(False)).get_pos(), self.ball)
 
@@ -387,7 +380,7 @@ class Strategy:
         voltage = get_pass_voltage(aux.dist(self.ball, point_to_pas))
         return KickActions.Straight(point_to_pas, voltage)
     
-    def process_defender(self, field: fld.Field, actions: list[Optional[Action]]) -> None:
+    def process_defender(self, field: fld.Field, actions: list[Optional[Action]], dist_to_ball: float = 200.0) -> None:
         """
         The logic by which the attacker acts
 
@@ -416,7 +409,7 @@ class Strategy:
                 nearest_enemy_dist = aux.dist(i.get_pos(), ball)
                 nearest_enemy_point = i.get_pos()
         
-        dist_to_robot_with_ball = (ball - nearest_enemy_point).unity() * 200 + ball
+        dist_to_robot_with_ball = (ball - nearest_enemy_point).unity() * dist_to_ball + ball
 
         bottom_crossbar = field.ally_goal.down + aux.Point(0, 100) # Небольшое расстояние от нижней штанги к углу
         up_crossbar = field.ally_goal.up - aux.Point(0, 100)  # Небольшое расстояние от верхней штанги к углу

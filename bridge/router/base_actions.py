@@ -201,7 +201,7 @@ class Actions:
             current_action.vel = transl_vel
             current_action.angle = self.target_angle
 
-            current_action.dribbler_speed = 15
+            current_action.dribbler_speed = 8
 
         def use_behavior_of(self, domain: ActionDomain, current_action: ActionValues) -> list["Action"]:
             ball_pos = domain.field.ball.get_pos()

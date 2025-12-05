@@ -191,7 +191,7 @@ KICK_ALIGN_OFFSET = 40
 GRAB_AREA = GRAB_ALIGN_DIST
 # GRAB_DIST = 45  # 30 is good
 GRAB_DIST = 75
-GRAB_MULT = 5  # speed = dist * mult
+GRAB_MULT = 6  # speed = dist * mult
 GRAB_OFFSET_ANGLE = 0.4
 
 if IS_SIMULATOR_USED:

@@ -153,8 +153,8 @@ class Strategy:
         for _ in range(const.TEAM_ROBOTS_MAX_COUNT):
             actions.append(None)
 
-        self.we_active = False
-        field.game_state = GameStates.PREPARE_KICKOFF
+        # self.we_active = False
+        # field.game_state = GameStates.FREE_KICK
         print(field.game_state, self.we_active)
         self.process_goalkeeper(field, actions)
         self.we_active = False
@@ -169,6 +169,7 @@ class Strategy:
         elif field.game_state == GameStates.HALT:
             actions[self.idx1] = Actions.Stop()
             actions[self.idx2] = Actions.Stop()
+            actions[self.goalkeeper_idx] = Actions.Stop()
             return actions
            
         elif field.game_state == GameStates.PREPARE_PENALTY and  not self.we_active:
@@ -327,10 +328,7 @@ class Strategy:
         if field.is_ball_in(field.allies[self.goalkeeper_idx]):
             #actions[self.gk_idx] = Actions.Kick(goal_position_gates, voltage_kik,is_upper=True)
             actions[self.goalkeeper_idx] = KickActions.Straight(goal_position_gates, voltage_kik, False, True)
-            
-
-        #waypoints[self.gk_idx] = wp.Waypoint(goal_position, angle_goalkeeper, wp.WType.S_BALL_KICK)
-    
+                
         return actions
 
     def process_attacker(self, field: fld.Field, actions: list[Optional[Action]]) -> list[Optional[Action]]:
@@ -419,8 +417,8 @@ class Strategy:
         
         dist_to_robot_with_ball = (ball - nearest_enemy_point).unity() * dist_to_ball + ball
 
-        bottom_crossbar = field.ally_goal.down + aux.Point(0, 400*field.polarity) # Небольшое расстояние от нижней штанги к углу
-        up_crossbar = field.ally_goal.up - aux.Point(0, 400*field.polarity)  # Небольшое расстояние от верхней штанги к углу
+        bottom_crossbar = field.ally_goal.down - aux.Point(0, 200*field.polarity) # Небольшое расстояние от нижней штанги к углу
+        up_crossbar = field.ally_goal.up + aux.Point(0, 200*field.polarity)  # Небольшое расстояние от верхней штанги к углу
 
         bottom_block = aux.closest_point_on_line(nearest_enemy_point, bottom_crossbar, dist_to_robot_with_ball, "R")
         up_block = aux.closest_point_on_line(nearest_enemy_point, up_crossbar, dist_to_robot_with_ball, "R")

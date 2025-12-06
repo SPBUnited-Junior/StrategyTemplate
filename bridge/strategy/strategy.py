@@ -69,9 +69,9 @@ class Strategy:
 
         # Индексы роботов соперника
 
-        self.goalkeeper_idx_enemy = 10
-        self.idx_enemy1 = 13
-        self.idx_enemy2 = 14
+        self.goalkeeper_idx_enemy = 0
+        self.idx_enemy1 = 1
+        self.idx_enemy2 = 2
 
         self.enemies : list[aux.Point] = [] # массив позиций вражеских роботов
 
@@ -111,6 +111,7 @@ class Strategy:
         """
         print(GameStates)
         field.active_enemies # масив роботов на поле
+        self.old_ball = field.ball_start_point or aux.Point(0, 0)
 
         #p+9obot_position1.is_used # true на поле
 
@@ -681,12 +682,12 @@ class Strategy:
         Action_goalkeeper: Action = Actions.GoToPoint(goalkeeper, goalkeeper.arg())
         field.strategy_image.draw_circle(field.ball_start_point, (255, 0, 255), 50)
         # Если противник близко к мячу (готовится к удару)
-        if aux.dist(attacker, ball) < 250:
-            predict_pos = attacker + aux.rotate(aux.Point(400, 0), field.enemies[idx].get_angle())
-            field.strategy_image.draw_line(attacker, predict_pos, (255, 255, 255), 5)
-            pos = aux.closest_point_on_line(attacker, predict_pos, goalkeeper, "R")
+        if aux.dist(attacker, ball) < 200:
+            predict_pos = ball + aux.rotate(aux.Point(400, 0), field.enemies[idx].get_angle())
+            field.strategy_image.draw_line(ball, predict_pos, (255, 255, 255), 5)
+            pos = aux.closest_point_on_line(ball, predict_pos, goalkeeper, "R")
             cords1 = aux.get_line_intersection(
-                attacker,
+                ball,
                 predict_pos,
                 field.ally_goal.up + field.ally_goal.eye_forw * 120,
                 field.ally_goal.down + field.ally_goal.eye_forw * 120,
@@ -697,7 +698,7 @@ class Strategy:
                 cords_sr = cords1
                 if not aux.is_point_inside_poly(ball, field.ally_goal.hull):
                     result = aux.get_line_intersection(
-                        attacker,
+                        ball,
                         cords1,
                         field.ally_goal.frw_up - field.ally_goal.eye_forw,
                         field.ally_goal.frw_down - field.ally_goal.eye_forw,
@@ -705,7 +706,7 @@ class Strategy:
                     )
                     if result is None:
                         result = aux.get_line_intersection(
-                            attacker,
+                            ball,
                             cords1,
                             field.ally_goal.frw_down - field.ally_goal.eye_forw * 1,
                             field.ally_goal.center_down + field.ally_goal.eye_forw * 120,
@@ -713,7 +714,7 @@ class Strategy:
                         )
                     if result is None:
                         result = aux.get_line_intersection(
-                            attacker,
+                            ball,
                             cords1,
                             field.ally_goal.frw_up - field.ally_goal.eye_forw * 1,
                             field.ally_goal.center_up + field.ally_goal.eye_forw * 120,
@@ -721,7 +722,7 @@ class Strategy:
                         )
                     if result is None:
                         result = aux.get_line_intersection(
-                            attacker,
+                            ball,
                             cords1,
                             field.ally_goal.frw_up - field.ally_goal.eye_forw * 1,
                             field.ally_goal.frw_down - field.ally_goal.eye_forw * 1,
@@ -742,7 +743,7 @@ class Strategy:
             angle = field.enemy_goal.center.arg()
 
         # Если вратарь готов (мяч ранее отмечен как Ready) и противник далеко
-        if field.ball.get_vel().mag() > 100:
+        if field.ball.get_vel().mag() > 50:
             pos = aux.closest_point_on_line(self.old_ball, ball, goalkeeper, "R")
             cords1 = aux.get_line_intersection(
                 self.old_ball,
@@ -836,7 +837,7 @@ class Strategy:
         else:
             Action_goalkeeper = Actions.GoToPoint(pos, angle)
 
-        field.strategy_image.draw_circle(pos, (255, 0, 0), 40)
+        field.strategy_image.draw_circle(pos, (255, 0, 0), 50)
         self.old_pos = pos
         return Action_goalkeeper
     

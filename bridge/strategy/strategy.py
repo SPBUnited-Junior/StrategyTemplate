@@ -40,6 +40,18 @@ class FlagToPasses(Enum): #флаги для состояние приянтия
     FALSE = 0 # не ловим 
     TRUE = 1 # ловим
     RELEASE = 2 # поймали и отпускаем
+
+
+class BallStatus(Enum):
+    Active = 0
+    Passive = 1
+    Ready = 2
+
+
+class BallStatusInsidePoly(Enum):
+    NotInsidePoly = 0
+    InsidePoly = 1
+
  
 class Strategy:
     """Main class of strategy"""
@@ -85,6 +97,10 @@ class Strategy:
 
         #для состояний 
         self.dist_to_ball = 450
+
+        self.ball_status = BallStatus.Passive
+        self.ball_status_poly = BallStatusInsidePoly.NotInsidePoly
+        self.kick_up_is_used = 1
 
 
 
@@ -156,7 +172,16 @@ class Strategy:
         # self.we_active = False
         # field.game_state = GameStates.FREE_KICK
         print(field.game_state, self.we_active)
-        self.process_goalkeeper(field, actions)
+        #self.process_goalkeeper(field, actions)
+        if aux.dist(self.ball, robot_position1_enemy) < aux.dist(self.ball, robot_position2_enemy):
+            Action_goalkeeper = self._process_goalkeeper(
+                field, self.ball, robot_position1_enemy, self.idx_enemy1, robot_position_goalkeeper
+            )
+        else:
+            Action_goalkeeper = self._process_goalkeeper(
+                field, self.ball, robot_position2_enemy, self.idx_enemy2, robot_position_goalkeeper
+            )
+        actions[self.goalkeeper_idx] = Action_goalkeeper
         self.we_active = False
         field.game_state = GameStates.RUN
         
@@ -638,3 +663,196 @@ class Strategy:
                     minim_goal_dist = aux.dist(cand, field.enemy_goal.center)
         field.strategy_image.draw_circle(res, (255, 0, 0), 30)
         return res
+    
+    def _process_goalkeeper(
+        self,
+        field: fld.Field,
+        ball: aux.Point,
+        attacker: aux.Point,
+        idx: int,
+        goalkeeper: aux.Point,
+    ) -> Action:
+        """
+        Обрабатывает логику вратаря:
+          - Если противник близко к мячу, рассчитываем траекторию спасения;
+          - Если противник далеко, корректируем позицию вратаря в зависимости от положения мяча.
+        Также обрабатывается ситуация, когда мяч движется в зоне ворот.
+        """
+        Action_goalkeeper: Action = Actions.GoToPoint(goalkeeper, goalkeeper.arg())
+        field.strategy_image.draw_circle(field.ball_start_point, (255, 0, 255), 50)
+        # Если противник близко к мячу (готовится к удару)
+        if aux.dist(attacker, ball) < 250:
+            predict_pos = attacker + aux.rotate(aux.Point(400, 0), field.enemies[idx].get_angle())
+            field.strategy_image.draw_line(attacker, predict_pos, (255, 255, 255), 5)
+            pos = aux.closest_point_on_line(attacker, predict_pos, goalkeeper, "R")
+            cords1 = aux.get_line_intersection(
+                attacker,
+                predict_pos,
+                field.ally_goal.up + field.ally_goal.eye_forw * 120,
+                field.ally_goal.down + field.ally_goal.eye_forw * 120,
+                "LL",
+            )
+            result: Optional[aux.Point] = None
+            if cords1 is not None:
+                cords_sr = cords1
+                if not aux.is_point_inside_poly(ball, field.ally_goal.hull):
+                    result = aux.get_line_intersection(
+                        attacker,
+                        cords1,
+                        field.ally_goal.frw_up - field.ally_goal.eye_forw,
+                        field.ally_goal.frw_down - field.ally_goal.eye_forw,
+                        "LL",
+                    )
+                    if result is None:
+                        result = aux.get_line_intersection(
+                            attacker,
+                            cords1,
+                            field.ally_goal.frw_down - field.ally_goal.eye_forw * 1,
+                            field.ally_goal.center_down + field.ally_goal.eye_forw * 120,
+                            "LS",
+                        )
+                    if result is None:
+                        result = aux.get_line_intersection(
+                            attacker,
+                            cords1,
+                            field.ally_goal.frw_up - field.ally_goal.eye_forw * 1,
+                            field.ally_goal.center_up + field.ally_goal.eye_forw * 120,
+                            "LL",
+                        )
+                    if result is None:
+                        result = aux.get_line_intersection(
+                            attacker,
+                            cords1,
+                            field.ally_goal.frw_up - field.ally_goal.eye_forw * 1,
+                            field.ally_goal.frw_down - field.ally_goal.eye_forw * 1,
+                            "LL",
+                        )
+                    if result is None:
+                        pos = field.ally_goal.center + field.ally_goal.eye_forw * 300
+                        angle = field.enemy_goal.center.arg()
+                    else:
+                        pos = aux.closest_point_on_line(result, cords1, goalkeeper, "S")
+                    #     field.strategy_image.draw_line(result, cords1, (0, 0, 255), 5)
+                    # field.strategy_image.draw_line(field.ally_goal.up + field.ally_goal.eye_forw * 120, field.ally_goal.down  + field.ally_goal.eye_forw * 120, (0, 0, 255), 5)
+                    # field.strategy_image.draw_line(pos, self.old_ball, (0, 0, 255), 5)
+                    # field.strategy_image.draw_circle(pos, (0, 0, 0), 40)
+        else:
+            # Если противник не у мяча
+            pos = self._golakeeper_afk_point(field, ball)
+            angle = field.enemy_goal.center.arg()
+
+        # Если вратарь готов (мяч ранее отмечен как Ready) и противник далеко
+        if field.ball.get_vel().mag() > 100:
+            pos = aux.closest_point_on_line(self.old_ball, ball, goalkeeper, "R")
+            cords1 = aux.get_line_intersection(
+                self.old_ball,
+                ball,
+                field.ally_goal.up + field.ally_goal.eye_forw * 120,
+                field.ally_goal.down + field.ally_goal.eye_forw * 120,
+                "LL",
+            )
+
+            if cords1 is not None:
+                cords_sr = cords1
+                if not aux.is_point_inside_poly(ball, field.ally_goal.hull):
+                    result = aux.get_line_intersection(
+                        self.old_ball,
+                        cords1,
+                        field.ally_goal.frw_up - field.ally_goal.eye_forw,
+                        field.ally_goal.frw_down - field.ally_goal.eye_forw,
+                        "LL",
+                    )
+                    if result is None:
+                        result = aux.get_line_intersection(
+                            self.old_ball,
+                            cords1,
+                            field.ally_goal.frw_down - field.ally_goal.eye_forw * 1,
+                            field.ally_goal.center_down + field.ally_goal.eye_forw * 120,
+                            "LS",
+                        )
+                    if result is None:
+                        result = aux.get_line_intersection(
+                            self.old_ball,
+                            cords1,
+                            field.ally_goal.frw_up - field.ally_goal.eye_forw * 1,
+                            field.ally_goal.center_up + field.ally_goal.eye_forw * 120,
+                            "LL",
+                        )
+                    if result is None:
+                        result = aux.get_line_intersection(
+                            self.old_ball,
+                            cords1,
+                            field.ally_goal.frw_up - field.ally_goal.eye_forw * 1,
+                            field.ally_goal.frw_down - field.ally_goal.eye_forw * 1,
+                            "LL",
+                        )
+
+                    pos = aux.closest_point_on_line(result, cords1, goalkeeper, "S")
+                    field.strategy_image.draw_line(result, cords1, (0, 0, 255), 5)
+                    field.strategy_image.draw_line(
+                        field.ally_goal.up + field.ally_goal.eye_forw * 120,
+                        field.ally_goal.down + field.ally_goal.eye_forw * 120,
+                        (0, 0, 255),
+                        5,
+                    )
+                    field.strategy_image.draw_line(pos, self.old_ball, (0, 0, 255), 5)
+                    field.strategy_image.draw_circle(pos, (0, 0, 0), 40)
+            else:
+                pos = self._golakeeper_afk_point(field, ball)
+            if aux.is_point_inside_poly(ball, field.ally_goal.hull):
+                self.ball_status_poly = BallStatusInsidePoly.InsidePoly
+
+        # Если мяч вылетел за зону ворот после удара
+        if self.ball_status_poly == BallStatusInsidePoly.InsidePoly and not aux.is_point_inside_poly(
+            ball, field.ally_goal.hull
+        ):
+            self.ball_status_poly = BallStatusInsidePoly.NotInsidePoly
+            self.ball_status = BallStatus.Passive
+            pos = self._golakeeper_afk_point(field, ball)
+
+        # Если позиция вне зоны ворот, корректируем позицию и направление
+        if field.ally_goal.up.y > 0:
+            lt = [ball, field.ally_goal.up + aux.Point(0, 100), field.ally_goal.down + aux.Point(0, -100)]
+            field.strategy_image.draw_line(field.ally_goal.up + aux.Point(0, 100), field.ally_goal.down + aux.Point(0, -100), (255, 0, 0), 40)
+
+        else:
+            lt = [ball, field.ally_goal.up + aux.Point(0, -100), field.ally_goal.down + aux.Point(0, 100)]
+            field.strategy_image.draw_line(field.ally_goal.up + aux.Point(0, -100), field.ally_goal.down + aux.Point(0, 100), (255, 0, 0), 40)
+        if not aux.is_point_inside_poly(pos, field.ally_goal.hull) or not aux.is_point_inside_poly(pos, lt):
+            pos = self._golakeeper_afk_point(field, ball)
+            angle = field.enemy_goal.center.arg()
+        else:
+            angle = field.enemy_goal.center.arg()
+
+        # Если мяч остановился после удара в зоне ворот
+
+        if aux.is_point_inside_poly(ball, field.ally_goal.hull):
+            # Используем _pas для расчёта данных паса (здесь лишь для установки флага удара)
+            pos = ball
+            if self.kick_up_is_used:
+                Action_goalkeeper = KickActions.Straight(aux.Point(0, 0), 13, False, True)
+            else:
+                Action_goalkeeper = KickActions.Straight(goalkeeper + aux.Point(0, 1000), 10)
+        else:
+            Action_goalkeeper = Actions.GoToPoint(pos, angle)
+
+        field.strategy_image.draw_circle(pos, (255, 0, 0), 40)
+        self.old_pos = pos
+        return Action_goalkeeper
+    
+    def _golakeeper_afk_point(self, field: fld.Field, ball: aux.Point) -> aux.Point:
+        result_list = aux.line_circle_intersect(
+            ball, field.ally_goal.center, field.ally_goal.center - field.ally_goal.eye_forw * 100, 450, "S"
+        )
+        result = field.ally_goal.center + field.ally_goal.eye_forw * 300
+        if len(result_list) == 1:
+            result = result_list[0]
+        elif len(result_list) == 2:
+            if abs(result_list[0].x) < abs(result_list[1].x):
+                result = result_list[0]
+            else:
+                result = result_list[1]
+
+        field.strategy_image.draw_circle(result, (255, 0, 0), 30)
+        # field.strategy_image.draw_circle(field.ally_goal.center - field.ally_goal.eye_forw * 100, (255, 0, 0), 500)
+        return result

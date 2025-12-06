@@ -111,6 +111,7 @@ class Strategy:
         """
         print(GameStates)
         field.active_enemies # масив роботов на поле
+        self.ball = field.ball_start_point or aux.Point(0, 0)
 
         #p+9obot_position1.is_used # true на поле
 

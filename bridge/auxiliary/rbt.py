@@ -65,7 +65,7 @@ class Robot(entity.Entity):
         # !v REAL
         gains_full = [2.5, 0.07, 0.05, const.MAX_SPEED]
         if r_id == const.GK:
-            gains_full = [2.5, 0.06, 0.05, const.MAX_SPEED]
+            gains_full = [3.1, 0.06, 0.05, const.MAX_SPEED]
         gains_soft = gains_full
         a_gains_full = [15, 0.5, 0, const.MAX_SPEED_R]
         if const.IS_SIMULATOR_USED:

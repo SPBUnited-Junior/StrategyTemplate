@@ -63,9 +63,9 @@ class Strategy:
 
         # Индексы роботов
 
-        self.goalkeeper_idx = 0
-        self.idx1 = 1
-        self.idx2 = 2
+        self.goalkeeper_idx = 3
+        self.idx1 = 4
+        self.idx2 = 5
 
         # Индексы роботов соперника
 
@@ -116,7 +116,7 @@ class Strategy:
         #p+9obot_position1.is_used # true на поле
 
         """Game State Management"""
-        voltage_kik = 5 
+        voltage_kik = 6
 
         robot_position_goalkeeper = field.allies[self.goalkeeper_idx].get_pos()
         robot_position1 = field.allies[self.idx1].get_pos()
@@ -170,10 +170,9 @@ class Strategy:
         for _ in range(const.TEAM_ROBOTS_MAX_COUNT):
             actions.append(None)
 
-        # self.we_active = False
-        # field.game_state = GameStates.FREE_KICK
         print(field.game_state, self.we_active)
         #self.process_goalkeeper(field, actions)
+        print(robot_position1_enemy, robot_position2_enemy)
         if aux.dist(self.ball, robot_position1_enemy) < aux.dist(self.ball, robot_position2_enemy):
             Action_goalkeeper = self._process_goalkeeper(
                 field, self.ball, robot_position1_enemy, self.idx_enemy1, robot_position_goalkeeper
@@ -183,8 +182,8 @@ class Strategy:
                 field, self.ball, robot_position2_enemy, self.idx_enemy2, robot_position_goalkeeper
             )
         actions[self.goalkeeper_idx] = Action_goalkeeper
-        self.we_active = False
-        field.game_state = GameStates.RUN
+        # self.we_active = False
+        # field.game_state = GameStates.PREPARE_KICKOFF
         
         if field.game_state == GameStates.RUN:
             self.run(field, actions)
@@ -237,8 +236,8 @@ class Strategy:
             actions[self.idx1] = KickActions.Straight(position_attacker_gate, voltage_kik)
 
         elif field.game_state == GameStates.PREPARE_KICKOFF:
-            kik_angle1 = robot_position1_enemy - robot_position1
-            kik_angle2 = robot_position2_enemy - robot_position2
+            kik_angle1 = self.ball - robot_position1
+            kik_angle2 = self.ball- robot_position2
 
             pos_kikoff1 = aux.Point(500 * field.polarity, 0)   
             pos_kikoff2 = aux.Point(1000 * field.polarity, 0)
@@ -247,8 +246,8 @@ class Strategy:
             actions[self.idx2] = Actions.GoToPoint(pos_kikoff2, kik_angle2.arg())
             
         elif field.game_state == GameStates.KICKOFF and  not self.we_active:
-            kik_angle1 = robot_position1_enemy - robot_position1
-            kik_angle2 = robot_position2_enemy - robot_position2
+            kik_angle1 = self.ball - robot_position1
+            kik_angle2 = self.ball - robot_position2
             pos_kikoff1 = aux.Point(500 * field.polarity, 0)
             pos_kikoff2 = aux.Point(1000 * field.polarity, 0)
             actions[self.idx1] = Actions.GoToPoint(pos_kikoff1, kik_angle1.arg())
@@ -376,7 +375,7 @@ class Strategy:
         if self.nearest_robot != None and self.robot_catch_ball != None:
             optimal_point = self.optimal_point(field, self.robot_catch_ball.get_pos(), self.ball, self.enemies, self.point_kick_goal)
             optimal_point_not_kick = self.optimal_point(field, self.robot_catch_ball.get_pos(), self.ball, self.enemies, None)
-            if self.point_kick_goal != None and self.passes_status == FlagToPasses.FALSE and aux.dist(field.enemy_goal.center, self.ball) < 2000:
+            if self.point_kick_goal != None and self.passes_status == FlagToPasses.FALSE:
                 actions[self.nearest_robot.r_id] = self.kick_ball_to_goal(field)
             elif self.passes_status == FlagToPasses.FALSE:
                 actions[self.nearest_robot.r_id] = self.kick_ball_to_pas(field, self.robot_catch_ball.get_pos())
@@ -386,7 +385,7 @@ class Strategy:
             if self.check_cath_ball(field, self.robot_catch_ball):
                 actions[self.robot_catch_ball.r_id] = self.process_catch_ball(field, self.robot_catch_ball)
             else:
-                if self.point_kick_goal != None or aux.dist(field.enemy_goal.center, self.ball) < 2500:
+                if self.point_kick_goal != None:
                     actions[self.robot_catch_ball.r_id] = Actions.GoToPoint(optimal_point, (self.ball - self.robot_catch_ball.get_pos()).arg())
                 else:
                     actions[self.robot_catch_ball.r_id] = Actions.GoToPoint(optimal_point_not_kick, (self.ball - self.robot_catch_ball.get_pos()).arg())
@@ -446,21 +445,10 @@ class Strategy:
         bottom_crossbar = field.ally_goal.down - aux.Point(0, 200*field.polarity) # Небольшое расстояние от нижней штанги к углу
         up_crossbar = field.ally_goal.up + aux.Point(0, 200*field.polarity)  # Небольшое расстояние от верхней штанги к углу
 
-        bottom_block = aux.closest_point_on_line(nearest_enemy_point, bottom_crossbar, dist_to_robot_with_ball, "R")
-        up_block = aux.closest_point_on_line(nearest_enemy_point, up_crossbar, dist_to_robot_with_ball, "R")
-        centerDef = aux.closest_point_on_line(nearest_enemy_point, field.ally_goal.center, dist_to_robot_with_ball, "R")
-
         # Вычисление точки для блокировки удара
         
 
-        if field.polarity == 1:
-            actions[self.idx1] = Actions.GoToPoint(centerDef, (ball-robot_position1).arg())
-            if  nearest_enemy_point == aux.Point(0, 0):
-                actions[self.idx1] = Actions.GoToPoint(field.ally_goal.center + aux.Point(-1000, 0), 3.14)
-        else:
-            actions[self.idx1] = Actions.GoToPoint(centerDef, (ball-robot_position1).arg())
-            if  nearest_enemy_point == aux.Point(0, 0):
-                actions[self.idx1] = Actions.GoToPoint(field.ally_goal.center + aux.Point(-1000, 0), 3.14)
+        actions[self.idx2] = Actions.GoToPoint(self._circle_to_two_tangents(80, ball, field.ally_goal.down, field.ally_goal.up, robot_position1), (ball - robot_position2).arg())
 
             
         #Блокировка паса
@@ -682,7 +670,7 @@ class Strategy:
         Action_goalkeeper: Action = Actions.GoToPoint(goalkeeper, goalkeeper.arg())
         field.strategy_image.draw_circle(field.ball_start_point, (255, 0, 255), 50)
         # Если противник близко к мячу (готовится к удару)
-        if aux.dist(attacker, ball) < 200:
+        if aux.dist(attacker, ball) < 220:
             predict_pos = ball + aux.rotate(aux.Point(400, 0), field.enemies[idx].get_angle())
             field.strategy_image.draw_line(ball, predict_pos, (255, 255, 255), 5)
             pos = aux.closest_point_on_line(ball, predict_pos, goalkeeper, "R")
@@ -857,3 +845,23 @@ class Strategy:
         field.strategy_image.draw_circle(result, (255, 0, 0), 30)
         # field.strategy_image.draw_circle(field.ally_goal.center - field.ally_goal.eye_forw * 100, (255, 0, 0), 500)
         return result
+    
+    def _circle_to_two_tangents(
+            self, radius: float, point: aux.Point, point1: aux.Point, point2: aux.Point, robot: aux.Point
+            ) -> aux.Point:
+        """
+        Вычисляет точку на окружности между двумя касательными.
+        Добавлена проверка на деление на ноль при вычислении синуса.
+        """
+        if point1.y > point2.y:
+            lower_point = point2
+            top_point = point1
+        else:
+            lower_point = point1
+            top_point = point2
+        angle = aux.get_angle_between_points(top_point, point, lower_point) / 2
+        sin_val = math.sin(angle) if abs(math.sin(angle)) > 1e-6 else 1e-6
+        center = lower_point - point
+        center = center.unity() * (radius / abs(sin_val))
+        center = aux.rotate(center, -angle)
+        return aux.closest_point_on_line(point, center + point, robot, "S") #center + point  # Используем point как исходную точку (аналог ball в оригинале)

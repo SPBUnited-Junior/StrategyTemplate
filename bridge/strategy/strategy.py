@@ -445,21 +445,10 @@ class Strategy:
         bottom_crossbar = field.ally_goal.down - aux.Point(0, 200*field.polarity) # Небольшое расстояние от нижней штанги к углу
         up_crossbar = field.ally_goal.up + aux.Point(0, 200*field.polarity)  # Небольшое расстояние от верхней штанги к углу
 
-        bottom_block = aux.closest_point_on_line(nearest_enemy_point, bottom_crossbar, dist_to_robot_with_ball, "R")
-        up_block = aux.closest_point_on_line(nearest_enemy_point, up_crossbar, dist_to_robot_with_ball, "R")
-        centerDef = aux.closest_point_on_line(nearest_enemy_point, field.ally_goal.center, dist_to_robot_with_ball, "R")
-
         # Вычисление точки для блокировки удара
         
 
-        if field.polarity == 1:
-            actions[self.idx1] = Actions.GoToPoint(centerDef, (ball-robot_position1).arg())
-            if  nearest_enemy_point == aux.Point(0, 0):
-                actions[self.idx1] = Actions.GoToPoint(field.ally_goal.center + aux.Point(-1000, 0), 3.14)
-        else:
-            actions[self.idx1] = Actions.GoToPoint(centerDef, (ball-robot_position1).arg())
-            if  nearest_enemy_point == aux.Point(0, 0):
-                actions[self.idx1] = Actions.GoToPoint(field.ally_goal.center + aux.Point(-1000, 0), 3.14)
+        actions[self.idx2] = Actions.GoToPoint(self._circle_to_two_tangents(80, ball, field.ally_goal.down, field.ally_goal.up, robot_position1), (ball - robot_position2).arg())
 
             
         #Блокировка паса
@@ -856,3 +845,23 @@ class Strategy:
         field.strategy_image.draw_circle(result, (255, 0, 0), 30)
         # field.strategy_image.draw_circle(field.ally_goal.center - field.ally_goal.eye_forw * 100, (255, 0, 0), 500)
         return result
+    
+    def _circle_to_two_tangents(
+            self, radius: float, point: aux.Point, point1: aux.Point, point2: aux.Point, robot: aux.Point
+            ) -> aux.Point:
+        """
+        Вычисляет точку на окружности между двумя касательными.
+        Добавлена проверка на деление на ноль при вычислении синуса.
+        """
+        if point1.y > point2.y:
+            lower_point = point2
+            top_point = point1
+        else:
+            lower_point = point1
+            top_point = point2
+        angle = aux.get_angle_between_points(top_point, point, lower_point) / 2
+        sin_val = math.sin(angle) if abs(math.sin(angle)) > 1e-6 else 1e-6
+        center = lower_point - point
+        center = center.unity() * (radius / abs(sin_val))
+        center = aux.rotate(center, -angle)
+        return aux.closest_point_on_line(point, center + point, robot, "S") #center + point  # Используем point как исходную точку (аналог ball в оригинале)

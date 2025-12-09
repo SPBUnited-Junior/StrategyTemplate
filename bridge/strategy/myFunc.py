@@ -241,6 +241,7 @@ def doPassNearAllly(field: fld.Field, actions: list[Optional[Action]], idFrom: i
     pointToPass = None
     rToPass = None
 
+    print(len(points))
     if len(points) > 1:
         """if our rs on field, except GK"""
         if idFrom == const.GK:
@@ -248,6 +249,7 @@ def doPassNearAllly(field: fld.Field, actions: list[Optional[Action]], idFrom: i
             # ourRsSortedByDistToBall = ourRsSortedByDistToBall.remove(field.allies[idFrom])
         else:
             ourRsSortedByDistToBall = [fld.find_nearest_robot(pointFrom, points, avoid=exclude)]
+            print(len(ourRsSortedByDistToBall))
 
         rToPass, pointToPass = getPointToPassAndRToPass(field, actions, ourRsSortedByDistToBall, enemys, pointFrom, idFrom)
         ourRsSortedByDistToBall[0].r_id
@@ -277,8 +279,10 @@ def doPassNearAllly(field: fld.Field, actions: list[Optional[Action]], idFrom: i
             field.allies[idFrom].get_pos(), (field.ball.get_pos() - field.allies[idFrom].get_pos()).arg()
         )  # TODO change koef for slow rotate with ball
     if rToPass != None:
+        print("Have point for pass")
         return rToPass.r_id
     else:
+        print("None point for pass")
         return None
     return ourRsSortedByDistToBall[0].r_id
     # else: # consider this case

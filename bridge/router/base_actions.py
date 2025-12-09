@@ -45,6 +45,8 @@ class Actions:
 
             self.use_dribbler = False
 
+            self.use_dribbler = False
+
         def behavior(self, domain: ActionDomain, current_action: ActionValues) -> None:
             cur_robot = domain.robot
             vec_err = self.target_pos - cur_robot.get_pos()
@@ -67,6 +69,11 @@ class Actions:
             if (cur_vel_abs - prev_vel_abs).mag() / (
                 time() - cur_robot.prev_sended_time
             ) > const.MAX_ACCELERATION and cur_vel_abs.mag() > prev_vel_abs.mag():
+                cur_vel_abs = aux.rotate(current_action.vel, -cur_robot.get_angle())
+            prev_vel_abs = aux.rotate(cur_robot.prev_sended_vel, -cur_robot.prev_sended_angle)
+            if (cur_vel_abs - prev_vel_abs).mag() / (
+                time() - cur_robot.prev_sended_time
+            ) > const.MAX_ACCELERATION and cur_vel_abs.mag() > prev_vel_abs.mag():
                 # domain.field.router_image.draw_circle(aux.Point(0, 1000), size_in_mms=200)
                 current_action.vel = aux.rotate(
                     prev_vel_abs
@@ -79,6 +86,9 @@ class Actions:
             cur_robot.prev_sended_angle = cur_robot.get_angle()
             cur_robot.prev_sended_time = time()
             current_action.angle = self.target_angle
+
+            if self.use_dribbler:
+                current_action.dribbler_speed = 15
 
             if self.use_dribbler:
                 current_action.dribbler_speed = 15
@@ -103,8 +113,15 @@ class Actions:
             self.ignore_ball = ignore_ball
             self.target_vel = target_vel
             self.ignore_robots = ignore_robots
+            self.target_vel = target_vel
+            self.ignore_robots = ignore_robots
 
         def use_behavior_of(self, domain: ActionDomain, current_action: ActionValues) -> list["Action"]:
+            avoid_ball = domain.game_state in [GameStates.STOP, GameStates.PREPARE_KICKOFF] or (
+                domain.game_state in [GameStates.FREE_KICK, GameStates.KICKOFF] and not domain.we_active
+            )
+            self.target_pos = correct_target_pos(domain.field, domain.robot, self.target_pos, avoid_ball)
+
             avoid_ball = domain.game_state in [GameStates.STOP, GameStates.PREPARE_KICKOFF] or (
                 domain.game_state in [GameStates.FREE_KICK, GameStates.KICKOFF] and not domain.we_active
             )
@@ -134,9 +151,14 @@ class Actions:
                         next_point = convex_hull[j]
 
             pth_wp = calc_passthrough_point(
+                domain, next_point, avoid_ball=avoid_ball, ignore_ball=self.ignore_ball, ignore_robots=self.ignore_robots)
+            pth_wp = calc_passthrough_point(
                 domain, next_point, avoid_ball=avoid_ball, ignore_ball=self.ignore_ball, ignore_robots=self.ignore_robots
             )
             if pth_wp is not None:
+                target_speed = min(const.MAX_SPEED, aux.dist(pth_wp, next_point))
+                target_vel = (pth_wp - domain.robot.get_pos()).unity() * target_speed
+                return [Actions.GoToPointIgnore(pth_wp, angle0, target_vel=target_vel)]
                 target_speed = min(const.MAX_SPEED, aux.dist(pth_wp, next_point))
                 target_vel = (pth_wp - domain.robot.get_pos()).unity() * target_speed
                 return [Actions.GoToPointIgnore(pth_wp, angle0, target_vel=target_vel)]
@@ -209,6 +231,8 @@ class Actions:
             align_pos = ball_pos - aux.rotate(aux.RIGHT, self.target_angle) * const.GRAB_ALIGN_DIST
             ignore_ball = len(aux.line_circle_intersect(domain.robot.get_pos(), align_pos, ball_pos, const.ROBOT_R, "S")) < 2
             return [Actions.GoToPoint(align_pos, self.target_angle, True, ignore_ball)]
+            ignore_ball = len(aux.line_circle_intersect(domain.robot.get_pos(), align_pos, ball_pos, const.ROBOT_R, "S")) < 2
+            return [Actions.GoToPoint(align_pos, self.target_angle, True, ignore_ball)]
 
     class Velocity(Action):
         """Move robot with velocity and angle_speed"""
@@ -277,6 +301,12 @@ class KickActions:
             if self.is_upper:
                 self.voltage = const.VOLTAGE_UP
 
+            if self.voltage > const.VOLTAGE_SHOOT:
+                self.voltage = const.VOLTAGE_SHOOT
+
+            if self.is_upper:
+                self.voltage = const.VOLTAGE_UP
+
             self.pass_pos: Optional[aux.Point] = None
             if is_pass:
                 self.pass_pos = self.target_pos
@@ -301,7 +331,7 @@ class KickActions:
 
             actions = [
                 Actions.BallGrab(kick_angle),
-                DumbActions.delayedShootAction(kick_angle, self.is_upper),
+                DumbActions.delayedShootAction(self.target_pos, self.is_upper),
                 DumbActions.ControlVoltageAction(self.voltage, self.pass_pos),
             ]
 
@@ -315,7 +345,7 @@ class KickActions:
             actions = [
                 Actions.BallGrab(kick_angle),
                 DumbActions.slowRotateWithBall(target_angle=kick_angle, distToAim=distToAim),
-                DumbActions.delayedShootAction(kick_angle, self.is_upper),
+                DumbActions.delayedShootAction(self.target_pos, self.is_upper),
                 DumbActions.ControlVoltageAction(self.voltage, self.pass_pos),
             ]
 
@@ -376,16 +406,17 @@ class DumbActions:
     class delayedShootAction(Action):
         """Shoot the target when kick is aligned"""
 
-        def __init__(self, target_angle: float, is_upper: bool = False, angle_bounds: Optional[float] = None) -> None:
-            self.target_angle = target_angle
+        def __init__(self, target_pos: aux.Point, is_upper: bool = False, angle_bounds: Optional[float] = None) -> None:
+            self.target_pos = target_pos
             self.autokick = 2 if is_upper else 1
             self.angle_bounds = angle_bounds
 
         def is_defined(self, domain: ActionDomain) -> bool:
+            kick_angle = aux.angle_to_point(domain.robot.get_pos(), self.target_pos)
             is_aligned = (
-                domain.robot.is_kick_aligned_by_angle(self.target_angle, angle_bounds=self.angle_bounds)
+                domain.robot.is_kick_aligned_by_angle(kick_angle, angle_bounds=self.angle_bounds)
                 if self.angle_bounds is not None
-                else domain.robot.is_kick_aligned_by_angle(self.target_angle)
+                else domain.robot.is_kick_aligned_by_angle(kick_angle)
             )
             isBallIn = domain.field.is_ball_in(domain.robot)
             #print("is_aligned =", is_aligned)
@@ -413,11 +444,14 @@ class DumbActions:
 
         def is_defined(self, domain: ActionDomain) -> bool:
             return aux.dist(domain.robot.get_pos(), domain.field.ball.get_pos()) < 1000
+            return aux.dist(domain.robot.get_pos(), domain.field.ball.get_pos()) < 1000
 
         def behavior(self, domain: ActionDomain, current_action: ActionValues) -> None:
             if self.pass_pos is not None:
                 self.voltage = get_pass_voltage(aux.dist(domain.robot.get_pos(), self.pass_pos))
 
+            current_action.kicker_voltage = self.voltage
+            # NOTE test 15 when is_pass
             current_action.kicker_voltage = self.voltage
             # NOTE test 15 when is_pass
 
@@ -437,6 +471,9 @@ class DumbActions:
 
         def behavior(self, domain: ActionDomain, current_action: ActionValues) -> None:
             vec_to_target = self.target - domain.robot.get_pos()
+            cur_speed = self.final_velocity * aux.minmax(
+                (self.max_dist - vec_to_target.mag()) / (self.max_dist - self.min_dist), 0, 1
+            )
             cur_speed = self.final_velocity * aux.minmax(
                 (self.max_dist - vec_to_target.mag()) / (self.max_dist - self.min_dist), 0, 1
             )
@@ -496,7 +533,7 @@ def get_pass_voltage(length: float) -> int:
     if const.IS_SIMULATOR_USED:
         # TODO fix control decoder
         return int(aux.minmax(0.003 * length + 1.8, 6, const.VOLTAGE_SHOOT))
-    return int(aux.minmax(0.0014 * length + 2.4, 5, const.VOLTAGE_SHOOT))
+    return int(aux.minmax(0.0014 * length + 2.4, 6, const.VOLTAGE_SHOOT))
 
 
 def get_grab_speed(

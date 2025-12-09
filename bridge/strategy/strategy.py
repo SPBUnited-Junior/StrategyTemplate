@@ -24,14 +24,14 @@ class Strategy:
 
     def __init__(self) -> None:
         self.we_active: bool = False
-        self.state: int = 0
+        self.maxVelBall: float = 0
         self.idGettingPass: Optional[int] = None
         # self.idGettingPass: SupportsIndex = None
         self.idDoPass: Optional[int] = None
         self.oldIdDoPass: Optional[int] = None
         self.GKLastState: Optional[str] = None
         self.idFirstAttacker: int = 0
-        self.idSecondAttacker: int = 1
+        self.idSecondAttacker: int = 5
         self.TimeWeTryDoPass: Optional[float] = None
         self.whatWeDoAtThisRun: whatWeDoStates = whatWeDoStates.TestRotateWithBall
 
@@ -103,6 +103,13 @@ class Strategy:
                 match self.whatWeDoAtThisRun:
 
                     case whatWeDoStates.TestPass:
+                        if field.ball.get_pos().y > 5000:
+                            print("!!!!!!!!!!!!!!!!!!!!!!!!")
+                        # print(field.ball.get_vel().mag() > 100)
+                        if self.maxVelBall < field.ball.get_vel().mag() and field.ball.get_vel().mag()<10000:
+                            self.maxVelBall = field.ball.get_vel().mag()
+                        print("self.maxVelBall =", self.maxVelBall)
+
                         field.strategy_image.draw_circle(field.ball.get_pos(), size_in_mms=50)
                         # for test pass
                         ballPos = field.ball.get_pos()
@@ -125,7 +132,7 @@ class Strategy:
                                 """if we not yet catch ball"""
                                 otherAttackerR = field.allies[(nearestR.r_id==self.idFirstAttacker)*self.idSecondAttacker + (nearestR.r_id==self.idSecondAttacker)*self.idFirstAttacker]
                                 actions[idxThisR] = Actions.BallGrab((-nearestR.get_pos()+otherAttackerR.get_pos()).arg())
-                            elif self.idDoPass == idxThisR and aux.dist(ballPos, thisRPos) < 250:
+                            elif self.idDoPass == idxThisR and field.is_ball_in(thisR):
                                 """if this R do pass"""
                                 status = "if this R do pass"
                                 # if self.TimeWeTryDoPass is not None and time() - self.TimeWeTryDoPass > 100:
@@ -143,7 +150,7 @@ class Strategy:
                                 #     """grab ball"""
                                 #     # print("gab ball")
                                 #     actions[self.idDoPass] = Actions.BallGrab((field.ball.get_pos() - field.allies[self.idDoPass].get_pos()).arg() )
-                                elif field.is_ball_moves():
+                                elif field.ball.get_vel().mag() > 100:
                                     self.idDoPass = None
                                     # print("pass done")
                                     """pass done"""
@@ -179,9 +186,19 @@ class Strategy:
                         # actions[2] = Actions.Kick(field.enemy_goal.center)
                         # field.allies[2].set_dribbler_speed(15)
                         # actions[2] = Actions.GoToPoint(aux.Point(0, 0), 0)
-                        actions[0] = Actions.GoToPoint(aux.Point(0, 0), 0).compose(DribblerActions.SetDribblerSpeed(15))
+                        # actions[0] = Actions.GoToPoint(aux.Point(0, 0), 0).compose(DribblerActions.SetDribblerSpeed(15))
+                        # print(field.is_ball_moves())
+                        # print(field.ball.get_vel().mag() > 100)
+                        # field.strategy_image.draw_circle(field.ball.get_pos(), (0, 0, 255), 200)
+                        # if self.maxVelBall < field.ball.get_vel().mag() and field.ball.get_vel().mag()<10000:
+                        #     self.maxVelBall = field.ball.get_vel().mag()
+                        # print(self.maxVelBall)
+                        actions[self.idFirstAttacker] = Actions.Kick(field.enemy_goal.center)
                     case whatWeDoStates.TestRotateWithBall:
                         thisR = field.allies[self.idFirstAttacker]
+                        if self.maxVelBall < field.ball.get_vel().mag() and field.ball.get_vel().mag()<10000:
+                            self.maxVelBall = field.ball.get_vel().mag()
+                        print(self.maxVelBall)
                         if field.is_ball_in(thisR):
                             actions[self.idFirstAttacker] = Actions.Kick(field.enemy_goal.center)
                             # actions[self.idFirstAttacker] = Actions.Kick(aux.Point(0, 0))
@@ -192,11 +209,11 @@ class Strategy:
                             #     # goToNearestScorePoint(field, actions, self.idFirstAttacker, 0)
                             #     field.strategy_image.draw_line(field.enemy_goal.up, field.enemy_goal.down, (0, 0, 0), 30)
                         else:
-                            print(1)
-                            actions[self.idFirstAttacker] = Actions.BallGrab(-math.pi/2)
-                            field.strategy_image.draw_circle(field.ball.get_pos(), (0, 255, 0), 1000)
-                            print(field.ball.get_pos())
-                            field.strategy_image.draw_circle(aux.Point(0, 0), (0, 255, 0), 1000)
+                            # print(1)
+                            actions[self.idFirstAttacker] = Actions.BallGrab(math.pi/2)
+                            # field.strategy_image.draw_circle(field.ball.get_pos(), (0, 255, 0), 1000)
+                            # print(field.ball.get_pos())
+                            # field.strategy_image.draw_circle(aux.Point(0, 0), (0, 255, 0), 1000)
                         # field.strategy_image.send_telemetry("Curr Action", str(actions[self.idFirstAttacker]))
                         # print(actions[self.idFirstAttacker])
                     case whatWeDoStates.NewIsBallInTest:

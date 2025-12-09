@@ -30,8 +30,8 @@ class Strategy:
         self.idDoPass: Optional[int] = None
         self.oldIdDoPass: Optional[int] = None
         self.GKLastState: Optional[str] = None
-        self.idFirstAttacker: int = 2
-        self.idSecondAttacker: int = 0
+        self.idFirstAttacker: int = 0
+        self.idSecondAttacker: int = 1
         self.TimeWeTryDoPass: Optional[float] = None
         self.whatWeDoAtThisRun: whatWeDoStates = whatWeDoStates.TestRotateWithBall
 
@@ -83,7 +83,7 @@ class Strategy:
         # TODO fix problem with that robots comes so close to each other,when they try take ball
         # print(field.active_allies(False))
         if len(field.active_allies(True)) != 0:  # if our Rs on field
-            if field.ally_color == const.Color.YELLOW:
+            if field.ally_color == const.Color.BLUE:
                 """code for blue"""
                 # print(field.game_state)#for real
                 if self.whatWeDoAtThisRun == whatWeDoStates.Play or self.whatWeDoAtThisRun == whatWeDoStates.BothPlay:
@@ -192,7 +192,11 @@ class Strategy:
                             #     # goToNearestScorePoint(field, actions, self.idFirstAttacker, 0)
                             #     field.strategy_image.draw_line(field.enemy_goal.up, field.enemy_goal.down, (0, 0, 0), 30)
                         else:
+                            print(1)
                             actions[self.idFirstAttacker] = Actions.BallGrab(-math.pi/2)
+                            field.strategy_image.draw_circle(field.ball.get_pos(), (0, 255, 0), 1000)
+                            print(field.ball.get_pos())
+                            field.strategy_image.draw_circle(aux.Point(0, 0), (0, 255, 0), 1000)
                         # field.strategy_image.send_telemetry("Curr Action", str(actions[self.idFirstAttacker]))
                         # print(actions[self.idFirstAttacker])
                     case whatWeDoStates.NewIsBallInTest:

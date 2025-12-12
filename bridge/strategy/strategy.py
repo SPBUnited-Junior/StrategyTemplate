@@ -63,14 +63,14 @@ class Strategy:
 
         # Индексы роботов
 
-        self.goalkeeper_idx = 3
+        self.goalkeeper_idx = 5
         self.idx1 = 4
-        self.idx2 = 5
+        self.idx2 = 2
 
         # Индексы роботов соперника
 
-        self.goalkeeper_idx_enemy = 0
-        self.idx_enemy1 = 1
+        self.goalkeeper_idx_enemy = 5
+        self.idx_enemy1 = 0
         self.idx_enemy2 = 2
 
         self.enemies : list[aux.Point] = [] # массив позиций вражеских роботов
@@ -260,7 +260,7 @@ class Strategy:
             self.process_attacker(field, actions)
 
         elif field.game_state == GameStates.FREE_KICK and not self.we_active:
-            self.process_defender(field, actions, 450)
+            self.process_defender(field, actions)
 
         elif field.game_state == GameStates.STOP:
             self.flag = False
@@ -290,11 +290,14 @@ class Strategy:
         dist_ally = aux.dist(fld.find_nearest_robot(self.ball, field.active_allies(False)).get_pos(), self.ball)
         dist_enemy = aux.dist(fld.find_nearest_robot(self.ball, field.active_enemies(False)).get_pos(), self.ball)
 
+        '''
         if (dist_ally > dist_enemy and ((self.ball.x < 0 and field.ally_goal.center.x < 0) or (self.ball.x > 0 and field.ally_goal.center.x > 0))):
             self.process_defender(field, actions)
         else:
             self.process_attacker(field, actions)
-        
+            pass
+        '''
+        self.process_defender(field, actions)
 
     def process_goalkeeper(self, field: fld.Field, actions: list[Optional[Action]]) ->  list[Optional[Action]]:
         """
@@ -411,7 +414,7 @@ class Strategy:
         voltage = get_pass_voltage(aux.dist(self.ball, point_to_pas))
         return KickActions.Straight(point_to_pas, voltage)
     
-    def process_defender(self, field: fld.Field, actions: list[Optional[Action]], dist_to_ball: float = 200.0) -> None:
+    def process_defender(self, field: fld.Field, actions: list[Optional[Action]]) -> None:
         """
         The logic by which the attacker acts
 
@@ -440,15 +443,25 @@ class Strategy:
                 nearest_enemy_dist = aux.dist(i.get_pos(), ball)
                 nearest_enemy_point = i.get_pos()
         
-        dist_to_robot_with_ball = (ball - nearest_enemy_point).unity() * dist_to_ball + ball
+        dist_to_robot_with_ball = (ball - nearest_enemy_point).unity() * 200 + ball
 
         bottom_crossbar = field.ally_goal.down - aux.Point(0, 200*field.polarity) # Небольшое расстояние от нижней штанги к углу
         up_crossbar = field.ally_goal.up + aux.Point(0, 200*field.polarity)  # Небольшое расстояние от верхней штанги к углу
 
+
+        bottom_block = aux.closest_point_on_line(nearest_enemy_point, bottom_crossbar, dist_to_robot_with_ball, "R")
+        up_block = aux.closest_point_on_line(nearest_enemy_point, up_crossbar, dist_to_robot_with_ball, "R")
+
         # Вычисление точки для блокировки удара
         
+        if robot_position1.x - 50 >= nearest_enemy_point.x:
+            if aux.dist(dist_to_robot_with_ball, bottom_block) > aux.dist(dist_to_robot_with_ball, up_block):
+                actions[self.idx1] = Actions.GoToPoint(up_block, (ball - robot_position1).arg())
+            else:
+                actions[self.idx1] = Actions.GoToPoint(bottom_block, (ball - robot_position1).arg())
 
-        actions[self.idx2] = Actions.GoToPoint(self._circle_to_two_tangents(80, ball, field.ally_goal.down, field.ally_goal.up, robot_position1), (ball - robot_position2).arg())
+        else:
+            actions[self.idx1] = Actions.GoToPoint(self._circle_to_two_tangents(80, ball, field.ally_goal.down, field.ally_goal.up, robot_position1), (ball - robot_position1).arg())
 
             
         #Блокировка паса

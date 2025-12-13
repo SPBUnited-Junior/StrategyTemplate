@@ -71,6 +71,8 @@ class Strategy:
 
         self.goalkeeper_idx_enemy = 5
         self.idx_enemy1 = 0
+        self.goalkeeper_idx_enemy = 5
+        self.idx_enemy1 = 0
         self.idx_enemy2 = 2
 
         self.enemies : list[aux.Point] = [] # массив позиций вражеских роботов
@@ -286,18 +288,20 @@ class Strategy:
     def run(self, field: fld.Field, actions: list[Optional[Action]]) -> None:
         
 
-        #actions = self.process_attacker(field, actions)
-        dist_ally = aux.dist(fld.find_nearest_robot(self.ball, field.active_allies(False)).get_pos(), self.ball)
-        dist_enemy = aux.dist(fld.find_nearest_robot(self.ball, field.active_enemies(False)).get_pos(), self.ball)
+        # #actions = self.process_attacker(field, actions)
+        # dist_ally = aux.dist(fld.find_nearest_robot(self.ball, field.active_allies(False)).get_pos(), self.ball)
+        # dist_enemy = aux.dist(fld.find_nearest_robot(self.ball, field.active_enemies(False)).get_pos(), self.ball)
 
-        '''
-        if (dist_ally > dist_enemy and ((self.ball.x < 0 and field.ally_goal.center.x < 0) or (self.ball.x > 0 and field.ally_goal.center.x > 0))):
-            self.process_defender(field, actions)
+        # if (dist_ally > dist_enemy and ((self.ball.x < 0 and field.ally_goal.center.x < 0) or (self.ball.x > 0 and field.ally_goal.center.x > 0))):
+        #     self.process_defender(field, actions)
+        # else:
+        # self.process_attacker(field, actions)
+
+        if self.point_kick_goal is not None:
+            actions[0] = KickActions.Turn_Kick(self.point_kick_goal, 0)
         else:
             self.process_attacker(field, actions)
-            pass
-        '''
-        self.process_defender(field, actions)
+        
 
     def process_goalkeeper(self, field: fld.Field, actions: list[Optional[Action]]) ->  list[Optional[Action]]:
         """
@@ -405,7 +409,7 @@ class Strategy:
         if point_kick_goal is None:
             point_kick_goal = field.enemy_goal.center
 
-        return KickActions.Straight(point_kick_goal)
+        return KickActions.Turn_Kick(point_kick_goal)
     
     def kick_ball_to_pas(self, field: fld.Field,  point_to_pas: aux.Point) -> Action:
         """
@@ -692,7 +696,7 @@ class Strategy:
                 predict_pos,
                 field.ally_goal.up + field.ally_goal.eye_forw * 120,
                 field.ally_goal.down + field.ally_goal.eye_forw * 120,
-                "LL",
+                "RL",
             )
             result: Optional[aux.Point] = None
             if cords1 is not None:
@@ -703,7 +707,7 @@ class Strategy:
                         cords1,
                         field.ally_goal.frw_up - field.ally_goal.eye_forw,
                         field.ally_goal.frw_down - field.ally_goal.eye_forw,
-                        "LL",
+                        "RL",
                     )
                     if result is None:
                         result = aux.get_line_intersection(
@@ -711,7 +715,7 @@ class Strategy:
                             cords1,
                             field.ally_goal.frw_down - field.ally_goal.eye_forw * 1,
                             field.ally_goal.center_down + field.ally_goal.eye_forw * 120,
-                            "LS",
+                            "RS",
                         )
                     if result is None:
                         result = aux.get_line_intersection(
@@ -719,7 +723,7 @@ class Strategy:
                             cords1,
                             field.ally_goal.frw_up - field.ally_goal.eye_forw * 1,
                             field.ally_goal.center_up + field.ally_goal.eye_forw * 120,
-                            "LL",
+                            "RL",
                         )
                     if result is None:
                         result = aux.get_line_intersection(
@@ -727,7 +731,7 @@ class Strategy:
                             cords1,
                             field.ally_goal.frw_up - field.ally_goal.eye_forw * 1,
                             field.ally_goal.frw_down - field.ally_goal.eye_forw * 1,
-                            "LL",
+                            "RL",
                         )
                     if result is None:
                         pos = field.ally_goal.center + field.ally_goal.eye_forw * 300
@@ -751,7 +755,7 @@ class Strategy:
                 ball,
                 field.ally_goal.up + field.ally_goal.eye_forw * 120,
                 field.ally_goal.down + field.ally_goal.eye_forw * 120,
-                "LL",
+                "RL",
             )
 
             if cords1 is not None:
@@ -762,7 +766,7 @@ class Strategy:
                         cords1,
                         field.ally_goal.frw_up - field.ally_goal.eye_forw,
                         field.ally_goal.frw_down - field.ally_goal.eye_forw,
-                        "LL",
+                        "RL",
                     )
                     if result is None:
                         result = aux.get_line_intersection(
@@ -770,7 +774,7 @@ class Strategy:
                             cords1,
                             field.ally_goal.frw_down - field.ally_goal.eye_forw * 1,
                             field.ally_goal.center_down + field.ally_goal.eye_forw * 120,
-                            "LS",
+                            "RS",
                         )
                     if result is None:
                         result = aux.get_line_intersection(
@@ -786,7 +790,7 @@ class Strategy:
                             cords1,
                             field.ally_goal.frw_up - field.ally_goal.eye_forw * 1,
                             field.ally_goal.frw_down - field.ally_goal.eye_forw * 1,
-                            "LL",
+                            "RL",
                         )
 
                     pos = aux.closest_point_on_line(result, cords1, goalkeeper, "S")

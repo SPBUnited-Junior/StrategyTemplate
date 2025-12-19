@@ -63,15 +63,15 @@ class Strategy:
 
         # Индексы роботов
 
-        self.goalkeeper_idx = 5
-        self.idx1 = 4
-        self.idx2 = 2
+        self.goalkeeper_idx = 7
+        self.idx1 = 3
+        self.idx2 = 6
 
         # Индексы роботов соперника
 
-        self.goalkeeper_idx_enemy = 5
-        self.idx_enemy1 = 0
-        self.idx_enemy2 = 2
+        self.goalkeeper_idx_enemy = 8
+        self.idx_enemy1 = 5
+        self.idx_enemy2 = 0
 
         self.enemies : list[aux.Point] = [] # массив позиций вражеских роботов
 
@@ -285,19 +285,20 @@ class Strategy:
 
     def run(self, field: fld.Field, actions: list[Optional[Action]]) -> None:
         
-
+        '''
         #actions = self.process_attacker(field, actions)
         dist_ally = aux.dist(fld.find_nearest_robot(self.ball, field.active_allies(False)).get_pos(), self.ball)
         dist_enemy = aux.dist(fld.find_nearest_robot(self.ball, field.active_enemies(False)).get_pos(), self.ball)
 
-        '''
+        
         if (dist_ally > dist_enemy and ((self.ball.x < 0 and field.ally_goal.center.x < 0) or (self.ball.x > 0 and field.ally_goal.center.x > 0))):
             self.process_defender(field, actions)
         else:
             self.process_attacker(field, actions)
-            pass
         '''
         self.process_defender(field, actions)
+
+        
 
     def process_goalkeeper(self, field: fld.Field, actions: list[Optional[Action]]) ->  list[Optional[Action]]:
         """
@@ -877,4 +878,4 @@ class Strategy:
         center = lower_point - point
         center = center.unity() * (radius / abs(sin_val))
         center = aux.rotate(center, -angle)
-        return aux.closest_point_on_line(point, center + point, robot, "S") #center + point  # Используем point как исходную точку (аналог ball в оригинале)
+        return aux.closest_point_on_line(aux.Point(point.x - 100, point.y), center + point, robot, "S") #center + point  # Используем point как исходную точку (аналог ball в оригинале)

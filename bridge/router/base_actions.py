@@ -14,7 +14,7 @@ from bridge.router.path_generation import calc_passthrough_point, correct_target
 from bridge.strategy.strategy import GameStates
 
 # Actions: ActionDomain -> ActionValues
-
+timer_to_stop : float = 0
 
 class Actions:
     """Class with all user-available actions (except kicks)"""
@@ -216,19 +216,30 @@ class Actions:
             self.start_angle = start_angle
 
         def behavior(self, domain: ActionDomain, current_action: ActionValues) -> None:
-            print(2)
             if domain.field.is_ball_in(domain.robot):
-                current_action.vel = aux.Point(220, 160)
-                current_action.angle = 0.5
+                if aux.wind_down_angle(self.target_angle - domain.robot.get_angle()) < 0:
+                    current_action.vel = aux.Point(200, -160)
+                    current_action.angle = max(-0.5, aux.wind_down_angle(self.target_angle - domain.robot.get_angle()) * 2)
+                else:
+                    current_action.vel = aux.Point(200, 160)
+                    current_action.angle = min(0.5, aux.wind_down_angle(self.target_angle - domain.robot.get_angle()) * 2)
                 current_action.beep = 1
                 current_action.dribbler_speed = 10
-                # if abs(aux.wind_down_angle(self.start_angle- domain.robot.get_angle())) < 0.6:
-                #     current_action.angle = 0.5
-                #     current_action.beep = 1
-                #     current_action.dribbler_speed = 10
-                # if abs(aux.wind_down_angle(self.target_angle - domain.robot.get_angle())) < 0.3:
-                #     current_action.angle = 0.5
-                #     current_action.beep = 1
+            if abs(aux.wind_down_angle(self.target_angle - domain.robot.get_angle())) <= const.KICK_ALIGN_ANGLE:
+                current_action.vel = aux.Point(0, 0)
+                current_action.angle = 0
+                current_action.beep = 1
+                current_action.dribbler_speed = 10
+
+    class Correct(Action):
+        """""" 
+        def __init__(self, target_angle: float) -> None:
+            self.target_angle = target_angle
+
+        def behavior(self, domain: ActionDomain, current_action: ActionValues) -> None:
+                current_action.angle = self.target_angle
+                current_action.beep = 0
+                current_action.dribbler_speed = 6
 
 
     class Velocity(Action):
@@ -329,14 +340,28 @@ class KickActions:
 
         """Grab the ball, rotates to the desired angle and kick it straight"""
         def use_behavior_of(self, domain: ActionDomain, current_action: ActionValues) -> list["Action"]:
+            global timer_to_stop
             kick_angle = aux.angle_to_point(domain.field.ball.get_pos(), self.target_pos)
-            print(domain.robot.get_angle(), kick_angle)
+            target_angle = (self.target_pos - domain.field.ball.get_pos()).arg()
+
             actions = [
                 Actions.BallGrab(self.start_angle),
                 Actions.Turn(kick_angle, self.start_angle),
-                DumbActions.ShootAction(self.target_pos, self.is_upper, 0.1),
-                DumbActions.ControlVoltageAction(self.voltage, self.pass_pos),
             ]
+            if (not domain.field.is_ball_in(domain.robot)
+                or abs(aux.wind_down_angle(target_angle - domain.robot.get_angle())) > const.KICK_ALIGN_ANGLE + 0.1):
+                timer_to_stop = time() 
+
+            if (domain.field.is_ball_in(domain.robot)
+                and abs(aux.wind_down_angle(target_angle - domain.robot.get_angle())) <= const.KICK_ALIGN_ANGLE + 0.1
+                and time() - timer_to_stop > 0.2):
+                actions.append(DumbActions.ShootAction(self.target_pos, self.is_upper))
+                actions.append(DumbActions.ControlVoltageAction(self.voltage, self.pass_pos))
+
+            elif (domain.field.is_ball_in(domain.robot)
+                and abs(aux.wind_down_angle(target_angle - domain.robot.get_angle())) <= const.KICK_ALIGN_ANGLE + 0.1):
+
+                actions.append(Actions.Correct(target_angle))
 
             return actions
 
@@ -417,8 +442,8 @@ def get_pass_voltage(length: float) -> int:
     """Calc voltage for pass by length"""
     if const.IS_SIMULATOR_USED:
         # TODO fix control decoder
-        return int(aux.minmax(0.0021 * length + 1.2, 7, const.VOLTAGE_SHOOT))
-    return int(aux.minmax(0.0004 * length + 1.7, 7, const.VOLTAGE_SHOOT))
+        return int(aux.minmax(0.0021 * length + 1.2, 5, const.VOLTAGE_SHOOT))
+    return int(aux.minmax(0.0004 * length + 1.7, 5, const.VOLTAGE_SHOOT))
 
 
 def get_grab_speed(

@@ -253,6 +253,21 @@ class Field:
         Определить, находится ли мяч внутри дрибблера
         """
         return robo == self.robot_with_ball
+    
+    def is_ball_not_in_robot(self) -> bool:
+        return self.robot_with_ball is None
+    
+    def is_ball_in_robot(self) -> bool:
+        return self.is_ball_not_in_robot()
+    
+    def in_robot_with_ball(self) -> rbt.Robot | None:
+        return self.robot_with_ball
+    
+    def is_ball_in_ally_robot(self) -> bool:
+        return (self.robot_with_ball is not None) and (self.robot_with_ball.color == const.COLOR)
+    
+    def is_ball_in_enemy_robot(self) -> bool:
+        return (self.robot_with_ball is not None) and (not self.robot_with_ball.color == const.COLOR)
 
     def update_blu_robot(self, idx: int, pos: aux.Point, angle: float, t: float) -> None:
         """

@@ -41,6 +41,12 @@ class FlagToPasses(Enum): #флаги для состояние приянтия
     TRUE = 1 # ловим
     RELEASE = 2 # поймали и отпускаем
 
+class Kick_Status(Enum):
+    Pass_Straight = 1
+    Pass_Turn_Kick= 2
+    Goal_Turn_Kick = 3
+    Goal_Straight = 4
+    Not_Kick = 5
 
 class BallStatus(Enum):
     Active = 0
@@ -63,17 +69,15 @@ class Strategy:
 
         # Индексы роботов
 
-        self.goalkeeper_idx = 5
-        self.idx1 = 4
-        self.idx2 = 2
+        self.goalkeeper_idx = 0
+        self.idx1 = 3
+        self.idx2 = 5
 
         # Индексы роботов соперника
 
-        self.goalkeeper_idx_enemy = 5
-        self.idx_enemy1 = 0
-        self.goalkeeper_idx_enemy = 5
-        self.idx_enemy1 = 0
-        self.idx_enemy2 = 2
+        self.goalkeeper_idx_enemy = 3
+        self.idx_enemy1 = 10
+        self.idx_enemy2 = 10
 
         self.enemies : list[aux.Point] = [] # массив позиций вражеских роботов
 
@@ -101,6 +105,7 @@ class Strategy:
         self.dist_to_ball = 450
 
         self.ball_status = BallStatus.Passive
+        self.kick_status = Kick_Status.Not_Kick
         self.ball_status_poly = BallStatusInsidePoly.NotInsidePoly
         self.kick_up_is_used = 1
 
@@ -197,7 +202,6 @@ class Strategy:
             actions[self.idx1] = Actions.Stop()
             actions[self.idx2] = Actions.Stop()
             actions[self.goalkeeper_idx] = Actions.Stop()
-            return actions
            
         elif field.game_state == GameStates.PREPARE_PENALTY and  not self.we_active:
             kik_angle1 = robot_position1_enemy - robot_position1
@@ -283,6 +287,15 @@ class Strategy:
             actions[self.idx1] = Actions.GoToPoint(pos_attacker1, angle_attacker1)
             actions[self.idx2] = Actions.GoToPoint(pos_attacker2, angle_attacker2)
         
+        for rbt in field.active_allies(True):
+            if abs(rbt.get_pos().x) > 2250 or abs(rbt.get_pos().y) > 1500:
+                actions[rbt.r_id] = Actions.Stop()
+
+        if abs(self.ball.x) > 2250 or abs(self.ball.y) > 1500:
+            actions[self.idx1] = Actions.Stop()
+            actions[self.idx2] = Actions.Stop()
+            actions[self.goalkeeper_idx] = Actions.Stop()
+
         return actions
 
     def run(self, field: fld.Field, actions: list[Optional[Action]]) -> None:
@@ -298,9 +311,11 @@ class Strategy:
         # self.process_attacker(field, actions)
 
         if self.point_kick_goal is not None:
-            actions[0] = KickActions.Turn_Kick(self.point_kick_goal, 0)
+            field.strategy_image.draw_circle(self.point_kick_goal, (255, 0, 255), 30)
+            actions[5] = KickActions.Turn_Kick(self.point_kick_goal, 0)
         else:
-            self.process_attacker(field, actions)
+            actions[5] = KickActions.Turn_Kick(field.enemy_goal.center, 0)
+        #self.process_attacker(field, actions)
         
 
     def process_goalkeeper(self, field: fld.Field, actions: list[Optional[Action]]) ->  list[Optional[Action]]:
@@ -369,33 +384,84 @@ class Strategy:
 
         includes (it is necessary to list the main points of the attacker's strategy):
         """
-        
-        if self.passes_status == FlagToPasses.FALSE:
+
+        if self.passes_status == FlagToPasses.FALSE and field.is_ball_not_in_robot():
+            """
+            Распределяем какой робот что делает
+            """
             self.nearest_robot =  fld.find_nearest_robot(self.ball, field.active_allies(False))
 
             for robot in field.active_allies(False):
                 if robot != self.nearest_robot:
                     self.robot_catch_ball = robot
 
-        print(self.ball)
-        #print(self.nearest_robot.r_id, "a", self.point_kick_goal)
-        if self.nearest_robot != None and self.robot_catch_ball != None:
-            optimal_point = self.optimal_point(field, self.robot_catch_ball.get_pos(), self.ball, self.enemies, self.point_kick_goal)
-            optimal_point_not_kick = self.optimal_point(field, self.robot_catch_ball.get_pos(), self.ball, self.enemies, None)
-            if self.point_kick_goal != None and self.passes_status == FlagToPasses.FALSE:
-                actions[self.nearest_robot.r_id] = self.kick_ball_to_goal(field)
-            elif self.passes_status == FlagToPasses.FALSE:
-                actions[self.nearest_robot.r_id] = self.kick_ball_to_pas(field, self.robot_catch_ball.get_pos())
+        if self.nearest_robot is None or self.robot_catch_ball is None:
+            """
+            защита против type None
+            """
+            print("Error", self.ball.mag())
+            return actions
+
+        voltage = get_pass_voltage(aux.dist(self.ball, self.robot_catch_ball.get_pos()))
+        optimal_point = self.optimal_point(field, self.robot_catch_ball.get_pos(), self.ball, self.enemies, self.point_kick_goal)
+        optimal_point_not_kick = self.optimal_point(field, self.robot_catch_ball.get_pos(), self.ball, self.enemies, None)
+        angle_nearest_robot = (self.ball - self.nearest_robot.get_pos()).arg()
+        if self.kick_status == Kick_Status.Goal_Turn_Kick and field.is_ball_in_ally_robot():
+            """
+            Если робот захватил мяч и бьет в ворота с Turn
+            """
+            actions[self.robot_catch_ball.r_id] = Actions.GoToPoint(optimal_point, (self.ball - self.robot_catch_ball.get_pos()).arg())
+            if self.point_kick_goal is None:
+                actions[self.nearest_robot.r_id] = KickActions.Turn_Kick(field.enemy_goal.center, angle_nearest_robot)
             else:
+                angle = 0
+                actions[self.nearest_robot.r_id] = KickActions.Turn_Kick(self.point_kick_goal, angle_nearest_robot)
+
+        elif self.kick_status == Kick_Status.Goal_Straight and field.is_ball_in_ally_robot():
+            """
+            Если робот захватил мяч и бьет в ворота с Straight
+            """
+            actions[self.robot_catch_ball.r_id] = Actions.GoToPoint(optimal_point, (self.ball - self.robot_catch_ball.get_pos()).arg())
+            if self.point_kick_goal is None:
+                actions[self.nearest_robot.r_id] = KickActions.Straight(field.enemy_goal.center)
+            else:
+                actions[self.nearest_robot.r_id] = KickActions.Straight(self.point_kick_goal)
+
+        elif self.kick_status == Kick_Status.Pass_Straight and field.is_ball_in_ally_robot():
+            """
+            Если робот захватил мяч и бьет в ворота с Straight
+            """
+            actions[self.robot_catch_ball.r_id] = Actions.GoToPoint(optimal_point_not_kick, (self.ball - self.robot_catch_ball.get_pos()).arg())
+            actions[self.nearest_robot.r_id] = KickActions.Straight(self.robot_catch_ball.get_pos(), voltage)
+        
+        elif self.kick_status == Kick_Status.Pass_Turn_Kick and field.is_ball_in_ally_robot():
+            """
+            Если робот захватил мяч и бьет в ворота с Turn
+            """
+            actions[self.robot_catch_ball.r_id] = Actions.GoToPoint(optimal_point_not_kick, (self.ball - self.robot_catch_ball.get_pos()).arg())
+            actions[self.nearest_robot.r_id] = KickActions.Turn_Kick(self.robot_catch_ball.get_pos(), angle_nearest_robot)
+
+        else:
+            """
+            Если робот не бьет  мяч
+            """
+            if ((self.kick_status == Kick_Status.Pass_Straight or self.kick_status == Kick_Status.Pass_Turn_Kick) 
+                and self.check_cath_ball(field, self.robot_catch_ball)):
+
+                actions[self.robot_catch_ball.r_id] = self.process_catch_ball(field, self.robot_catch_ball)
                 actions[self.nearest_robot.r_id] = Actions.GoToPoint(self.optimal_point(field, self.nearest_robot.get_pos(), self.ball, self.enemies, None), (self.ball - self.nearest_robot.get_pos()).arg())
 
-            if self.check_cath_ball(field, self.robot_catch_ball):
-                actions[self.robot_catch_ball.r_id] = self.process_catch_ball(field, self.robot_catch_ball)
+            elif self.point_kick_goal is not None:
+                self.kick_status = Kick_Status.Goal_Turn_Kick
+                actions[self.nearest_robot.r_id] = KickActions.Turn_Kick(field.enemy_goal.center, angle_nearest_robot)
+                actions[self.robot_catch_ball.r_id] = Actions.GoToPoint(optimal_point, (self.ball - self.robot_catch_ball.get_pos()).arg())
             else:
-                if self.point_kick_goal != None:
-                    actions[self.robot_catch_ball.r_id] = Actions.GoToPoint(optimal_point, (self.ball - self.robot_catch_ball.get_pos()).arg())
-                else:
-                    actions[self.robot_catch_ball.r_id] = Actions.GoToPoint(optimal_point_not_kick, (self.ball - self.robot_catch_ball.get_pos()).arg())
+                actions[self.robot_catch_ball.r_id] = Actions.GoToPoint(optimal_point_not_kick, (self.ball - self.robot_catch_ball.get_pos()).arg())
+                self.kick_status = Kick_Status.Pass_Turn_Kick
+                actions[self.nearest_robot.r_id] = KickActions.Turn_Kick(self.robot_catch_ball.get_pos(), angle_nearest_robot)  
+
+
+
 
         return actions
     
@@ -409,7 +475,7 @@ class Strategy:
         if point_kick_goal is None:
             point_kick_goal = field.enemy_goal.center
 
-        return KickActions.Turn_Kick(point_kick_goal)
+        return KickActions.Turn_Kick(point_kick_goal, 0)
     
     def kick_ball_to_pas(self, field: fld.Field,  point_to_pas: aux.Point) -> Action:
         """
@@ -479,41 +545,25 @@ class Strategy:
         Проверка того что мяч летит в робота происходит
         вне функции, с помощью check_cath_a_ball()
         """
-        if self.passes_status != FlagToPasses.RELEASE:
+
+        """
+        Если мяч ещё летит то
+        подстравиваемься под него
+        """
+        self.passes_status = FlagToPasses.TRUE
+        pos = aux.closest_point_on_line(field.ball_start_point, self.ball, robot.get_pos(), "R")
+        Action_robot: Action = Actions.CatchBall(pos, (self.ball - robot.get_pos()).arg(), 8)
+        if field.is_ball_in(robot):
             """
-            Если мяч ещё летит то
-            подстравиваемься под него
+            Ждем когда мы поймаем мяч
             """
-            self.passes_status = FlagToPasses.TRUE
-            pos = aux.closest_point_on_line(field.ball_start_point, self.ball, robot.get_pos(), "R")
-            Action_robot: Action = Actions.CatchBall(pos, (self.ball - robot.get_pos()).arg(), 8)
-            if field.is_ball_in(robot):
-                """
-                Ждем когда мы поймаем мяч
-                """
-                self.passes_status = FlagToPasses.RELEASE
-                self.timer_work_dribbler = time()
-                self.timer_stop_dribbler = time()
+            self.passes_status = FlagToPasses.FALSE
+            self.timer_work_dribbler = time()
+            self.timer_stop_dribbler = time()
+            for robot in field.active_allies(False):
+                if robot != self.nearest_robot:
+                    self.robot_catch_ball = robot
             
-        else:
-            """
-            когда мы поймали мяч
-            останавливаем дриблер
-            и отезжаем назад от мяча
-            """
-            Action_robot = Actions.CatchBall(robot.get_pos(), robot.get_angle(), 0)
-
-            if aux.dist(robot.get_pos(), self.ball) > self.dist_after_catch:
-                self.passes_status = FlagToPasses.FALSE 
-
-            if time() - self.timer_work_dribbler < self.time_work_dribbler:
-                Action_robot = Actions.CatchBall(robot.get_pos(), robot.get_angle(), 8)
-                self.timer_stop_dribbler = time()
-                return Action_robot
-
-            if time() - self.timer_stop_dribbler > self.time_stop_dribbler:
-                pos = robot.get_pos() + (robot.get_pos() - self.ball).unity() * (const.ROBOT_R * 1.5)
-                Action_robot = Actions.GoToPoint(pos, robot.get_angle())
 
         return Action_robot
 
@@ -531,10 +581,10 @@ class Strategy:
             or aux.dist(pos_cath, robot.get_pos()) > self.dist_cath_ball
             or aux.dist(self.ball, robot.get_pos()) > self.dist_to_pas
             or field.ball.get_vel().mag() < 200)
-            and self.passes_status != FlagToPasses.RELEASE
         ):
             self.passes_status = FlagToPasses.FALSE
             return False
+        self.passes_status = FlagToPasses.TRUE
         return True
 
     #### Вспомогательные функции ####
@@ -660,8 +710,8 @@ class Strategy:
                 if (
                     #self.check_point(field, cand, enemy_list)[0] > maxim
                     aux.dist(cand, field.enemy_goal.center) < minim_goal_dist
-                    and aux.closest_point_on_line(robot, cand, ball).mag() > 60
-                    and minim > const.ROBOT_R + 150
+                    and aux.closest_point_on_line(robot, cand, ball).mag() > 180
+                    and minim > const.ROBOT_R + 300
                     and flag_to_point
                     and (mid is None or aux.dist(cand, aux.closest_point_on_line(ball, mid, cand)) > const.ROBOT_R + 100)
                 ):

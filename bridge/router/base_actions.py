@@ -225,11 +225,11 @@ class Actions:
                     current_action.angle = min(0.5, aux.wind_down_angle(self.target_angle - domain.robot.get_angle()) * 2)
                 current_action.beep = 1
                 current_action.dribbler_speed = 10
-            if abs(aux.wind_down_angle(self.target_angle - domain.robot.get_angle())) <= const.KICK_ALIGN_ANGLE:
-                current_action.vel = aux.Point(0, 0)
-                current_action.angle = 0
-                current_action.beep = 1
-                current_action.dribbler_speed = 10
+                if abs(aux.wind_down_angle(self.target_angle - domain.robot.get_angle())) <= const.KICK_ALIGN_ANGLE + 0.1:
+                    current_action.vel = aux.Point(0, 0)
+                    current_action.angle = 0
+                    current_action.beep = 1
+                    current_action.dribbler_speed = 10
 
     class Correct(Action):
         """""" 
@@ -239,7 +239,8 @@ class Actions:
         def behavior(self, domain: ActionDomain, current_action: ActionValues) -> None:
                 current_action.angle = self.target_angle
                 current_action.beep = 0
-                current_action.dribbler_speed = 6
+                current_action.vel = aux.Point(0, 0)
+                current_action.dribbler_speed = 13
 
 
     class Velocity(Action):
@@ -347,21 +348,24 @@ class KickActions:
             actions = [
                 Actions.BallGrab(self.start_angle),
                 Actions.Turn(kick_angle, self.start_angle),
+                DumbActions.ControlVoltageAction(self.voltage, self.pass_pos)
             ]
             if (not domain.field.is_ball_in(domain.robot)
-                or abs(aux.wind_down_angle(target_angle - domain.robot.get_angle())) > const.KICK_ALIGN_ANGLE + 0.1):
+                or abs(aux.wind_down_angle(target_angle - domain.robot.get_angle())) > const.KICK_ALIGN_ANGLE + 0.2):
                 timer_to_stop = time() 
 
             if (domain.field.is_ball_in(domain.robot)
-                and abs(aux.wind_down_angle(target_angle - domain.robot.get_angle())) <= const.KICK_ALIGN_ANGLE + 0.1
-                and time() - timer_to_stop > 0.2):
+                and abs(aux.wind_down_angle(target_angle - domain.robot.get_angle())) <= const.KICK_ALIGN_ANGLE + 0.2
+                and time() - timer_to_stop > 0.8):
+                print("Yes")
                 actions.append(DumbActions.ShootAction(self.target_pos, self.is_upper))
-                actions.append(DumbActions.ControlVoltageAction(self.voltage, self.pass_pos))
 
             elif (domain.field.is_ball_in(domain.robot)
                 and abs(aux.wind_down_angle(target_angle - domain.robot.get_angle())) <= const.KICK_ALIGN_ANGLE + 0.1):
-
                 actions.append(Actions.Correct(target_angle))
+
+            if domain.field.is_ball_in(domain.robot) and abs(aux.wind_down_angle(target_angle - domain.robot.get_angle())) <= const.KICK_ALIGN_ANGLE + 0.2:
+                print(time() - timer_to_stop, abs(aux.wind_down_angle(target_angle - domain.robot.get_angle())), "this")
 
             return actions
 

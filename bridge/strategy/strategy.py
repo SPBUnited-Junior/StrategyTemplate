@@ -76,8 +76,8 @@ class Strategy:
         # Индексы роботов соперника
 
         self.goalkeeper_idx_enemy = 3
-        self.idx_enemy1 = 10
-        self.idx_enemy2 = 10
+        self.idx_enemy1 = 6
+        self.idx_enemy2 = 7
 
         self.enemies : list[aux.Point] = [] # массив позиций вражеских роботов
 
@@ -300,7 +300,6 @@ class Strategy:
 
     def run(self, field: fld.Field, actions: list[Optional[Action]]) -> None:
         
-
         # #actions = self.process_attacker(field, actions)
         # dist_ally = aux.dist(fld.find_nearest_robot(self.ball, field.active_allies(False)).get_pos(), self.ball)
         # dist_enemy = aux.dist(fld.find_nearest_robot(self.ball, field.active_enemies(False)).get_pos(), self.ball)
@@ -308,14 +307,14 @@ class Strategy:
         # if (dist_ally > dist_enemy and ((self.ball.x < 0 and field.ally_goal.center.x < 0) or (self.ball.x > 0 and field.ally_goal.center.x > 0))):
         #     self.process_defender(field, actions)
         # else:
-        # self.process_attacker(field, actions)
-
-        if self.point_kick_goal is not None:
-            field.strategy_image.draw_circle(self.point_kick_goal, (255, 0, 255), 30)
-            actions[5] = KickActions.Turn_Kick(self.point_kick_goal, 0)
-        else:
-            actions[5] = KickActions.Turn_Kick(field.enemy_goal.center, 0)
         #self.process_attacker(field, actions)
+
+        # if self.point_kick_goal is not None:
+        #     field.strategy_image.draw_circle(self.point_kick_goal, (255, 0, 255), 30)
+        #     actions[5] = KickActions.Turn_Kick(self.point_kick_goal, 0)
+        # else:
+        #     actions[5] = KickActions.Turn_Kick(field.enemy_goal.center, 0)
+        self.process_defender(field, actions)
         
 
     def process_goalkeeper(self, field: fld.Field, actions: list[Optional[Action]]) ->  list[Optional[Action]]:
@@ -451,7 +450,7 @@ class Strategy:
                 actions[self.robot_catch_ball.r_id] = self.process_catch_ball(field, self.robot_catch_ball)
                 actions[self.nearest_robot.r_id] = Actions.GoToPoint(self.optimal_point(field, self.nearest_robot.get_pos(), self.ball, self.enemies, None), (self.ball - self.nearest_robot.get_pos()).arg())
 
-            elif self.point_kick_goal is not None:
+            elif self.point_kick_goal is not None and aux.dist(self.nearest_robot.get_pos(), field.enemy_goal.center) < 2500:
                 self.kick_status = Kick_Status.Goal_Turn_Kick
                 actions[self.nearest_robot.r_id] = KickActions.Turn_Kick(field.enemy_goal.center, angle_nearest_robot)
                 actions[self.robot_catch_ball.r_id] = Actions.GoToPoint(optimal_point, (self.ball - self.robot_catch_ball.get_pos()).arg())

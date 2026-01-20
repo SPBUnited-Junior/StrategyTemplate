@@ -75,9 +75,9 @@ class Strategy:
 
         # Индексы роботов соперника
 
-        self.goalkeeper_idx_enemy = 3
-        self.idx_enemy1 = 6
-        self.idx_enemy2 = 7
+        self.goalkeeper_idx_enemy = 5
+        self.idx_enemy1 = 0
+        self.idx_enemy2 = 2
 
         self.enemies : list[aux.Point] = [] # массив позиций вражеских роботов
 
@@ -304,17 +304,16 @@ class Strategy:
         # dist_ally = aux.dist(fld.find_nearest_robot(self.ball, field.active_allies(False)).get_pos(), self.ball)
         # dist_enemy = aux.dist(fld.find_nearest_robot(self.ball, field.active_enemies(False)).get_pos(), self.ball)
 
-        # if (dist_ally > dist_enemy and ((self.ball.x < 0 and field.ally_goal.center.x < 0) or (self.ball.x > 0 and field.ally_goal.center.x > 0))):
-        #     self.process_defender(field, actions)
-        # else:
-        #self.process_attacker(field, actions)
-
-        # if self.point_kick_goal is not None:
-        #     field.strategy_image.draw_circle(self.point_kick_goal, (255, 0, 255), 30)
-        #     actions[5] = KickActions.Turn_Kick(self.point_kick_goal, 0)
-        # else:
-        #     actions[5] = KickActions.Turn_Kick(field.enemy_goal.center, 0)
+        '''
+        if (dist_ally > dist_enemy and ((self.ball.x < 0 and field.ally_goal.center.x < 0) or (self.ball.x > 0 and field.ally_goal.center.x > 0))):
+            self.process_defender(field, actions)
+        else:
+            self.process_attacker(field, actions)
+            pass
+        '''
         self.process_defender(field, actions)
+        
+
         
 
     def process_goalkeeper(self, field: fld.Field, actions: list[Optional[Action]]) ->  list[Optional[Action]]:
@@ -930,4 +929,4 @@ class Strategy:
         center = lower_point - point
         center = center.unity() * (radius / abs(sin_val))
         center = aux.rotate(center, -angle)
-        return aux.closest_point_on_line(point, center + point, robot, "S") #center + point  # Используем point как исходную точку (аналог ball в оригинале)
+        return aux.closest_point_on_line(aux.Point(point.x - 100, point.y), center + point, robot, "S") #center + point  # Используем point как исходную точку (аналог ball в оригинале)

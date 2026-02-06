@@ -1,5 +1,4 @@
 import math  # type: ignore
-from enum import Enum
 from typing import Optional  # type: ignore
 
 from bridge import const
@@ -7,18 +6,6 @@ from bridge.auxiliary import aux, fld, rbt  # type: ignore
 
 # from bridge.const import State as GameStates
 from bridge.router.base_actions import Action, Actions, KickActions, DribblerActions  # type: ignore
-
-
-class whatWeDoStates(Enum):
-    """Класс с типо запускаемого нами кода"""
-
-    Play = 0
-    BothPlay = 1
-    TestPass = 2
-    SimpleTest = 3
-    TestRotateWithBall = 4
-    NewIsBallInTest = 5
-
 
 # class State(Enum):#do GK
 #     """Класс с состояниями игры"""

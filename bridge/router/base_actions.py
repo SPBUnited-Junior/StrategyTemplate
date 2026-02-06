@@ -7,6 +7,7 @@ from time import time
 from typing import Optional
 
 import bridge.auxiliary.quickhull as qh
+import bridge.strategy.myConst as myConst
 from bridge import const
 from bridge.auxiliary import aux, fld, tau
 from bridge.const import State as GameStates
@@ -494,7 +495,7 @@ class DumbActions:
         def __init__(self, target_angle: float, distToAim: float, angle_bounds: float = math.pi / 18) -> None:
             self.target_angle = target_angle
             # print(angle_bounds*180/math.pi)
-            minDeltaAngle = 3
+            minDeltaAngle = myConst.minErrAngleForRotateWithBall
             maxAngle = angle_bounds*180/math.pi-minDeltaAngle
             difference = (distToAim)/(const.FIELD_DX)*maxAngle/100
             if difference*180/math.pi > maxAngle:

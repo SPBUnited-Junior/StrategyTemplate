@@ -516,7 +516,7 @@ class DumbActions:
             if not is_aligned:
                 DumbActions.timer1 = time() + 10**10
                 DumbActions.oldAligned = False
-            return domain.field.is_ball_in(domain.robot) and not is_aligned and not time() - DumbActions.timer1 > 0.2
+            return domain.field.is_ball_in(domain.robot) and not is_aligned and not time() - DumbActions.timer1 > 0.2#TODO think, we need adaptive timer edge
 
         def behavior(self, domain: ActionDomain, current_action: ActionValues) -> None:
             current_action.vel = aux.Point(0, 0)

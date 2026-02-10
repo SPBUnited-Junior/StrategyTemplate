@@ -2,6 +2,7 @@ import math  # type: ignore
 from typing import Optional  # type: ignore
 
 from bridge import const
+import bridge.strategy.myConst as myConst
 from bridge.auxiliary import aux, fld, rbt  # type: ignore
 
 # from bridge.const import State as GameStates
@@ -21,6 +22,29 @@ from bridge.router.base_actions import Action, Actions, KickActions, DribblerAct
 #     PENALTY = 8
 #     RUN = 9
 
+
+def isBallKickedToR(field: fld.Field, receiverRId: int, givingRId: int) -> bool:
+    ballPos = field.ball.get_pos()
+    receiverR = field.allies[receiverRId]
+    givingR = field.allies[givingRId]
+    receiverRPos = receiverR.get_pos()
+    givingRPos = givingR.get_pos()
+    vectFormGivingPassToReceiver = receiverRPos-givingRPos
+    vectNormalToVectFormGivingPassToReceiver = aux.rotate(vectFormGivingPassToReceiver, 90/180*math.pi)
+    koefForErr = 1.5
+    # newErrAngle = myConst.minErrAngleForRotateWithBall*koefForErr
+    newErrAngle = myConst.minErrAngleForRotateWithBall
+    pointPlusErr = aux.get_line_intersection(receiverRPos, receiverRPos+vectNormalToVectFormGivingPassToReceiver, givingRPos, givingRPos+aux.rotate(vectFormGivingPassToReceiver, newErrAngle/180*math.pi*koefForErr), "LL")
+    pointMinusErr = aux.get_line_intersection(receiverRPos, receiverRPos+vectNormalToVectFormGivingPassToReceiver, givingRPos, givingRPos+aux.rotate(vectFormGivingPassToReceiver, -newErrAngle/180*math.pi*koefForErr), "LL")
+    givingRPos = givingR.get_pos()
+    if pointPlusErr is not None and pointMinusErr is not None:
+        polygon1: list[aux.Point] = [givingRPos, pointMinusErr, pointPlusErr]
+        field.strategy_image.draw_poly(polygon1, size_in_pixels=4)
+        if aux.is_point_inside_poly(ballPos, polygon1):
+            if abs(field.ball.get_vel().arg()-vectFormGivingPassToReceiver.arg())/math.pi*180 < myConst.minErrAngleForRotateWithBall*koefForErr:
+                if field.ball.get_vel().mag() > 100:
+                    return True
+    return False
 
 def getKoefForEnemysRobotR(ballPos: aux.Point, enemyRPos: aux.Point) -> float:
     if aux.dist(enemyRPos, ballPos) < 100:
@@ -158,9 +182,17 @@ def openForPass(field: fld.Field, idRWhichOpen: int, actions: list[Optional[Acti
         # field.strategy_image.draw_circle(point)
         # pointForScore = findPointForScore(field, maybePassPoint)
 
+    vectFromBallToR = thisRPos - ballPos
+    pointOnCentreVectFromBallToR = vectFromBallToR/2
+    if pointOnCentreVectFromBallToR.mag() < 700:
+        """if we try open for pass at dist < 700, we open for pass at dist 700"""
+        pointOnCentreVectFromBallToR = pointOnCentreVectFromBallToR.unity() * 700
+
+    maybePointsForOpening.append(pointOnCentreVectFromBallToR+ballPos)
+
     pointsForOpening = filterPointsForPass(field, maybePointsForOpening, thisRPos)
 
-    # print(pointsForOpening, field.ball.get_pos())
+    # print("len = ", len(pointsForOpening))
     if len(pointsForOpening) != 0:
         """if we can open for pass or take pass"""
         if isBallOnOurPartOfField:
@@ -228,15 +260,15 @@ def doPassNearAllly(field: fld.Field, actions: list[Optional[Action]], idFrom: i
     pointToPass = None
     rToPass = None
 
-    print(len(points))
-    if len(points) > 1:
+    # print(len(points))
+    if len(points) > 1 :
         """if our rs on field, except GK"""
         if idFrom == const.GK:
             ourRsSortedByDistToBall = fld.find_nearest_robots(pointFrom, points)
             # ourRsSortedByDistToBall = ourRsSortedByDistToBall.remove(field.allies[idFrom])
         else:
             ourRsSortedByDistToBall = [fld.find_nearest_robot(pointFrom, points, avoid=exclude)]
-            print(len(ourRsSortedByDistToBall))
+            # print(len(ourRsSortedByDistToBall))
 
         rToPass, pointToPass = getPointToPassAndRToPass(field, actions, ourRsSortedByDistToBall, enemys, pointFrom, idFrom)
         ourRsSortedByDistToBall[0].r_id

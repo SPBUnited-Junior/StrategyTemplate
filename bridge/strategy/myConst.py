@@ -14,7 +14,6 @@ class whatWeDoStates(Enum):
 
 idFirstAttacker: int = 2
 idSecondAttacker: int = 5
-idGK: int = 4
 
 whatWeDoAtThisRun: whatWeDoStates = whatWeDoStates.TestPass
 

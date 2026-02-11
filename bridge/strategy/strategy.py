@@ -75,9 +75,9 @@ class Strategy:
 
         # Индексы роботов соперника
 
-        self.goalkeeper_idx_enemy = 5
-        self.idx_enemy1 = 0
-        self.idx_enemy2 = 2
+        self.goalkeeper_idx_enemy = 0
+        self.idx_enemy1 = 5
+        self.idx_enemy2 = 7
 
         self.enemies : list[aux.Point] = [] # массив позиций вражеских роботов
 
@@ -162,7 +162,6 @@ class Strategy:
         ### полложение мяча ###
         #if self.ball == aux.Point(0, 0) or aux.dist(aux.Point(field.ball.get_pos().x,field.ball.get_pos().y), self.ball) < 1000.0:
         self.ball = aux.Point(field.ball.get_pos().x,field.ball.get_pos().y)
-        print(aux.Point(field.ball.get_pos().x,field.ball.get_pos().y), "ball")
         field.strategy_image.draw_circle(self.ball, (255, 255, 255), 30)
         
 
@@ -172,14 +171,14 @@ class Strategy:
                 self.we_active = True
             else:
                 self.we_active = False
-
+                
         actions: list[Optional[Action]] = []
         for _ in range(const.TEAM_ROBOTS_MAX_COUNT):
             actions.append(None)
 
         print(field.game_state, self.we_active)
         #self.process_goalkeeper(field, actions)
-        print(robot_position1_enemy, robot_position2_enemy)
+        #print(robot_position1_enemy, robot_position2_enemy)
         if aux.dist(self.ball, robot_position1_enemy) < aux.dist(self.ball, robot_position2_enemy):
             Action_goalkeeper = self._process_goalkeeper(
                 field, self.ball, robot_position1_enemy, self.idx_enemy1, robot_position_goalkeeper
@@ -296,6 +295,7 @@ class Strategy:
             actions[self.idx2] = Actions.Stop()
             actions[self.goalkeeper_idx] = Actions.Stop()
 
+        #actions[2] = Actions.GoToPoint(aux.Point(1000, 1000), 0)
         return actions
 
     def run(self, field: fld.Field, actions: list[Optional[Action]]) -> None:
@@ -311,7 +311,17 @@ class Strategy:
             self.process_attacker(field, actions)
             pass
         '''
-        self.process_defender(field, actions)
+        dist_enemy = aux.dist(fld.find_nearest_robot(self.ball, field.active_enemies(False)).get_pos(), self.ball)
+        dist_ally = aux.dist(fld.find_nearest_robot(self.ball, field.active_allies(False)).get_pos(), self.ball)
+
+        if(
+            ((self.ball.x < 0 and field.ally_goal.center.x < 0) or (self.ball.x > 0 and field.ally_goal.center.x > 0))
+            and dist_enemy < dist_ally  ### Определяем чей робот ближе, наш или вражеский
+        ):
+            self.process_defender(field, actions)
+        else:
+            self.process_attacker(field, actions)
+        #actions[2] = KickActions.Turn_Kick(field.enemy_goal.center, 3.15)
         
 
         
@@ -357,7 +367,7 @@ class Strategy:
 
         position_goal = aux.is_point_inside_poly(goal_position, field.ally_goal.hull) # проверяем находится ли мяч в воротах
 
-        if position_goal == False:
+        if position_goal == False:  
             goal_position = field.ally_goal.center
 
         angle_goalkeeper = (ball - robot_position_goalkeeper).arg()
@@ -383,7 +393,7 @@ class Strategy:
         includes (it is necessary to list the main points of the attacker's strategy):
         """
 
-        if self.passes_status == FlagToPasses.FALSE and field.is_ball_not_in_robot():
+        if self.passes_status == FlagToPasses.FALSE or field.is_ball_in_ally_robot():
             """
             Распределяем какой робот что делает
             """
@@ -404,7 +414,7 @@ class Strategy:
         optimal_point = self.optimal_point(field, self.robot_catch_ball.get_pos(), self.ball, self.enemies, self.point_kick_goal)
         optimal_point_not_kick = self.optimal_point(field, self.robot_catch_ball.get_pos(), self.ball, self.enemies, None)
         angle_nearest_robot = (self.ball - self.nearest_robot.get_pos()).arg()
-        if self.kick_status == Kick_Status.Goal_Turn_Kick and field.is_ball_in_ally_robot():
+        if self.kick_status == Kick_Status.Goal_Turn_Kick    and field.is_ball_in_ally_robot():
             """
             Если робот захватил мяч и бьет в ворота с Turn
             """
@@ -427,38 +437,36 @@ class Strategy:
 
         elif self.kick_status == Kick_Status.Pass_Straight and field.is_ball_in_ally_robot():
             """
-            Если робот захватил мяч и бьет в ворота с Straight
+            Если робот захватил мяч и бьет пасс с Straight
             """
             actions[self.robot_catch_ball.r_id] = Actions.GoToPoint(optimal_point_not_kick, (self.ball - self.robot_catch_ball.get_pos()).arg())
             actions[self.nearest_robot.r_id] = KickActions.Straight(self.robot_catch_ball.get_pos(), voltage)
         
         elif self.kick_status == Kick_Status.Pass_Turn_Kick and field.is_ball_in_ally_robot():
             """
-            Если робот захватил мяч и бьет в ворота с Turn
+            Если робот захватил мяч и бьет пасс с Turn
             """
             actions[self.robot_catch_ball.r_id] = Actions.GoToPoint(optimal_point_not_kick, (self.ball - self.robot_catch_ball.get_pos()).arg())
-            actions[self.nearest_robot.r_id] = KickActions.Turn_Kick(self.robot_catch_ball.get_pos(), angle_nearest_robot)
+            actions[self.nearest_robot.r_id] = KickActions.Turn_Kick(self.robot_catch_ball.get_pos(), angle_nearest_robot, voltage)
 
         else:
             """
             Если робот не бьет  мяч
             """
             if ((self.kick_status == Kick_Status.Pass_Straight or self.kick_status == Kick_Status.Pass_Turn_Kick) 
-                and self.check_cath_ball(field, self.robot_catch_ball)):
+                and self.check_cath_ball(field, self.robot_catch_ball) and not field.is_ball_in_ally_robot()):
 
                 actions[self.robot_catch_ball.r_id] = self.process_catch_ball(field, self.robot_catch_ball)
                 actions[self.nearest_robot.r_id] = Actions.GoToPoint(self.optimal_point(field, self.nearest_robot.get_pos(), self.ball, self.enemies, None), (self.ball - self.nearest_robot.get_pos()).arg())
 
-            elif self.point_kick_goal is not None and aux.dist(self.nearest_robot.get_pos(), field.enemy_goal.center) < 2500:
+            elif self.point_kick_goal is not None and aux.dist(self.nearest_robot.get_pos(), field.enemy_goal.center) < 1500:
                 self.kick_status = Kick_Status.Goal_Turn_Kick
                 actions[self.nearest_robot.r_id] = KickActions.Turn_Kick(field.enemy_goal.center, angle_nearest_robot)
                 actions[self.robot_catch_ball.r_id] = Actions.GoToPoint(optimal_point, (self.ball - self.robot_catch_ball.get_pos()).arg())
             else:
                 actions[self.robot_catch_ball.r_id] = Actions.GoToPoint(optimal_point_not_kick, (self.ball - self.robot_catch_ball.get_pos()).arg())
                 self.kick_status = Kick_Status.Pass_Turn_Kick
-                actions[self.nearest_robot.r_id] = KickActions.Turn_Kick(self.robot_catch_ball.get_pos(), angle_nearest_robot)  
-
-
+                actions[self.nearest_robot.r_id] = KickActions.Turn_Kick(self.robot_catch_ball.get_pos(), angle_nearest_robot, voltage)  
 
 
         return actions
@@ -603,7 +611,7 @@ class Strategy:
         # Расчёт касательных к вражеским роботам
         result_cords = []
         for enemy in list_enemy:
-            tangent_points = aux.get_tangent_points(enemy, ball, const.ROBOT_R)
+            tangent_points = aux.get_tangent_points(enemy, ball, const.ROBOT_R + aux.dist(self.ball, enemy) * 0.1)
             if len(tangent_points) >= 2:
                 cords_peresch = []
                 for count in range(2):

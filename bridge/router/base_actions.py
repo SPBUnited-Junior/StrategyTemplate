@@ -218,11 +218,11 @@ class Actions:
         def behavior(self, domain: ActionDomain, current_action: ActionValues) -> None:
             if domain.field.is_ball_in(domain.robot):
                 if aux.wind_down_angle(self.target_angle - domain.robot.get_angle()) < 0:
-                    current_action.vel = aux.Point(200, -160)
-                    current_action.angle = max(-0.5, aux.wind_down_angle(self.target_angle - domain.robot.get_angle()) * 2)
+                    current_action.vel = aux.Point(180, -160)
+                    current_action.angle = -0.5
                 else:
-                    current_action.vel = aux.Point(200, 160)
-                    current_action.angle = min(0.5, aux.wind_down_angle(self.target_angle - domain.robot.get_angle()) * 2)
+                    current_action.vel = aux.Point(180, 160)
+                    current_action.angle = 0.5
                 current_action.beep = 1
                 current_action.dribbler_speed = 10
                 if abs(aux.wind_down_angle(self.target_angle - domain.robot.get_angle())) <= const.KICK_ALIGN_ANGLE + 0.1:
@@ -239,8 +239,8 @@ class Actions:
         def behavior(self, domain: ActionDomain, current_action: ActionValues) -> None:
                 current_action.angle = self.target_angle
                 current_action.beep = 0
-                current_action.vel = aux.Point(0, 0)
-                current_action.dribbler_speed = 13
+                current_action.vel = aux.rotate(aux.Point(170, 0), domain.robot.get_angle())
+                current_action.dribbler_speed = 14
 
 
     class Velocity(Action):

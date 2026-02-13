@@ -154,7 +154,7 @@ def filterPointsForPass(field: fld.Field, points: list[aux.Point], pointFromOpen
     return filteredPointsForPass
 
 
-def openForPass(field: fld.Field, idRWhichOpen: int, actions: list[Optional[Action]]) -> Optional[aux.Point]:
+def openForPass(field: fld.Field, idRWhichOpen: int, actions: list[Optional[Action]]) -> tuple[Optional[aux.Point], int]:
     ballPos = field.ball.get_pos()
     thisR = field.allies[idRWhichOpen]
     thisRPos = thisR.get_pos()
@@ -204,7 +204,7 @@ def openForPass(field: fld.Field, idRWhichOpen: int, actions: list[Optional[Acti
         # field.strategy_image.draw_line(ballPos, nearestPointForOpening, (0, 0, 0), 20)
         actions[idRWhichOpen] = Actions.GoToPoint(nearestPointForOpening, (ballPos - thisR.get_pos()).arg())
 
-    return nearestPointForOpening
+    return nearestPointForOpening, idRWhichOpen
 
 
 def getPointToPassAndRToPass(
@@ -277,21 +277,34 @@ def doPassNearAllly(field: fld.Field, actions: list[Optional[Action]], idFrom: i
             """if enemy r dont prevent pass"""
             field.strategy_image.send_telemetry("status pass", "have point")
             # field.strategy_image.draw_line(pointFrom, pointToPass, color=(255, 0, 0))
-            # field.strategy_image.draw_circle(pointToPass, color=(255, 0, 0), size_in_mms=1000)
-            pointToOpenForPass = openForPass(field, rToPass.r_id, actions)
-            if (rToPass.get_vel()).mag() > 100 and not pointToOpenForPass is None:
-                """if this r moving, we must kick ball ahead"""
-                """TODO maybe we do openForPass several times for one run - bad"""
-                pointToPass = pointToOpenForPass
-            actions[idFrom] = Actions.Kick(pointToPass, is_pass=True)# type: ignore
+            pointToOpenForPass, idRWhichOpen = openForPass(field, rToPass.r_id, actions)
+            if not pointToOpenForPass is None:
+                distToPointForPassFromRWhichOpen = (pointToOpenForPass-field.allies[idRWhichOpen].get_pos()).mag()
+                distToPointForPassFromBall = (pointToOpenForPass-field.ball.get_pos()).mag()
+                if (distToPointForPassFromRWhichOpen/rToPass.get_vel().mag()) < (distToPointForPassFromBall/const.MAX_SPEED_BALL)*1.5:
+                    """if this r will arrive at point earlyer that ball"""
+                    """TODO maybe we do openForPass several times for one run - bad"""
+                    # field.strategy_image.draw_circle(pointToPass, color=(255, 255, 0), size_in_mms=1000)
+                    pointToPass = pointToOpenForPass
+                actions[idFrom] = Actions.Kick(pointToPass, is_pass=True)# type: ignore
         else:
             """if enemy r prevent pass"""
             field.strategy_image.send_telemetry("status pass", "dont have straight pass point")
             # actions[1].
             if actions[ourRsSortedByDistToBall[0].r_id] is not None:
                 """do pass ahead"""
-                field.strategy_image.draw_line( field.ball.get_pos(), actions[ourRsSortedByDistToBall[0].r_id].target_pos, (150, 0, 255), 20)  # type:ignore
-                actions[idFrom] = Actions.Kick(actions[ourRsSortedByDistToBall[0].r_id].target_pos, is_pass=False, is_upper=True)  # type:ignore
+                idRWhichOpen = ourRsSortedByDistToBall[0].r_id
+                pointToOpenForPass = actions[idRWhichOpen].target_pos# type:ignore
+                field.strategy_image.draw_line( field.ball.get_pos(), actions[idRWhichOpen].target_pos, (150, 0, 255), 20)  # type:ignore
+                if pointToOpenForPass is not None and rToPass is not None:
+
+                    distToPointForPassFromRWhichOpen = (pointToOpenForPass-field.allies[idRWhichOpen].get_pos()).mag()
+                    distToPointForPassFromBall = (pointToOpenForPass-field.ball.get_pos()).mag()
+                    if (distToPointForPassFromRWhichOpen/rToPass.get_vel().mag()) < (distToPointForPassFromBall/const.MAX_SPEED_BALL)*1.5:
+                        """if this r will arrive at point earlyer that ball"""
+                        """TODO maybe we do openForPass several times for one run - bad"""
+                        field.strategy_image.draw_circle(pointToOpenForPass, color=(255, 255, 0), size_in_mms=1000)
+                        actions[idFrom] = Actions.Kick(pointToOpenForPass, is_pass=False)  # type:ignore
     if actions[idFrom] is None:
         """if this r now cant do pass"""
         actions[idFrom] = Actions.GoToPoint(

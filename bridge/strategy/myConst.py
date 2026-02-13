@@ -12,9 +12,11 @@ class whatWeDoStates(Enum):
 
 
 
-idFirstAttacker: int = 2
-idSecondAttacker: int = 5
+idFirstAttacker: int = 5
+idSecondAttacker: int = 2
+
+timerForRotate = 0.5
 
 whatWeDoAtThisRun: whatWeDoStates = whatWeDoStates.TestPass
 
-minErrAngleForRotateWithBall: int = 3
+minErrAngleForRotateWithBall: int = 5

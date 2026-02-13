@@ -153,26 +153,10 @@ class Strategy:
                                     #     # print("gab ball")
                                     #     actions[self.idDoPass] = Actions.BallGrab((field.ball.get_pos() - field.allies[self.idDoPass].get_pos()).arg() )
                                     if field.ball.get_vel().mag() > 500 and self.idGettingPass is not None and self.idDoPass is not None:
-                                        receiverR = field.allies[self.idGettingPass]
-                                        givingR = field.allies[self.idDoPass]
-                                        receiverRPos = receiverR.get_pos()
-                                        givingRPos = givingR.get_pos()
-                                        vectFormGivingPassToReceiver = receiverRPos-givingRPos
-                                        vectNormalToVectFormGivingPassToReceiver = aux.rotate(vectFormGivingPassToReceiver, 90)
-                                        koefForErr = 1.5
-
-                                        newErrAngle = myConst.minErrAngleForRotateWithBall*koefForErr
-
-                                        pointPlusErr = aux.get_line_intersection(receiverRPos, receiverRPos+vectNormalToVectFormGivingPassToReceiver, givingRPos, aux.rotate(vectFormGivingPassToReceiver, newErrAngle), "LL")
-                                        pointMinusErr = aux.get_line_intersection(receiverRPos, receiverRPos+vectNormalToVectFormGivingPassToReceiver, givingRPos, aux.rotate(vectFormGivingPassToReceiver, -newErrAngle), "LL")
-                                        if pointPlusErr is not None and pointMinusErr is not None:
-                                            polygon: list[aux.Point] = [givingRPos, pointMinusErr, pointPlusErr]
-                                            field.strategy_image.draw_poly(polygon, size_in_pixels=4)
-
-                                            if isBallKickedToR(field, self.idGettingPass, self.idDoPass):
-                                                self.idDoPass = None
-                                                # print("pass done")
-                                                """pass done"""
+                                        if isBallKickedToR(field, self.idGettingPass, self.idDoPass):
+                                            self.idDoPass = None
+                                            # print("pass done")
+                                            """pass done"""
                                         else:
                                             print("POINT IN PASS PROBLEM")
 
@@ -220,12 +204,17 @@ class Strategy:
                         # if self.maxVelBall < field.ball.get_vel().mag() and field.ball.get_vel().mag()<10000:
                         #     self.maxVelBall = field.ball.get_vel().mag()
                         # print(self.maxVelBall)
-                        actions[self.idFirstAttacker] = Actions.Kick(field.enemy_goal.center)
+                        # actions[self.idFirstAttacker] = Actions.Kick(field.enemy_goal.center)
+
+                        if field.is_ball_in(field.allies[0]):
+                            doPassNearAllly(field, actions, 0)
+                        else:
+                            actions[0] = Actions.BallGrab((field.enemy_goal.center-field.allies[0].get_pos()).arg())
                     case whatWeDoStates.TestRotateWithBall:
                         thisR = field.allies[self.idFirstAttacker]
                         if self.maxVelBall < field.ball.get_vel().mag() and field.ball.get_vel().mag()<10000:
                             self.maxVelBall = field.ball.get_vel().mag()
-                        print(self.maxVelBall)
+                        # print(self.maxVelBall)
                         if field.is_ball_in(thisR):
                             actions[self.idFirstAttacker] = Actions.Kick(field.enemy_goal.center)
                             # actions[self.idFirstAttacker] = Actions.Kick(aux.Point(0, 0))

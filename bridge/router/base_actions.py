@@ -332,8 +332,8 @@ class KickActions:
             self,
             target_pos: aux.Point,
             start_angle: float,
-            flag_kick_pas: bool = False, 
             voltage: int = const.VOLTAGE_SHOOT,
+            flag_kick_pas: bool = False, 
             is_pass: bool = False,
             is_upper: bool = False,
         ) -> None:

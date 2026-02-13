@@ -10,6 +10,7 @@ from bridge import const
 from bridge.auxiliary import aux, fld, rbt  # type: ignore
 from bridge.const import State as GameStates
 from bridge.router.base_actions import Action, Actions, KickActions, get_pass_voltage  # type: ignore
+from bridge.strategy.check_point import quality_point, check_goal_point
 
 """
 ONE ITERATION of strategy
@@ -153,10 +154,9 @@ class Strategy:
         for rbt in field.active_enemies(True):
             self.enemies.append(rbt.get_pos())
 
-        kick_inf_list = self.check_goal_point(
+        kick_inf_list = check_goal_point(
             field,
-            aux.Point(field.ball.get_pos().x,field.ball.get_pos().y),
-            self.enemies
+            self.ball
         )
 
         self.point_kick_goal = kick_inf_list[0]
@@ -331,14 +331,16 @@ class Strategy:
         # else:
         #     actions[0] = KickActions.Turn_Kick(field.ally_goal.center, (self.ball - field.allies[0].get_pos()).arg())
 
-        # robot1 = field.allies[0]
+        robot1 = field.allies[0]
         # robot2 = field.allies[3]
         # robot3 = field.allies[7]
         # self.construction_well(field, actions, [robot1, robot2, robot3], aux.Point(200, 300), aux.Point(-200, -300))
         # print(robot1.get_pos(), robot2.get_pos(), robot3.get_pos())
 
-        actions[0] = KickActions.Turn_Kick(field.ally_goal.center, (self.ball - field.allies[0].get_pos()).arg())
-        
+        #actions[0] = KickActions.Turn_Kick(field.ally_goal.center, (self.ball - field.allies[0].get_pos()).arg())
+        self.optimal_point(field, self.ball, self.point_kick_goal)
+        print(time() - self.timer_work_dribbler)
+        self.timer_work_dribbler = time() 
 
         
 
@@ -668,118 +670,20 @@ class Strategy:
         return True
 
     #### Вспомогательные функции ####
-    def check_goal_point(
-        self,
-        field: fld.Field,
-        ball: aux.Point,
-        list_enemy: list[aux.Point],
-    ) -> tuple[aux.Point | None, float]:
-        """
-        Строим косательные к вражеским роботам от ball
-        строим отрезки в воротах которые защищены вражескими роботами
-        Нахордим максимально большой по длинне, не защищенный отрезок в вражеских воротах
-        и бъем в его центр
-        """
-
-
-        # Расчёт касательных к вражеским роботам
-        result_cords = []
-        for enemy in list_enemy:
-            tangent_points = aux.get_tangent_points(enemy, ball, const.ROBOT_R + aux.dist(self.ball, enemy) * 0.02)
-            field.strategy_image.draw_circle(enemy, (255, 0, 0), const.ROBOT_R + aux.dist(self.ball, enemy) * 0.02)
-            if len(tangent_points) >= 2:
-                cords_peresch = []
-                for count in range(2):
-                    result = aux.get_line_intersection(
-                        ball,
-                        tangent_points[count],
-                        field.enemy_goal.center_up,
-                        field.enemy_goal.center_down,
-                        "RL",
-                    )
-                    if result is not None:
-                        cords_peresch.append(result.y)
-                if len(cords_peresch) > 1:
-                    result_cords.append(sorted(cords_peresch))
-
-        for cordes in result_cords:
-            field.strategy_image.draw_line(ball, aux.Point(field.enemy_goal.up.x, cordes[0]), (255, 0, 0), 3)
-            field.strategy_image.draw_line(ball, aux.Point(field.enemy_goal.up.x, cordes[1]), (255, 0, 0), 3)
-            field.strategy_image.draw_line(
-                aux.Point(field.enemy_goal.up.x, cordes[0]),
-                aux.Point(field.enemy_goal.up.x, cordes[1]),
-                (255, 0, 0),
-                3,
-            )
-        
-        result_cords = sorted(result_cords)
-        maximum: float = 0
-
-        if (const.POLARITY == -1 and const.COLOR == const.Color.BLUE) or (
-            const.POLARITY == 1 and const.COLOR == const.Color.YELLOW
-        ):
-            field_up = field.enemy_goal.up
-            field_down = field.enemy_goal.down
-        else:
-            field_down = field.enemy_goal.up
-            field_up = field.enemy_goal.down
-
-        mid = None
-        left: float = min(result_cords[0][0], field_down.y) if result_cords else field_down.y #раньше был None
-        right: float = field_up.y
-        count = 0
-        arg_attacker = (field.enemy_goal.center - ball).arg()
-        while count < len(result_cords):
-            if left is not None and (left > right and right >= field_up.y and left <= field_down.y and left - right > 200):
-                maximum = left - right
-                mid = aux.Point(field_up.x, (left + right) // 2)
-                break
-            right = min(max(result_cords[count][1], right), field_down.y)
-            count += 1
-            if count < len(result_cords):
-                left = result_cords[count][0]
-            if left is None or left > field_down.y:
-                left = field_down.y
-
-        if count != 0:
-            count -= 1
-        while count < len(result_cords) and right < field_down.y:
-            if left > right:
-                if left > field_down.y:
-                    left = field_down.y
-                if left - right > maximum and left - right > 200 and right >= field_up.y:
-                    maximum = left - right
-                    mid = aux.Point(field_up.x, (left + right) // 2)
-            right = max(result_cords[count][1], right)
-            count += 1
-            if count < len(result_cords):
-                left = result_cords[count][0]
-        if left is None:
-            left = field_down.y
-        if left <= field_down.y:
-            left = field_down.y
-            if left - right > maximum and left > right and left - right > 200 and right >= field_up.y:
-                maximum = left - right
-                mid = aux.Point(field_up.x, (left + right) // 2)
-
-        return mid, maximum
     
     def optimal_point(
         self,
         field: fld.Field,
-        robot: aux.Point,
         ball: aux.Point,
-        enemy_list: list[aux.Point],
         mid: aux.Point | None
     ) -> aux.Point:
         """
         Находит оптимальную точку для паса, сравнивая расстояния.
         """
-        maxim = 0
-        minim_goal_dist = 10000.0
+        maxim = 0.0
         res = aux.Point(0, 0)
-        for x in range(int(ball.x) - 1400, int(ball.x) + 1400, 100):
-            for y in range(int(ball.y) - 1400, int(ball.y) + 1400, 100):
+        for x in range(int(ball.x) - 1400, int(ball.x) + 1400, 200):
+            for y in range(int(ball.y) - 1400, int(ball.y) + 1400, 200):
                 if abs(x) > 2250:
                     continue
                 if abs(y) > 1500:
@@ -790,25 +694,19 @@ class Strategy:
                     continue
                 #field.strategy_image.draw_circle(cand, (255, 0, 255), 30)
                 minim: float = 10000
-                flag_to_point = True
-                if aux.dist(cand, ball) < 700 or aux.dist(cand, ball) > 1400:
-                    flag_to_point = False
-                    continue
-                for enemy in enemy_list:
-                    if aux.dist(enemy, cand) < 300:
-                        flag_to_point = False
-                        break
-                    minim = min((enemy - aux.closest_point_on_line(ball, cand, enemy, "S")).mag(), minim)
+                # flag_to_point = True
+                # if aux.dist(cand, ball) < 700 or aux.dist(cand, ball) > 1400:
+                #     flag_to_point = False
+                #     continue
+                red = int(max(0, 255 / 8000 * (8000 -quality_point(field, cand, mid))))
+                green = int(min(255, 255 / 8000 * quality_point(field, cand, mid)))
+                #print(quality_point(field, cand, mid))
+                field.strategy_image.draw_circle(cand, (red, green, 0))
                 if (
-                    #self.check_point(field, cand, enemy_list)[0] > maxim
-                    aux.dist(cand, field.enemy_goal.center) < minim_goal_dist
-                    and aux.closest_point_on_line(robot, cand, ball).mag() > 180
-                    and minim > const.ROBOT_R + 300
-                    and flag_to_point
-                    and (mid is None or aux.dist(cand, aux.closest_point_on_line(ball, mid, cand)) > const.ROBOT_R + 100)
+                    quality_point(field, cand, mid) > maxim
                 ):
                     res = cand
-                    minim_goal_dist = aux.dist(cand, field.enemy_goal.center)
+                    maxim = quality_point(field, cand, mid)
         field.strategy_image.draw_circle(res, (255, 0, 0), 30)
         return res
     

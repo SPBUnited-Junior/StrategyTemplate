@@ -34,6 +34,9 @@ def quality_point(
     """
     kick_to_goal_weight: float = check_goal_point(field, point)[1] * 9
 
+    """
+    сумма весов
+    """
     weight: float = block_weight + kick_to_goal_weight
     return weight
 

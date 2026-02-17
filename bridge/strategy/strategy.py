@@ -428,8 +428,8 @@ class Strategy:
             return actions
 
         voltage = get_pass_voltage(aux.dist(self.ball, self.robot_catch_ball.get_pos()))
-        optimal_point = self.optimal_point(field, self.robot_catch_ball.get_pos(), self.ball, self.enemies, self.point_kick_goal)
-        optimal_point_not_kick = self.optimal_point(field, self.robot_catch_ball.get_pos(), self.ball, self.enemies, None)
+        optimal_point = self.optimal_point(field, self.ball, self.point_kick_goal)
+        optimal_point_not_kick = self.optimal_point(field, self.ball, None)
         angle_nearest_robot = (self.ball - self.nearest_robot.get_pos()).arg()
         if self.kick_status == Kick_Status.Goal_Turn_Kick    and field.is_ball_in_ally_robot():
             """
@@ -474,7 +474,7 @@ class Strategy:
                 and self.check_cath_ball(field, self.robot_catch_ball) and not field.is_ball_in_ally_robot()):
 
                 actions[self.robot_catch_ball.r_id] = self.process_catch_ball(field, self.robot_catch_ball)
-                actions[self.nearest_robot.r_id] = Actions.GoToPoint(self.optimal_point(field, self.nearest_robot.get_pos(), self.ball, self.enemies, None), (self.ball - self.nearest_robot.get_pos()).arg())
+                actions[self.nearest_robot.r_id] = Actions.GoToPoint(self.optimal_point(field, self.ball, None), (self.ball - self.nearest_robot.get_pos()).arg())
 
             elif self.point_kick_goal is not None and aux.dist(self.nearest_robot.get_pos(), field.enemy_goal.center) < 3500:
                 self.kick_status = Kick_Status.Goal_Turn_Kick

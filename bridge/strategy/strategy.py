@@ -10,6 +10,7 @@ from bridge import const
 from bridge.auxiliary import aux, fld, rbt  # type: ignore
 from bridge.const import State as GameStates
 from bridge.router.base_actions import Action, Actions, KickActions, DribblerActions  # type: ignore
+from bridge.router.myDefaultFunc import myIsBallInClass  # type: ignore
 import bridge.strategy.myConst as myConst
 from bridge.strategy.myConst import whatWeDoStates
 from bridge.strategy.myFunc import (
@@ -37,6 +38,7 @@ class Strategy:
         self.TimeWeTryDoPass: Optional[float] = None
         self.TimerWeHoldBall: Optional[float] = None
         self.whatWeDoAtThisRun: whatWeDoStates = myConst.whatWeDoAtThisRun
+        self.myIsBallInClass = myIsBallInClass()
 
     def process(self, field: fld.Field) -> list[Optional[Action]]:
         """Game State Management"""
@@ -86,7 +88,7 @@ class Strategy:
         # TODO fix problem with that robots comes so close to each other,when they try take ball
         # print(field.active_allies(False))
         if len(field.active_allies(True)) != 0:  # if our Rs on field
-            if field.ally_color == const.Color.YELLOW:
+            if field.ally_color == const.COLOR:
                 """code for blue"""
                 # print(field.game_state)#for real
                 self.updateTimerWeHoldBall(field)
@@ -108,7 +110,7 @@ class Strategy:
 
                     case whatWeDoStates.TestPass:
                         # for test pass
-                        actions[const.GK] = Actions.GoToPoint(aux.UP, 0)
+                        actions[const.GK] = Actions.GoToPoint(aux.Point(const.FIELD_DX, const.FIELD_DY), 0)
 
                         if field.ball.get_pos().y > 5000:
                             print("!!!!!!!!!!!!!!!!!!!!!!!!")
@@ -117,6 +119,10 @@ class Strategy:
                             if self.maxVelBall < field.ball.get_vel().mag() and field.ball.get_vel().mag()<10000:
                                 self.maxVelBall = field.ball.get_vel().mag()
                                 print("self.maxVelBall =", self.maxVelBall)
+
+                            self.myIsBallInClass.updateTimerWeHoldBall(field)
+                            # print("ballVel =", field.ball.get_vel().mag())
+                            # field.strategy_image.send_telemetry("ballVel", str(field.ball.get_vel().mag()))
 
                             ballPos = field.ball.get_pos()
                             nearestR = fld.find_nearest_robot(ballPos, field.active_allies(False))
@@ -133,11 +139,15 @@ class Strategy:
                                 otherAttackerR = field.allies[(idxThisR==self.idFirstAttacker)*self.idSecondAttacker + (idxThisR==self.idSecondAttacker)*self.idFirstAttacker]
                                 idxOtherAttacker = otherAttackerR.r_id
 
-                                if self.idDoPass == idxThisR and self.idGettingPass == None and not field.is_ball_in(thisR):
+                                if self.idDoPass == idxThisR and not field.is_ball_in(thisR):
                                     """if we not yet catch ball"""
                                     otherAttackerR = field.allies[(nearestR.r_id==self.idFirstAttacker)*self.idSecondAttacker + (nearestR.r_id==self.idSecondAttacker)*self.idFirstAttacker]
-                                    actions[idxThisR] = Actions.BallGrab((-nearestR.get_pos()+otherAttackerR.get_pos()).arg())
-                                elif self.idDoPass == idxThisR and self.TimerWeHoldBall is not None and self.TimerWeHoldBall > 0.3:#TODO check this const
+                                    if self.idGettingPass is None:
+                                        actions[idxThisR] = Actions.BallGrab((-nearestR.get_pos()+otherAttackerR.get_pos()).arg())
+                                    elif isBallKickedToR(field, idxOtherAttacker, self.idDoPass):
+                                        self.idDoPass = None
+                                elif self.idDoPass == idxThisR and self.myIsBallInClass.myIsBallIn():
+                                    # elif self.idDoPass == idxThisR and self.TimerWeHoldBall is not None and self.TimerWeHoldBall > 0.3:#TODO check this const
                                     """if this R do pass"""
                                     status = "if this R do pass"
                                     # if self.TimeWeTryDoPass is not None and time() - self.TimeWeTryDoPass > 100:
@@ -152,21 +162,23 @@ class Strategy:
                                     #     """grab ball"""
                                     #     # print("gab ball")
                                     #     actions[self.idDoPass] = Actions.BallGrab((field.ball.get_pos() - field.allies[self.idDoPass].get_pos()).arg() )
-                                    if field.ball.get_vel().mag() > 500 and self.idGettingPass is not None and self.idDoPass is not None:
+                                    if self.idGettingPass is not None and self.idDoPass is not None:
                                         if isBallKickedToR(field, self.idGettingPass, self.idDoPass):
                                             self.idDoPass = None
                                             # print("pass done")
-                                            """pass done"""
+                                            # field.strategy_image.send_telemetry("pass test state", "pass done")
                                         else:
-                                            print("POINT IN PASS PROBLEM")
-
-                                        
+                                            # field.strategy_image.draw_circle(aux.Point(0, 0), size_in_mms=1000)
+                                            self.idGettingPass = doPassNearAllly(field, actions, idxThisR)
+                                        #     """pass done"""
+                                        # else:
+                                        #     print("POINT IN PASS PROBLEM")
+                                        #     field.strategy_image.send_telemetry("pass test state", "POINT IN PASS PROBLEM")
                                     else:
                                         """do pass"""
                                         # print("do pass")
+                                        # field.strategy_image.draw_circle(aux.Point(0, 0), size_in_mms=1000)
                                         self.idGettingPass = doPassNearAllly(field, actions, idxThisR)
-                                elif self.idDoPass == idxThisR:
-                                    self.idDoPass = None
                                 elif idxThisR == self.idGettingPass:
                                     """if this R getting pass"""
                                     status = "if this R getting pass"
@@ -191,6 +203,7 @@ class Strategy:
                                 #         actions[idxThisR] = Actions.GoToPoint(aux.RIGHT*500, 0)
                             if oldIdDoPass != self.idDoPass or oldIdGettingPass != self.idGettingPass:
                                 print(self.idDoPass, self.idGettingPass)
+                                field.strategy_image.send_telemetry("ids:", "self.idDoPass" + str(self.idDoPass) + "self.idGettingPass:" + str(self.idGettingPass))
 
                     case whatWeDoStates.SimpleTest:
                         # actions[0] = Actions.BallGrab((-field.ball.get_pos() + field.enemy_goal.center).arg())  # work
@@ -288,7 +301,7 @@ class Strategy:
                 # else:
                 #     pointForWaitingForPass = thisR.get_pos()
                 #     actions[thisRID] = Actions.GoToPoint(pointForWaitingForPass, (field.allies[self.idDoPass].get_pos() - thisR.get_pos()).arg())
-        elif not field.is_ball_in(field.allies[thisRID]) or field.is_ball_moves():
+        elif not self.myIsBallInClass.myIsBallIn():
             # field.strategy_image.send_telemetry("status pass", "getting pass")
             """if ball already kicked"""
             if not aux.is_point_on_line(thisRPos, oldBallPos, ballPos, "R"):

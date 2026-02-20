@@ -12,10 +12,11 @@ class whatWeDoStates(Enum):
 
 
 
-idFirstAttacker: int = 5
-idSecondAttacker: int = 2
+idFirstAttacker: int = 0
+idSecondAttacker: int = 7
 
 timerForRotate = 0.5
+timerForHoldBall = 3
 
 whatWeDoAtThisRun: whatWeDoStates = whatWeDoStates.TestPass
 

@@ -35,14 +35,26 @@ def isBallKickedToR(field: fld.Field, receiverRId: int, givingRId: int) -> bool:
     # newErrAngle = myConst.minErrAngleForRotateWithBall*koefForErr
     newErrAngle = myConst.minErrAngleForRotateWithBall
     pointPlusErr = aux.get_line_intersection(receiverRPos, receiverRPos+vectNormalToVectFormGivingPassToReceiver, givingRPos, givingRPos+aux.rotate(vectFormGivingPassToReceiver, newErrAngle/180*math.pi*koefForErr), "LL")
+    field.strategy_image.draw_line(receiverRPos, receiverRPos+vectNormalToVectFormGivingPassToReceiver)
+    field.strategy_image.draw_line(receiverRPos, receiverRPos-vectNormalToVectFormGivingPassToReceiver)
+    field.strategy_image.draw_line(givingRPos, givingRPos+aux.rotate(vectFormGivingPassToReceiver, newErrAngle/180*math.pi*koefForErr), (255, 0, 0), 20)
     pointMinusErr = aux.get_line_intersection(receiverRPos, receiverRPos+vectNormalToVectFormGivingPassToReceiver, givingRPos, givingRPos+aux.rotate(vectFormGivingPassToReceiver, -newErrAngle/180*math.pi*koefForErr), "LL")
     givingRPos = givingR.get_pos()
+    field.strategy_image.send_telemetry("test", str(0))
     if pointPlusErr is not None and pointMinusErr is not None:
+        field.strategy_image.send_telemetry("test", str(1))
         polygon1: list[aux.Point] = [givingRPos, pointMinusErr, pointPlusErr]
         field.strategy_image.draw_poly(polygon1, size_in_pixels=4)
-        if aux.is_point_inside_poly(ballPos, polygon1):
-            if abs(field.ball.get_vel().arg()-vectFormGivingPassToReceiver.arg())/math.pi*180 < myConst.minErrAngleForRotateWithBall*koefForErr:
-                if field.ball.get_vel().mag() > 100:
+        # if aux.is_point_inside_poly(ballPos, polygon1):
+        if aux.dist(aux.nearest_point_in_poly(ballPos, polygon1), ballPos) < 100:
+            field.strategy_image.send_telemetry("test", str(2))
+            vectFromBallToReceiver = receiverRPos-ballPos
+            if abs(field.ball.get_vel().arg()-vectFromBallToReceiver.arg())/math.pi*180 < myConst.minErrAngleForRotateWithBall*koefForErr:
+                field.strategy_image.send_telemetry("test", str(3))
+                if field.ball.get_vel().mag() > 1000:
+                    field.strategy_image.send_telemetry("test", str(4))
+                    print("True")
+                    # field.strategy_image.draw_circle(aux.Point(0, 0), size_in_mms=1000)
                     return True
     return False
 
@@ -311,10 +323,10 @@ def doPassNearAllly(field: fld.Field, actions: list[Optional[Action]], idFrom: i
             field.allies[idFrom].get_pos(), (field.ball.get_pos() - field.allies[idFrom].get_pos()).arg()
         )  # TODO change koef for slow rotate with ball
     if rToPass != None:
-        print("Have point for pass")
+        # print("Have point for pass")
         return rToPass.r_id
     else:
-        print("None point for pass")
+        # print("None point for pass")
         return None
     return ourRsSortedByDistToBall[0].r_id
     # else: # consider this case

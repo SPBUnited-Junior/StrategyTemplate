@@ -368,8 +368,8 @@ class DumbActions:
         def behavior(self, domain: ActionDomain, current_action: ActionValues) -> None:
             current_action.auto_kick = self.autokick
 
-    timer2: float = time() + 10**10
-    timer1: float = time() + 10**10
+    timerForIsBallIn: float = time() + 10**10
+    timerForAlignned: float = time() + 10**10
     oldAligned: bool = False
     oldIs_ball_in: bool = False
 
@@ -392,15 +392,15 @@ class DumbActions:
             #print("is_aligned =", is_aligned)
             if isBallIn and not DumbActions.oldIs_ball_in:
                 DumbActions.oldIs_ball_in = True
-                DumbActions.timer2 = time()
+                DumbActions.timerForIsBallIn = time()
             if not isBallIn:
-                DumbActions.timer2 = time() + 10**10
+                DumbActions.timerForIsBallIn = time() + 10**10
                 DumbActions.oldIs_ball_in = False
-            #print(time() - DumbActions.timer1 > 0.1)
-            return isBallIn and is_aligned and time() - DumbActions.timer2 > myConst.timerForRotate and time() - DumbActions.timer1 > myConst.timerForRotate
+            #print(time() - DumbActions.timerForAlignned > 0.1)
+            return isBallIn and is_aligned and time() - DumbActions.timerForIsBallIn > myConst.timerForRotate and time() - DumbActions.timerForAlignned > myConst.timerForRotate
 
         def behavior(self, domain: ActionDomain, current_action: ActionValues) -> None:
-            # DumbActions.timer1 = time()+10**10
+            # DumbActions.timerForAlignned = time()+10**10
             # DumbActions.oldAligned = False
             current_action.auto_kick = self.autokick
             #print("shoot")
@@ -465,14 +465,13 @@ class DumbActions:
             maxAngle = angle_bounds*180/math.pi-minDeltaAngle
             # print(maxAngle)
             difference = (distToAim)/(((const.FIELD_DX*2)**2+(const.FIELD_DY*2)**2)**0.5)*maxAngle*1.4
-            print(((const.FIELD_DX*2)**2+(const.FIELD_DY*2)**2)**0.5, distToAim)
+            # print(((const.FIELD_DX*2)**2+(const.FIELD_DY*2)**2)**0.5, distToAim)
             # print("difference", difference*180/math.pi)
             if difference > maxAngle:
                 """if we overreact at angle"""
-                print
                 difference = maxAngle
             self.angle_bounds = angle_bounds-difference/180*math.pi#accuracy of rotate
-            print(self.angle_bounds*180/math.pi, maxAngle)
+            # print(self.angle_bounds*180/math.pi, maxAngle)
             # self.angle_bounds = minDeltaAngle/180*math.pi
             self.rotateVel = 0.4#rad/sec
 
@@ -484,11 +483,11 @@ class DumbActions:
             )
             if is_aligned and not DumbActions.oldAligned:
                 DumbActions.oldAligned = True
-                DumbActions.timer1 = time()
+                DumbActions.timerForAlignned = time()
             if not is_aligned:
-                DumbActions.timer1 = time() + 10**10
+                DumbActions.timerForAlignned = time() + 10**10
                 DumbActions.oldAligned = False
-            return domain.field.is_ball_in(domain.robot) and not is_aligned and not time() - DumbActions.timer1 > myConst.timerForRotate#TODO think, we need adaptive timer edge
+            return domain.field.is_ball_in(domain.robot) and not is_aligned#TODO think, we need adaptive timer edge
 
         def behavior(self, domain: ActionDomain, current_action: ActionValues) -> None:
             current_action.vel = aux.Point(0, 0)

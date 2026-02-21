@@ -10,7 +10,7 @@ from bridge import const
 from bridge.auxiliary import aux, fld, rbt  # type: ignore
 from bridge.const import State as GameStates
 from bridge.router.base_actions import Action, Actions, KickActions, get_pass_voltage  # type: ignore
-from bridge.strategy.check_point import quality_point, check_goal_point
+from bridge.strategy.check_point import check_goal_point
 
 """
 ONE ITERATION of strategy
@@ -338,7 +338,6 @@ class Strategy:
         # print(robot1.get_pos(), robot2.get_pos(), robot3.get_pos())
 
         #actions[0] = KickActions.Turn_Kick(field.ally_goal.center, (self.ball - field.allies[0].get_pos()).arg())
-        self.optimal_point(field, self.ball, self.point_kick_goal)
         print(time() - self.timer_work_dribbler)
         self.timer_work_dribbler = time() 
 
@@ -428,8 +427,6 @@ class Strategy:
             return actions
 
         voltage = get_pass_voltage(aux.dist(self.ball, self.robot_catch_ball.get_pos()))
-        optimal_point = self.optimal_point(field, self.ball, self.point_kick_goal)
-        optimal_point_not_kick = self.optimal_point(field, self.ball, None)
         angle_nearest_robot = (self.ball - self.nearest_robot.get_pos()).arg()
         if self.kick_status == Kick_Status.Goal_Turn_Kick    and field.is_ball_in_ally_robot():
             """
@@ -560,65 +557,6 @@ class Strategy:
         #Блокировка паса
         actions[self.idx2] = Actions.GoToPoint(aux.point_on_line(robot_position1_enemy, robot_position2_enemy, aux.dist(robot_position1_enemy, robot_position2_enemy)/2), (ball - robot_position2).arg())
 
-    def go_to_position(self, 
-        field: fld.Field, 
-        actions: list[Optional[Action]], 
-        robots: list[rbt.Robot], 
-        list_pos: list[aux.Point], 
-        idx: int = 0, 
-        min_dist: float = 1e5, 
-        max_dist: float = 0
-    ) -> None:
-        """
-        Распределяет позиции по роботам,
-        чтобы они максимально быстро приехали во все точки
-        robots - массив роботов
-        list_pos - массив позиций в которые должны приехать роботы
-        """
-        if idx == len(list_pos):
-            min_dist = max_dist
-            return
-
-        for rbt in robots:
-            dist: float = aux.dist(rbt.get_pos(), list_pos[idx])
-            if not self.used[rbt.r_id] and dist < min_dist:
-                max_dist = max(max_dist, dist)
-                self.used[rbt.r_id] = True
-                actions[rbt.r_id] = Actions.GoToPoint(list_pos[idx], (list_pos[idx] - rbt.get_pos()).arg())
-                self.go_to_position(field, actions, robots, list_pos, idx + 1, min_dist, max_dist)
-                self.used[rbt.r_id] = False
-        return
-            
-
-    def construction_well(self, 
-        field: fld.Field, 
-        actions: list[Optional[Action]],
-        robots: list[rbt.Robot], 
-        left_well_point: aux.Point, 
-        right_well_point: aux.Point
-    ) -> None:
-        """
-        Логика для стенки из роботов
-        на вход подаеться массив из роботов, из которых будет строиться стенка
-        robots - массив роботов
-        left_well_point - первая точка стенки
-        right_well_point - вторая точка стенки
-        """
-        list_pos: list[aux.Point] = []
-        vector_well: aux.Point = right_well_point - left_well_point
-        interval: float = (vector_well.mag() - 2 * const.ROBOT_R) / (len(robots) - 1)
-        print(interval, "interval", vector_well.mag())
-        pos: aux.Point = left_well_point + vector_well.unity() * const.ROBOT_R
-        
-        list_pos.append(pos)
-        for i in range(len(robots) - 1):
-            pos += vector_well.unity() * interval
-            list_pos.append(pos)
-
-        self.go_to_position(field, actions, robots, list_pos)
-        return
-
-
 
     def process_catch_ball(self, field: fld.Field, robot: rbt.Robot) -> Action:
         """
@@ -670,45 +608,6 @@ class Strategy:
         return True
 
     #### Вспомогательные функции ####
-    
-    def optimal_point(
-        self,
-        field: fld.Field,
-        ball: aux.Point,
-        mid: aux.Point | None
-    ) -> aux.Point:
-        """
-        Находит оптимальную точку для паса, сравнивая расстояния.
-        """
-        maxim = 0.0
-        res = aux.Point(0, 0)
-        for x in range(int(ball.x) - 1400, int(ball.x) + 1400, 200):
-            for y in range(int(ball.y) - 1400, int(ball.y) + 1400, 200):
-                if abs(x) > 2250:
-                    continue
-                if abs(y) > 1500:
-                    continue 
-                cand = aux.Point(x, y)
-                if ((const.GOAL_DX - const.GOAL_PEN_DX) - abs(cand.x) < 100) and (abs(cand.y) - abs(const.GOAL_PEN_DY / 2) < 100):
-                    cond = 0
-                    continue
-                #field.strategy_image.draw_circle(cand, (255, 0, 255), 30)
-                minim: float = 10000
-                # flag_to_point = True
-                # if aux.dist(cand, ball) < 700 or aux.dist(cand, ball) > 1400:
-                #     flag_to_point = False
-                #     continue
-                red = int(max(0, 255 / 8000 * (8000 -quality_point(field, cand, mid))))
-                green = int(min(255, 255 / 8000 * quality_point(field, cand, mid)))
-                #print(quality_point(field, cand, mid))
-                field.strategy_image.draw_circle(cand, (red, green, 0))
-                if (
-                    quality_point(field, cand, mid) > maxim
-                ):
-                    res = cand
-                    maxim = quality_point(field, cand, mid)
-        field.strategy_image.draw_circle(res, (255, 0, 0), 30)
-        return res
     
     def _process_goalkeeper(
         self,

@@ -114,6 +114,7 @@ for i in range(TEAM_ROBOTS_MAX_COUNT):
 CONTROL_TOPIC = "control-topic"
 FIELD_TOPIC = "field-topic"
 IMAGE_TOPIC = "image-topic"
+PASS_TOPIC = "create_pass_point"
 ##################################################
 
 ##################################################
@@ -179,20 +180,20 @@ KEEP_BALL_DIST = 300 + ROBOT_R
 
 # is_ball_in
 GRAB_ALIGN_DIST = 130
-BALL_GRABBED_ANGLE = 0.8
-BALL_GRABBED_DIST = 110
+BALL_GRABBED_ANGLE = 0.6
+BALL_GRABBED_DIST = 104
 # is_kick_aligned
 KICK_ALIGN_DIST_MULT = 1.5
-KICK_ALIGN_ANGLE = 0.1
+KICK_ALIGN_ANGLE = 0.08
 KICK_ALIGN_DIST = 150
 KICK_ALIGN_OFFSET = 40
 
 # for grabbing ball
 GRAB_AREA = GRAB_ALIGN_DIST
 # GRAB_DIST = 45  # 30 is good
-GRAB_DIST = 75
-GRAB_MULT = 6  # speed = dist * mult
-GRAB_OFFSET_ANGLE = 0.4
+GRAB_DIST = 45
+GRAB_MULT = 4  # speed = dist * mult
+GRAB_OFFSET_ANGLE = 0.35
 
 if IS_SIMULATOR_USED:
     GRAB_ALIGN_DIST = 150
@@ -200,6 +201,10 @@ if IS_SIMULATOR_USED:
     GRAB_DIST = 85
     GRAB_MULT = 5
     GRAB_OFFSET_ANGLE = 0.45
+
+#check point to kick
+MIN_PASS_DIST = 300
+MIN_DIST_FROM_KICK = 150
 
 # VOLTAGES
 VOLTAGE_SHOOT = 10

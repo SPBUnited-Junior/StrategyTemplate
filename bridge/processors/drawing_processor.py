@@ -83,6 +83,7 @@ class Drawer(BaseProcessor):
             drawing.ImageTopic.FIELD,
             drawing.ImageTopic.STRATEGY,
             drawing.ImageTopic.ROUTER,
+            drawing.ImageTopic.PASSES,
         ]:
             image = self.images[image_topic]
             # if image.timer.delay_warning:

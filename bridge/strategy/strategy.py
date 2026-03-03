@@ -91,10 +91,10 @@ class Strategy:
             if field.ally_color == const.COLOR:
                 """code for blue"""
                 # print(field.game_state)#for real
-                self.updateTimerWeHoldBall(field)
+                self.myIsBallInClass.updateTimerWeHoldBall(field)
                 if self.whatWeDoAtThisRun == whatWeDoStates.Play or self.whatWeDoAtThisRun == whatWeDoStates.BothPlay:
                     # print(self.idDoPass)
-                    print(field.active_allies(False))
+                    # print(field.active_allies(False))
                     self.attacker(field, actions, self.idFirstAttacker, self.idSecondAttacker)
                     self.attacker(field, actions, self.idSecondAttacker, self.idFirstAttacker)
                     if field.allies[const.GK].is_used():
@@ -394,37 +394,52 @@ class Strategy:
                 else:
                     actions[idxThisR] = Actions.BallGrab((nearestEnemyR.get_pos() - ballPos).arg())
                     
-            """ ↑ ↑ ↑ logic for for full team ↑ ↑ ↑ """
+            """ ↑ ↑ ↑ logic for not full team ↑ ↑ ↑ """
 
             """ ↓ ↓ ↓ logic for pass  ↓ ↓ ↓""" 
 
-        elif self.idDoPass == idxThisR and aux.dist(ballPos, thisRPos) < 200:
+        elif self.idDoPass == idxThisR and not field.is_ball_in(thisR):
+            """if we not yet catch ball"""
+            if self.idGettingPass is None:
+                actions[idxThisR] = Actions.BallGrab((-otherAttackerR.get_pos()+otherAttackerR.get_pos()).arg())
+            elif isBallKickedToR(field, idxOtherAttacker, self.idDoPass):
+                self.idDoPass = None
+        elif self.idDoPass == idxThisR and self.myIsBallInClass.myIsBallIn(thisR):
             """if this R do pass"""
             status = "if this R do pass"
-            if self.TimeWeTryDoPass is not None and time() - self.TimeWeTryDoPass > 4:
-                actions[idxThisR] = Actions.Kick(otherAttackerR.get_pos(), is_pass=True, is_upper=True)
-                self.TimeWeTryDoPass = None
-                self.idGettingPass = None
-                self.idDoPass = None
-                print("null")
-            elif field.is_ball_in(field.allies[self.idDoPass]):
+            # if self.TimeWeTryDoPass is not None and time() - self.TimeWeTryDoPass > 100:
+            #     actions[idxThisR] = Actions.Kick(otherAttackerR.get_pos(), is_pass=True, is_upper=True)
+            #     self.TimeWeTryDoPass = None
+            #     self.idGettingPass = None
+            #     self.idDoPass = None
+            #     print("null")
+            # elif field.is_ball_in(thisR):
+
+            # elif self.idGettingPass == None:
+            #     """grab ball"""
+            #     # print("gab ball")
+            #     actions[self.idDoPass] = Actions.BallGrab((field.ball.get_pos() - field.allies[self.idDoPass].get_pos()).arg() )
+            if self.idGettingPass is not None and self.idDoPass is not None:
+                if isBallKickedToR(field, self.idGettingPass, self.idDoPass):
+                    self.idDoPass = None
+                    # print("pass done")
+                    # field.strategy_image.send_telemetry("pass test state", "pass done")
+                else:
+                    # field.strategy_image.draw_circle(aux.Point(0, 0), size_in_mms=1000)
+                    self.idGettingPass = doPassNearAllly(field, actions, idxThisR)
+                #     """pass done"""
+                # else:
+                #     print("POINT IN PASS PROBLEM")
+                #     field.strategy_image.send_telemetry("pass test state", "POINT IN PASS PROBLEM")
+            else:
                 """do pass"""
                 # print("do pass")
+                # field.strategy_image.draw_circle(aux.Point(0, 0), size_in_mms=1000)
                 self.idGettingPass = doPassNearAllly(field, actions, idxThisR)
-            elif self.idGettingPass == None:
-                """grab ball"""
-                # print("gab ball")
-                actions[self.idDoPass] = Actions.BallGrab((field.ball.get_pos() - field.allies[self.idDoPass].get_pos()).arg() )
-            else:
-                self.idDoPass = None
-                # print("pass done")
-                """pass done"""
-        elif self.idDoPass == idxThisR and aux.dist(ballPos, thisRPos) >= 200:
-            self.idDoPass = None
         elif idxThisR == self.idGettingPass:
             """if this R getting pass"""
             status = "if this R getting pass"
-            self.gettingPass(field, actions)
+            self.gettingPass(field, actions, True)
         elif self.idGettingPass != None:
             """if we kick ball for pass, but ally dont yet catch him"""
             status = "if we kick ball for pass, but ally dont yet catch him"
@@ -598,5 +613,5 @@ class Strategy:
         # print(status, idxThisR)
 
         """ ↑ ↑ ↑ genegal logic ↑ ↑ ↑ """ 
-
+        
         field.strategy_image.send_telemetry("statusAttacker" + str(idxThisR), status)

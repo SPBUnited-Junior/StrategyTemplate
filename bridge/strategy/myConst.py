@@ -13,11 +13,11 @@ class whatWeDoStates(Enum):
 
 
 idFirstAttacker: int = 2
-idSecondAttacker: int = 3
+idSecondAttacker: int = 0
 
 timerForRotate = 0.5
 timerForHoldBall = 3
 
-whatWeDoAtThisRun: whatWeDoStates = whatWeDoStates.TestPass
+whatWeDoAtThisRun: whatWeDoStates = whatWeDoStates.BothPlay
 
 minErrAngleForRotateWithBall: int = 5

@@ -146,7 +146,7 @@ class Strategy:
                                         actions[idxThisR] = Actions.BallGrab((-nearestR.get_pos()+otherAttackerR.get_pos()).arg())
                                     elif isBallKickedToR(field, idxOtherAttacker, self.idDoPass):
                                         self.idDoPass = None
-                                elif self.idDoPass == idxThisR and self.myIsBallInClass.myIsBallIn():
+                                elif self.idDoPass == idxThisR and self.myIsBallInClass.myIsBallIn(thisR):
                                     # elif self.idDoPass == idxThisR and self.TimerWeHoldBall is not None and self.TimerWeHoldBall > 0.3:#TODO check this const
                                     """if this R do pass"""
                                     status = "if this R do pass"
@@ -206,6 +206,8 @@ class Strategy:
                                 field.strategy_image.send_telemetry("ids:", "self.idDoPass" + str(self.idDoPass) + "self.idGettingPass:" + str(self.idGettingPass))
 
                     case whatWeDoStates.SimpleTest:
+                        # if not self.myIsBallInClass.myIsBallIn():
+                        #     print(1)
                         # actions[0] = Actions.BallGrab((-field.ball.get_pos() + field.enemy_goal.center).arg())  # work
                         # actions[2] = Actions.Kick(field.enemy_goal.center)
                         # field.allies[2].set_dribbler_speed(15)
@@ -301,7 +303,7 @@ class Strategy:
                 # else:
                 #     pointForWaitingForPass = thisR.get_pos()
                 #     actions[thisRID] = Actions.GoToPoint(pointForWaitingForPass, (field.allies[self.idDoPass].get_pos() - thisR.get_pos()).arg())
-        elif not self.myIsBallInClass.myIsBallIn():
+        elif not self.myIsBallInClass.myIsBallIn(thisR):
             # field.strategy_image.send_telemetry("status pass", "getting pass")
             """if ball already kicked"""
             if not aux.is_point_on_line(thisRPos, oldBallPos, ballPos, "R"):
@@ -346,6 +348,8 @@ class Strategy:
 
         # field.allies[idxThisR].set_dribbler_speed(0)
 
+        """ ↓ ↓ ↓ logic for for full team ↓ ↓ ↓ """
+
         if not field.allies[idxOtherAttacker].is_used():
             """if this attacker alone on field"""
             status = "No 1 r"
@@ -389,7 +393,11 @@ class Strategy:
                                 actions[idxThisR] = Actions.Kick(field.enemies[const.ENEMY_GK].get_pos())
                 else:
                     actions[idxThisR] = Actions.BallGrab((nearestEnemyR.get_pos() - ballPos).arg())
-        # elif len(enemies) == 0:
+                    
+            """ ↑ ↑ ↑ logic for for full team ↑ ↑ ↑ """
+
+            """ ↓ ↓ ↓ logic for pass  ↓ ↓ ↓""" 
+
         elif self.idDoPass == idxThisR and aux.dist(ballPos, thisRPos) < 200:
             """if this R do pass"""
             status = "if this R do pass"
@@ -430,6 +438,10 @@ class Strategy:
                 actions[idxThisR] = Actions.GoToPoint(
                     thisRPos, (field.allies[idxOtherAttacker].get_pos() - thisR.get_pos()).arg()
                 )
+            """ ↑ ↑ ↑ logic for pass  ↑ ↑ ↑ """ 
+            
+            """ ↓ ↓ ↓ genegal logic  ↓ ↓ ↓""" 
+
         elif actions[idxThisR] == None:
             """if we dont send command on this robot"""
             # status = "if we dont send command on this robot"
@@ -584,4 +596,7 @@ class Strategy:
                     actions[idxThisR] = Actions.GoToPoint(pointGo, (thisRPos - nearestEnemyR.get_pos()).arg()).compose(DribblerActions.SetDribblerSpeed(15))
                     # field.allies[idxThisR].set_dribbler_speed(15)
         # print(status, idxThisR)
+
+        """ ↑ ↑ ↑ genegal logic ↑ ↑ ↑ """ 
+
         field.strategy_image.send_telemetry("statusAttacker" + str(idxThisR), status)

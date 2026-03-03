@@ -40,21 +40,21 @@ def isBallKickedToR(field: fld.Field, receiverRId: int, givingRId: int) -> bool:
     field.strategy_image.draw_line(givingRPos, givingRPos+aux.rotate(vectFormGivingPassToReceiver, newErrAngle/180*math.pi*koefForErr), (255, 0, 0), 20)
     pointMinusErr = aux.get_line_intersection(receiverRPos, receiverRPos+vectNormalToVectFormGivingPassToReceiver, givingRPos, givingRPos+aux.rotate(vectFormGivingPassToReceiver, -newErrAngle/180*math.pi*koefForErr), "LL")
     givingRPos = givingR.get_pos()
-    field.strategy_image.send_telemetry("test", str(0))
+    field.strategy_image.send_telemetry("test", "in")
     if pointPlusErr is not None and pointMinusErr is not None:
-        field.strategy_image.send_telemetry("test", str(1))
+        field.strategy_image.send_telemetry("test", "if we have points")
         polygon1: list[aux.Point] = [givingRPos, pointMinusErr, pointPlusErr]
         field.strategy_image.draw_poly(polygon1, size_in_pixels=4)
         # if aux.is_point_inside_poly(ballPos, polygon1):
         if aux.dist(aux.nearest_point_in_poly(ballPos, polygon1), ballPos) < 100:
-            field.strategy_image.send_telemetry("test", str(2))
+            field.strategy_image.send_telemetry("test", "if point in triangle")
             vectFromBallToReceiver = receiverRPos-ballPos
             if abs(field.ball.get_vel().arg()-vectFromBallToReceiver.arg())/math.pi*180 < myConst.minErrAngleForRotateWithBall*koefForErr:
-                field.strategy_image.send_telemetry("test", str(3))
+                field.strategy_image.send_telemetry("test", "if ball moving to point")
                 if field.ball.get_vel().mag() > 1000:
-                    field.strategy_image.send_telemetry("test", str(4))
-                    print("True")
-                    # field.strategy_image.draw_circle(aux.Point(0, 0), size_in_mms=1000)
+                    field.strategy_image.send_telemetry("test", "if ball moving fast enough")
+                    # print("True")
+                    field.strategy_image.draw_circle(aux.Point(0, 0), size_in_mms=1000)
                     return True
     return False
 

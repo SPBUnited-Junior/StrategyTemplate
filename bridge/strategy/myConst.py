@@ -12,8 +12,8 @@ class whatWeDoStates(Enum):
 
 
 
-idFirstAttacker: int = 0
-idSecondAttacker: int = 7
+idFirstAttacker: int = 2
+idSecondAttacker: int = 3
 
 timerForRotate = 0.5
 timerForHoldBall = 3

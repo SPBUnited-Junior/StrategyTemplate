@@ -47,10 +47,11 @@ class Role:
 
             is_ally: bool = robot.color == self.field.ally_color
 
-            if (is_ally):
-                self.ally_robots.append(robot)
-            else:
-                raise RuntimeError("In Role Block_Enemy_Pass push enemy robot")
+            if (not is_ally):
+                RuntimeError("In Role Block_Enemy_Pass push enemy robot")
+            if (robot.r_id == const.GK):
+                RuntimeError("In Role Block_Enemy_Pass push GK")
+            self.ally_robots.append(robot)
 
         def block_pass_point(self, 
             ally_robot: rbt.Robot, 
@@ -61,14 +62,14 @@ class Role:
             """
             
             ball_pos: aux.Point = self.field.ball.get_pos()
-            block_point: aux.Point = aux.closest_point_on_line(ball_pos, ally_robot.get_pos(), enemy_robot.get_pos(), "S")
+            block_point: aux.Point = aux.closest_point_on_line(ball_pos, enemy_robot.get_pos(), ally_robot.get_pos(), "S")
 
             angle = (ball_pos - block_point).arg()
-            if (aux.dist(enemy_robot.get_pos(), block_point) < 100): 
+            if (aux.dist(enemy_robot.get_pos(), block_point) < 200): 
                 block_point = enemy_robot.get_pos() + aux.rotate(aux.Point(200, 0), angle)
-            if (aux.dist(ball_pos, block_point) < 100):
+            if (aux.dist(ball_pos, block_point) < 200):
                 dist: float = aux.dist(enemy_robot.get_pos(), ball_pos)
-                block_point = enemy_robot.get_pos() + aux.rotate(aux.Point(dist - 100, 0), angle)
+                block_point = enemy_robot.get_pos() + aux.rotate(aux.Point(dist - 200, 0), angle)
 
             return block_point
 
@@ -77,36 +78,52 @@ class Role:
             min_dist: float = 1e5,
             max_dist: float = 0,
             used: list[bool] = [False] * 15
-        ) -> None:
+        ) -> float:
             """
-            Оптимально распределяет роботов для блокировки пасов
+            (не) Оптимально  распределяет роботов для блокировки пасов
             """
 
             ball_pos = self.field.ball.get_pos()
             if (idx == len(self.ally_robots)):
                 min_dist = max_dist
-                return
+                return min_dist
             
+            enemy_rbt = self.enemy_robots[idx]
+            max_dist_old = max_dist
             for ally_rbt in self.ally_robots:
-                enemy_rbt = self.enemy_robots[idx]
                 block_point: aux.Point = self.block_pass_point(ally_rbt, enemy_rbt)
                 dist = aux.dist(ally_rbt.get_pos(), block_point)
 
-                if not used[ally_rbt.r_id] and max_dist < dist:
+                if not used[ally_rbt.r_id] and dist < min_dist:
                     max_dist = max(max_dist, dist)
                     used[ally_rbt.r_id] = True
                     angle = (ball_pos - block_point).arg()
                     self.actions[ally_rbt.r_id] = Actions.GoToPoint(block_point, angle)
-                    self.block_robot(idx + 1, min_dist, max_dist, used)
+                    min_dist = self.block_robot(idx + 1, min_dist, max_dist, used)
+                    max_dist = max_dist_old
                     used[ally_rbt.r_id] = False
             
-            return
+            return min_dist
         
         def build_list(self) -> None:
-            
+            ball_pos = self.field.ball.get_pos()
+
+            size = len(self.ally_robots)
+            active_enemy_robots: list[tuple[float, int]] = []
+            for enemy_rbt in self.field.active_enemies(False):
+                active_enemy_robots.append((aux.dist(ball_pos, enemy_rbt.get_pos()), enemy_rbt.r_id))
+
+            active_enemy_robots.sort()
+            for i in range(1, min(size + 1, len(active_enemy_robots))):
+                id: int = active_enemy_robots[i][1]
+                self.enemy_robots.append(self.field.enemies[id])
+            return
+
 
         def process(self) -> None:
-            self.block_robot()
+            self.build_list()
+            if (len(self.enemy_robots) == len(self.ally_robots)):
+                self.block_robot()
             return
 
     class Defer:
@@ -130,7 +147,7 @@ def go_to_position(
     min_dist: float = 1e5, 
     max_dist: float = 0,
     used: list[bool] = [False] * 15
-) -> None:
+) -> float:
     """
     Распределяет позиции по роботам,
     чтобы они максимально быстро приехали во все точки
@@ -139,7 +156,7 @@ def go_to_position(
     """
     if idx == len(list_pos):
         min_dist = max_dist
-        return
+        return min_dist
 
     for rbt in robots:
         dist: float = aux.dist(rbt.get_pos(), list_pos[idx])
@@ -147,9 +164,9 @@ def go_to_position(
             max_dist = max(max_dist, dist)
             used[rbt.r_id] = True
             actions[rbt.r_id] = Actions.GoToPoint(list_pos[idx], (list_pos[idx] - rbt.get_pos()).arg())
-            go_to_position(field, actions, robots, list_pos, idx + 1, min_dist, max_dist)
+            min_dist = go_to_position(field, actions, robots, list_pos, idx + 1, min_dist, max_dist)
             used[rbt.r_id] = False
-    return
+    return min_dist
         
 def construction_well(
     field: fld.Field, 
@@ -168,7 +185,6 @@ def construction_well(
     list_pos: list[aux.Point] = []
     vector_well: aux.Point = right_well_point - left_well_point
     interval: float = (vector_well.mag() - 2 * const.ROBOT_R) / (len(robots) - 1)
-    print(interval, "interval", vector_well.mag())
     pos: aux.Point = left_well_point + vector_well.unity() * const.ROBOT_R
     
     list_pos.append(pos)

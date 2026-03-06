@@ -11,6 +11,7 @@ from bridge.auxiliary import aux, fld, rbt  # type: ignore
 from bridge.const import State as GameStates
 from bridge.router.base_actions import Action, Actions, KickActions, get_pass_voltage  # type: ignore
 from bridge.strategy.check_point import check_goal_point
+from bridge.strategy.Role import Role
 
 """
 ONE ITERATION of strategy
@@ -338,8 +339,10 @@ class Strategy:
         # print(robot1.get_pos(), robot2.get_pos(), robot3.get_pos())
 
         #actions[0] = KickActions.Turn_Kick(field.ally_goal.center, (self.ball - field.allies[0].get_pos()).arg())
-        print(time() - self.timer_work_dribbler)
-        self.timer_work_dribbler = time() 
+        block = Role.Block_Enemy_Pass(field, actions)
+        block.push(field.allies[1])
+        block.push(field.allies[2])
+        block.process()
 
         
 

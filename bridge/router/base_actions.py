@@ -473,7 +473,7 @@ class DumbActions:
             self.angle_bounds = angle_bounds-difference/180*math.pi#accuracy of rotate
             # print(self.angle_bounds*180/math.pi, maxAngle)
             # self.angle_bounds = minDeltaAngle/180*math.pi
-            self.rotateVel = 0.4#rad/sec
+            self.rotateVel = myConst.velRotateWithBall#rad/sec
 
         def is_defined(self, domain: ActionDomain) -> bool:
             is_aligned = (

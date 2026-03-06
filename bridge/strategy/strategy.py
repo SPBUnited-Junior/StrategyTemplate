@@ -53,6 +53,7 @@ class Strategy:
             actions.append(None)
 
         # TODO make game states
+        print(field.game_state)#for real
         match field.game_state:
             case GameStates.RUN: # GOOD
                 self.run(field, actions)
@@ -61,7 +62,7 @@ class Strategy:
                 states.TIMEOUT(field, actions, self.we_active, self.idFirstAttacker, self.idSecondAttacker)
 
             case GameStates.HALT:  # GOOD
-                return [None] * const.TEAM_ROBOTS_MAX_COUNT
+                return [Actions.Stop()] * const.TEAM_ROBOTS_MAX_COUNT
             
             case GameStates.PREPARE_PENALTY:
                 states.PREPARE_PENALTY(field, actions, self.we_active, self.idFirstAttacker, self.idSecondAttacker)
@@ -89,9 +90,10 @@ class Strategy:
         if len(field.active_allies(True)) != 0:  # if our Rs on field
             if field.ally_color == const.COLOR:
                 """code for blue"""
-                # print(field.game_state)#for real
                 self.myIsBallInClass.updateTimerWeHoldBall(field)
                 if self.whatWeDoAtThisRun == whatWeDoStates.Play or self.whatWeDoAtThisRun == whatWeDoStates.BothPlay:
+                    # print(self.idDoPass, self.idGettingPass)
+                    field.strategy_image.send_telemetry("ids", str(self.idDoPass)+" "+str(self.idGettingPass))
                     self.attacker(field, actions, self.idFirstAttacker, self.idSecondAttacker)
                     self.attacker(field, actions, self.idSecondAttacker, self.idFirstAttacker)
                     if field.allies[const.GK].is_used():
@@ -174,10 +176,11 @@ class Strategy:
 
                     case whatWeDoStates.SimpleTest:
 
-                        if field.is_ball_in(field.allies[0]):
-                            doPassNearAllly(field, actions, 0)
-                        else:
-                            actions[0] = Actions.BallGrab((field.enemy_goal.center-field.allies[0].get_pos()).arg())
+                        findPointForScore(field, field.ball.get_pos())
+                        # if field.is_ball_in(field.allies[0]):
+                        #     doPassNearAllly(field, actions, 0)
+                        # else:
+                        #     actions[0] = Actions.BallGrab((field.enemy_goal.center-field.allies[0].get_pos()).arg())
 
                     case whatWeDoStates.TestRotateWithBall:
                         thisR = field.allies[self.idFirstAttacker]
@@ -238,7 +241,7 @@ class Strategy:
                     actions[thisRID] = Actions.BallGrab((ballPos - thisRPos).arg())
             else:
                 actions[thisRID] = Actions.BallGrab((field.ball.get_pos()-field.allies[thisRID].get_pos()).arg())
-        elif field.is_ball_in(field.allies[thisRID]) and not field.is_ball_moves():
+        elif self.myIsBallInClass.myIsBallIn(field.allies[thisRID]):
             """get pass"""
             if test: field.strategy_image.send_telemetry("status pass", "get pass")
             self.idGettingPass = None
@@ -263,7 +266,7 @@ class Strategy:
 
         # field.allies[idxThisR].set_dribbler_speed(0)
 
-        """ ↓ ↓ ↓ logic for for full team ↓ ↓ ↓ """
+        """ ↓ ↓ ↓ logic for not full team ↓ ↓ ↓ """
 
         if not field.allies[idxOtherAttacker].is_used():
             """if this attacker alone on field"""
@@ -380,7 +383,7 @@ class Strategy:
                         status += "if this r is nearest to ball, but dont grab him, grab ball"
                         actions[idxThisR] = Actions.BallGrab((-field.ball.get_pos() + field.enemy_goal.center).arg())
                     else:
-                        """do do pass and wait for result"""
+                        """do do pass and wait for result""" #TODO check: we enter there?
                         status += "do do pass and wait for result"
                         actions[idxThisR] = Actions.GoToPoint(
                             thisRPos, (field.allies[idxOtherAttacker].get_pos() - thisR.get_pos()).arg()

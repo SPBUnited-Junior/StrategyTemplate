@@ -18,6 +18,8 @@ idSecondAttacker: int = 0
 timerForRotate = 0.5
 timerForHoldBall = 3
 
-whatWeDoAtThisRun: whatWeDoStates = whatWeDoStates.BothPlay
+velRotateWithBall = 0.4#rad/sec
+
+whatWeDoAtThisRun: whatWeDoStates = whatWeDoStates.Play
 
 minErrAngleForRotateWithBall: int = 5

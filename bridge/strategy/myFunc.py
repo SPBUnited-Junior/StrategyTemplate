@@ -67,7 +67,7 @@ def getKoefForEnemysRobotR(ballPos: aux.Point, enemyRPos: aux.Point) -> float:
     if aux.dist(enemyRPos, ballPos) < 100:
         k = 1.0
     else:
-        k = 0.75 + 0.15 * aux.dist(enemyRPos, ballPos) / const.ROBOT_R  # depend from distans from r to maybe pass point
+        k = 0.85 + 0.15 * aux.dist(enemyRPos, ballPos) / const.ROBOT_R  # depend from distans from r to maybe pass point
     return k
 
 
@@ -428,10 +428,10 @@ def findPointForScore(
         d = field.ally_goal.up.y - field.ally_goal.down.y
         points = [aux.Point(field.ally_goal.up.x, field.ally_goal.up.y - (d / qPoint * i)) for i in range(1, qPoint)]
         enemys = field.active_allies(True)
-    # enemys = field.enemies
+    # enemys = [field.enemies[1]]
     closest = None
     min_dist = 10e10
-    for _, point in enumerate(points):
+    for point in points:
         if aux.dist(pointFrom, point) < min_dist:
             if len(enemys) != 0:
                 for enemyR in enemys:
@@ -439,17 +439,20 @@ def findPointForScore(
                         k = getKoefForEnemysRobotR(ballPos, enemyR.get_pos())
                     if len(aux.line_circle_intersect(pointFrom, point, enemyR.get_pos(), const.ROBOT_R * k, "S")) != 0:
                         break
+                    k = None
                 else:
                     """if no one enemy r prevent this kick"""
                     min_dist = aux.dist(pointFrom, point)
                     closest = point
+                    k = None
             else:
                 """if no one enemy r prevent this kick"""
                 min_dist = aux.dist(pointFrom, point)
                 closest = point
     if draw:
         if closest != None:
-            field.strategy_image.draw_line(pointFrom, closest, color=(0, 255, 0))
+            field.strategy_image.draw_line(pointFrom, closest, color=(0, 255, 0), size_in_pixels=5)
+            pass
         else:
             field.strategy_image.draw_circle(pointFrom, color=(0, 0, 0), size_in_mms=50)
     return closest

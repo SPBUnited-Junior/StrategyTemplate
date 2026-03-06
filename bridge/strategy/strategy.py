@@ -11,6 +11,8 @@ from bridge.auxiliary import aux, fld, rbt  # type: ignore
 from bridge.const import State as GameStates
 from bridge.router.base_actions import Action, Actions, KickActions, get_pass_voltage  # type: ignore
 from bridge.strategy.check_point import check_goal_point
+from bridge.strategy.ricochet import (calculate_ricochet_shot, is_ricochet_possible, get_ricochet_action, visualize_ricochet)
+from bridge.router.base_actions import Action, ActionValues
 
 """
 ONE ITERATION of strategy
@@ -59,7 +61,32 @@ class BallStatusInsidePoly(Enum):
     NotInsidePoly = 0
     InsidePoly = 1
 
- 
+class RicochetState:
+    """Класс для хранения состояния рикошета"""
+    def __init__(self):
+        self.active = False
+        self.shot_point: Optional[aux.Point] = None
+        self.target_point: Optional[aux.Point] = None
+        self.ball_pos_at_start: Optional[aux.Point] = None
+        self.teammate_pos_at_start: Optional[aux.Point] = None
+        self.goal_point_at_start: Optional[aux.Point] = None
+        self.start_time = 0
+        
+    def is_valid(self, current_ball: aux.Point, current_teammate: aux.Point, current_goal: aux.Point) -> bool:
+        if not self.active:
+            return False
+            
+        if aux.dist(current_ball, self.ball_pos_at_start) > 200:
+            return False
+            
+        if aux.dist(current_teammate, self.teammate_pos_at_start) > 100:
+            return False
+            
+        if time() - self.start_time > 3.0:
+            return False
+            
+        return True
+
 class Strategy:
     """Main class of strategy"""
 
@@ -67,18 +94,19 @@ class Strategy:
         self,
     ) -> None:
         self.we_active = False
+        self.ricochet = RicochetState()
 
         # Индексы роботов
 
-        self.goalkeeper_idx = 0
-        self.idx1 = 3
-        self.idx2 = 5
-
+        self.goalkeeper_idx = 3
+        self.idx1 = 0
+        self.idx2 = 2
+        
         # Индексы роботов соперника
 
         self.goalkeeper_idx_enemy = 0
-        self.idx_enemy1 = 5
-        self.idx_enemy2 = 7
+        self.idx_enemy1 = 1
+        self.idx_enemy2 = 2
 
         self.enemies : list[aux.Point] = [] # массив позиций вражеских роботов
 
@@ -99,6 +127,7 @@ class Strategy:
         self.timer_work_dribbler = 0.0 #для работы дриблера чтобы остановить мяч
         self.dist_after_catch = 140 # растояние на которое нужно отехать от мяча, после его поимки и остановки дриблера
 
+
         self.robot_catch_ball: rbt.Robot | None = None
         self.nearest_robot: rbt.Robot | None = None
 
@@ -114,7 +143,31 @@ class Strategy:
         self.used = [False] * const.ROBOTS_MAX_COUNT
 
 
+    def spin_test(self, field: fld.Field, idx: int = 0) -> list[Optional[Action]]:
+        actions: list[Optional[Action]] = [None] * const.TEAM_ROBOTS_MAX_COUNT  
+    
+        current_time = time()
+        if not hasattr(self, 'spin_start_time'):
+            self.spin_start_time = current_time
+            self.last_k = 0
 
+        el = int(current_time - self.spin_start_time)
+        k = el
+        DRIBBLER_SPEED = 15
+        print(k)
+
+        ANGULAR_SPEED = k * math.pi
+
+        actions[idx] = Actions.VelocityWithDribbler(
+            velocity=aux.Point(0, 0),
+            angle=ANGULAR_SPEED,
+            dribbler_speed=DRIBBLER_SPEED,
+            control_angle_by_speed=True
+        )
+
+        #actions[idx] = Actions.SimpleDribbler()
+        return actions
+#
     def process(self, field: fld.Field) -> list[Optional[Action]]:
         """
         Подсчет статических переменных (self)
@@ -180,22 +233,10 @@ class Strategy:
             actions.append(None)
 
         print(field.game_state, self.we_active)
-        #self.process_goalkeeper(field, actions)
-        #print(robot_position1_enemy, robot_position2_enemy)
-        if aux.dist(self.ball, robot_position1_enemy) < aux.dist(self.ball, robot_position2_enemy):
-            Action_goalkeeper = self._process_goalkeeper(
-                field, self.ball, robot_position1_enemy, self.idx_enemy1, robot_position_goalkeeper
-            )
-        else:
-            Action_goalkeeper = self._process_goalkeeper(
-                field, self.ball, robot_position2_enemy, self.idx_enemy2, robot_position_goalkeeper
-            )
-        actions[self.goalkeeper_idx] = Action_goalkeeper
-        # self.we_active = False
-        # field.game_state = GameStates.PREPARE_KICKOFF
-        
+
         if field.game_state == GameStates.RUN:
             self.run(field, actions)
+            #self.process_ricochet(field,actions)
             
         elif field.game_state == GameStates.TIMEOUT:
             pass
@@ -297,8 +338,9 @@ class Strategy:
             actions[self.idx1] = Actions.Stop()
             actions[self.idx2] = Actions.Stop()
             actions[self.goalkeeper_idx] = Actions.Stop()
+            print("мяч за полем")
 
-        #actions[2] = Actions.GoToPoint(aux.Point(1000, 1000), 0)
+        
         return actions
 
     def run(self, field: fld.Field, actions: list[Optional[Action]]) -> None:
@@ -330,78 +372,67 @@ class Strategy:
         #     actions[0] = KickActions.Turn_Kick(self.point_kick_goal, (self.ball - field.allies[0].get_pos()).arg())
         # else:
         #     actions[0] = KickActions.Turn_Kick(field.ally_goal.center, (self.ball - field.allies[0].get_pos()).arg())
-
-        robot1 = field.allies[0]
-        # robot2 = field.allies[3]
-        # robot3 = field.allies[7]
-        # self.construction_well(field, actions, [robot1, robot2, robot3], aux.Point(200, 300), aux.Point(-200, -300))
-        # print(robot1.get_pos(), robot2.get_pos(), robot3.get_pos())
-
-        #actions[0] = KickActions.Turn_Kick(field.ally_goal.center, (self.ball - field.allies[0].get_pos()).arg())
-        print(time() - self.timer_work_dribbler)
-        self.timer_work_dribbler = time() 
-
-        
-
-    def process_goalkeeper(self, field: fld.Field, actions: list[Optional[Action]]) ->  list[Optional[Action]]:
-        """
-        The logic by which the goalkeeper acts
-
-        includes (it is necessary to list the main points of the goalkeeper's strategy):
-        """
-
-        voltage_kik = 5
-
-        robot_position_goalkeeper = field.allies[self.goalkeeper_idx].get_pos()
-        robot_position1 = field.allies[self.idx1].get_pos()
-        robot_position2 = field.allies[self.idx2].get_pos()
-
-        robot_position_goalkeeper_enemy = field.enemies[self.goalkeeper_idx_enemy].get_pos()
-        robot_position1_enemy = field.enemies[self.idx_enemy1].get_pos()
-        robot_position2_enemy = field.enemies[self.idx_enemy2].get_pos()
-
-        ball = aux.Point(field.ball.get_pos().x,field.ball.get_pos().y)
-
-        g_up_xy_goal = field.enemy_goal.up - field.enemy_goal.eye_up * 40    #определяется угол ворот противоположный от враторя
-        g_down_xy_goal = field.enemy_goal.down + field.enemy_goal.eye_up * 40
-
-        up_goal = (g_up_xy_goal - robot_position_goalkeeper_enemy).mag()
-        down_goal = (robot_position_goalkeeper_enemy + g_down_xy_goal).mag()
-
-        if up_goal > down_goal:
-            goal_position_gates = g_up_xy_goal
-        else:
-            goal_position_gates = g_down_xy_goal     #закончилось NOTE очень понятно
-
-        angle_goal_ball = (goal_position_gates - robot_position_goalkeeper).arg()
     
-        # Определяем позицию для вратаря
-        if field.ball_start_point is not None:
-            goal_position = aux.closest_point_on_line(field.ball_start_point, ball, robot_position_goalkeeper, "R")
-        else:
-            goal_position = field.ally_goal.center
+        test_actions = self.spin_test(field, self.idx1)
+        actions[self.idx1] = test_actions[self.idx1]
+        #actions[self.idx1] = Actions.GoToPoint(aux.Point(0,0), 0)
 
-        position_goal = aux.is_point_inside_poly(goal_position, field.ally_goal.hull) # проверяем находится ли мяч в воротах
-
-        if position_goal == False:  
-            goal_position = field.ally_goal.center
-
-        angle_goalkeeper = (ball - robot_position_goalkeeper).arg()
+   
+    #def process_ricochet(self, field: fld.Field, actions: list[Optional[Action]]) -> list[Optional[Action]]:
+    #    robot1 = field.allies[self.idx1]
+    #    robot2 = field.allies[self.idx2]
+    #    
+    #    goal_point = self.point_kick_goal if self.point_kick_goal else field.enemy_goal.center
+    #    
+    #    # Проверяем, нужно ли начать новый рикошет
+    #    if not self.ricochet.active and is_ricochet_possible(self.ball, robot2.get_pos(), goal_point):
+    #        hit_point = calculate_ricochet_shot(self.ball, robot2.get_pos(), goal_point)
+    #        
+    #        if hit_point is not None:
+    #            self.ricochet.active = True
+    #            self.ricochet.shot_point = hit_point
+    #            self.ricochet.target_point = hit_point - (hit_point - robot2.get_pos()).unity() * 180
+    #            self.ricochet.ball_pos_at_start = self.ball
+    #            self.ricochet.teammate_pos_at_start = robot2.get_pos()
+    #            self.ricochet.goal_point_at_start = goal_point
+    #            self.ricochet.start_time = time()
+    #            
+    #    # Выполняем рикошет, если он активен и условия валидны
+    #    if self.ricochet.is_valid(self.ball, robot2.get_pos(), goal_point):
+    #        # Используем зафиксированные точки
+    #        actions[self.idx2] = Actions.GoToPoint(
+    #            self.ricochet.target_point,
+    #            (self.ricochet.shot_point - robot2.get_pos()).arg()
+    #        )
+    #        
+    #        if aux.dist(robot2.get_pos(), self.ricochet.target_point) < 50:
+    #            voltage = get_pass_voltage(aux.dist(self.ball, robot1.get_pos()))
+    #            actions[self.idx1] = KickActions.Turn_Kick(
+    #                self.ricochet.shot_point,
+    #                (self.ricochet.shot_point - robot1.get_pos()).arg(),
+    #                voltage
+    #            )
+    #        else:
+    #            wait_point = self.ball + (field.ally_goal.center - self.ball).unity() * 400
+    #            actions[self.idx1] = Actions.GoToPoint(
+    #                wait_point,
+    #                (self.ball - robot1.get_pos()).arg()
+    #            )
+    #            
+    #        # Визуализация
+    #        field.strategy_image.draw_circle(self.ricochet.shot_point, (0, 255, 0), 40)
+    #        field.strategy_image.draw_circle(self.ricochet.target_point, (255, 255, 0), 30)
+    #        
+    #    else:
+    #        # Сбрасываем неактивный или невалидный рикошет
+    #        self.ricochet.active = False
+    #        
+    #        # Обычное поведение
+    #        actions[self.idx1] = Actions.GoToPoint(self.ball, (self.ball - robot1.get_pos()).arg())
+    #        actions[self.idx2] = Actions.GoToPoint(robot2.get_pos(), 0)
+    #        
+    #    return actions
     
-        actions[self.goalkeeper_idx] = Actions.GoToPoint(goal_position, angle_goal_ball)
-
-    
-        if field.is_ball_stop_near_goal():
-            #actions[self.gk_idx] = Actions.Kick(goal_position_gates, voltage_kik, is_upper=True)
-            actions[self.goalkeeper_idx] = KickActions.Straight(goal_position_gates, voltage_kik, False, True)
-
-    
-        if field.is_ball_in(field.allies[self.goalkeeper_idx]):
-            #actions[self.gk_idx] = Actions.Kick(goal_position_gates, voltage_kik,is_upper=True)
-            actions[self.goalkeeper_idx] = KickActions.Straight(goal_position_gates, voltage_kik, False, True)
-                
-        return actions
-
     def process_attacker(self, field: fld.Field, actions: list[Optional[Action]]) -> list[Optional[Action]]:
         """
         The logic by which the attacker acts
@@ -425,6 +456,7 @@ class Strategy:
             """
             print("Error", self.ball.mag())
             return actions
+        
 
         voltage = get_pass_voltage(aux.dist(self.ball, self.robot_catch_ball.get_pos()))
         angle_nearest_robot = (self.ball - self.nearest_robot.get_pos()).arg()

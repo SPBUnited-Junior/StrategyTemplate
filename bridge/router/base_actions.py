@@ -96,6 +96,7 @@ class Actions:
             ignore_ball: bool = False,
             target_vel: aux.Point = aux.Point(0, 0),
             ignore_robots: dict[const.Color, list[int]] = {},
+            dribbler_speed: Optional[float] = None
         ) -> None:
             self.target_pos = target_pos
             self.target_angle = target_angle
@@ -103,6 +104,8 @@ class Actions:
             self.ignore_ball = ignore_ball
             self.target_vel = target_vel
             self.ignore_robots = ignore_robots
+
+            self.dribbler_speed = dribbler_speed
 
         def use_behavior_of(self, domain: ActionDomain, current_action: ActionValues) -> list["Action"]:
             avoid_ball = domain.game_state in [GameStates.STOP, GameStates.PREPARE_KICKOFF] or (
@@ -112,6 +115,8 @@ class Actions:
 
             angle0 = self.target_angle
             next_point = self.target_pos
+            if self.dribbler_speed is not None:
+                current_action.dribbler_speed = self.dribbler_speed
 
             if domain.robot.r_id != domain.field.gk_id:
                 if aux.is_point_inside_poly(domain.robot.get_pos(), domain.field.ally_goal.hull):
@@ -230,6 +235,55 @@ class Actions:
                     current_action.angle = 0
                     current_action.beep = 1
                     current_action.dribbler_speed = 12
+
+
+    class SimpleDribbler(Action):
+        def behavior(self, domain: ActionDomain, current_action: ActionValues) -> None:
+            current_action.dribbler_speed = 15  
+            current_action.vel = aux.Point(0, 0)
+
+
+    class SpinWithDribbler(Action):
+        """Spin in place with dribbler working"""   
+        def __init__(self, angular_speed: float, dribbler_speed: int = 15):
+            self.angular_speed = angular_speed
+            self.dribbler_speed = dribbler_speed    
+
+        def behavior(self, domain: ActionDomain, current_action: ActionValues) -> None:
+            current_action.vel = aux.Point(0, 0)    
+            current_action.angle = self.angular_speed   
+            current_action.dribbler_speed = self.dribbler_speed 
+            current_action.beep = 1
+
+    class VelocityWithDribbler(Action):
+        """Move with velocity and angular speed, with dribbler control"""
+
+        def __init__(
+            self, 
+            velocity: aux.Point, 
+            angle: float, 
+            dribbler_speed: int = 0,
+            control_angle_by_speed: bool = False
+        ):
+            self.velocity = velocity
+            self.angle = angle
+            self.dribbler_speed = dribbler_speed
+            self.control_angle_by_speed = control_angle_by_speed
+
+        def behavior(self, domain: ActionDomain, current_action: ActionValues) -> None:
+            current_action.vel = self.velocity
+            
+            current_action.angle = self.angle
+
+            current_action.dribbler_speed = self.dribbler_speed
+
+            if self.control_angle_by_speed:
+                current_action.beep = 1
+
+
+         
+
+                
 
     class Correct(Action):
         """""" 

@@ -60,7 +60,32 @@ class BallStatusInsidePoly(Enum):
     NotInsidePoly = 0
     InsidePoly = 1
 
- 
+class RicochetState:
+    """Класс для хранения состояния рикошета"""
+    def __init__(self):
+        self.active = False
+        self.shot_point: Optional[aux.Point] = None
+        self.target_point: Optional[aux.Point] = None
+        self.ball_pos_at_start: Optional[aux.Point] = None
+        self.teammate_pos_at_start: Optional[aux.Point] = None
+        self.goal_point_at_start: Optional[aux.Point] = None
+        self.start_time = 0
+        
+    def is_valid(self, current_ball: aux.Point, current_teammate: aux.Point, current_goal: aux.Point) -> bool:
+        if not self.active:
+            return False
+            
+        if aux.dist(current_ball, self.ball_pos_at_start) > 200:
+            return False
+            
+        if aux.dist(current_teammate, self.teammate_pos_at_start) > 100:
+            return False
+            
+        if time() - self.start_time > 3.0:
+            return False
+            
+        return True
+
 class Strategy:
     """Main class of strategy"""
 
@@ -68,18 +93,19 @@ class Strategy:
         self,
     ) -> None:
         self.we_active = False
+        self.ricochet = RicochetState()
 
         # Индексы роботов
 
-        self.goalkeeper_idx = 0
-        self.idx1 = 3
-        self.idx2 = 5
-
+        self.goalkeeper_idx = 3
+        self.idx1 = 0
+        self.idx2 = 2
+        
         # Индексы роботов соперника
 
         self.goalkeeper_idx_enemy = 0
-        self.idx_enemy1 = 5
-        self.idx_enemy2 = 7
+        self.idx_enemy1 = 1
+        self.idx_enemy2 = 2
 
         self.enemies : list[aux.Point] = [] # массив позиций вражеских роботов
 
@@ -100,6 +126,7 @@ class Strategy:
         self.timer_work_dribbler = 0.0 #для работы дриблера чтобы остановить мяч
         self.dist_after_catch = 140 # растояние на которое нужно отехать от мяча, после его поимки и остановки дриблера
 
+
         self.robot_catch_ball: rbt.Robot | None = None
         self.nearest_robot: rbt.Robot | None = None
 
@@ -115,7 +142,31 @@ class Strategy:
         self.used = [False] * const.ROBOTS_MAX_COUNT
 
 
+    def spin_test(self, field: fld.Field, idx: int = 0) -> list[Optional[Action]]:
+        actions: list[Optional[Action]] = [None] * const.TEAM_ROBOTS_MAX_COUNT  
+    
+        current_time = time()
+        if not hasattr(self, 'spin_start_time'):
+            self.spin_start_time = current_time
+            self.last_k = 0
 
+        el = int(current_time - self.spin_start_time)
+        k = el
+        DRIBBLER_SPEED = 15
+        print(k)
+
+        ANGULAR_SPEED = k * math.pi
+
+        actions[idx] = Actions.VelocityWithDribbler(
+            velocity=aux.Point(0, 0),
+            angle=ANGULAR_SPEED,
+            dribbler_speed=DRIBBLER_SPEED,
+            control_angle_by_speed=True
+        )
+
+        #actions[idx] = Actions.SimpleDribbler()
+        return actions
+#
     def process(self, field: fld.Field) -> list[Optional[Action]]:
         """
         Подсчет статических переменных (self)
@@ -181,22 +232,10 @@ class Strategy:
             actions.append(None)
 
         print(field.game_state, self.we_active)
-        #self.process_goalkeeper(field, actions)
-        #print(robot_position1_enemy, robot_position2_enemy)
-        if aux.dist(self.ball, robot_position1_enemy) < aux.dist(self.ball, robot_position2_enemy):
-            Action_goalkeeper = self._process_goalkeeper(
-                field, self.ball, robot_position1_enemy, self.idx_enemy1, robot_position_goalkeeper
-            )
-        else:
-            Action_goalkeeper = self._process_goalkeeper(
-                field, self.ball, robot_position2_enemy, self.idx_enemy2, robot_position_goalkeeper
-            )
-        actions[self.goalkeeper_idx] = Action_goalkeeper
-        # self.we_active = False
-        # field.game_state = GameStates.PREPARE_KICKOFF
-        
+
         if field.game_state == GameStates.RUN:
             self.run(field, actions)
+            #self.process_ricochet(field,actions)
             
         elif field.game_state == GameStates.TIMEOUT:
             pass
@@ -298,8 +337,9 @@ class Strategy:
             actions[self.idx1] = Actions.Stop()
             actions[self.idx2] = Actions.Stop()
             actions[self.goalkeeper_idx] = Actions.Stop()
+            print("мяч за полем")
 
-        #actions[2] = Actions.GoToPoint(aux.Point(1000, 1000), 0)
+        
         return actions
 
     def run(self, field: fld.Field, actions: list[Optional[Action]]) -> None:
@@ -428,6 +468,7 @@ class Strategy:
             """
             print("Error", self.ball.mag())
             return actions
+        
 
         voltage = get_pass_voltage(aux.dist(self.ball, self.robot_catch_ball.get_pos()))
         angle_nearest_robot = (self.ball - self.nearest_robot.get_pos()).arg()

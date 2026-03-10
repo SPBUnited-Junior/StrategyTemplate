@@ -391,7 +391,10 @@ def GK(
         GKState = "Knock out ball"
         # field.strategy_image.send_telemetry("GK State", "Knock out ball")
         """knock out the ball from hull"""
-        doPassNearAllly(field, actions)
+        if len(field.active_allies(False)) != 0:
+            doPassNearAllly(field, actions)
+        else:
+            actions[const.GK] = Actions.Kick(field.enemy_goal.center, is_upper=True)
     else:
         GKState = "block maybe kick"
         # field.strategy_image.send_telemetry("GK State", "Block maybe kick")

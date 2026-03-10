@@ -31,6 +31,7 @@ class Role:
         def __init__(self) -> None: 
             pass
 
+
     class Goalkeper:
 
         def __init__(self) -> None:
@@ -121,6 +122,7 @@ class Role:
 
 
         def process(self) -> None:
+            print(*self.field.pass_points)
             self.build_list()
             if (len(self.enemy_robots) == len(self.ally_robots)):
                 self.block_robot()

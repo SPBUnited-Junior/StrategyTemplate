@@ -48,6 +48,7 @@ class SSLController(BaseProcessor):
         """
         super().initialize(data_bus)
         self.field_reader = DataReader(data_bus, const.FIELD_TOPIC)
+        self.passes_reader = DataReader(data_bus, const.PASS_TOPIC)
 
         self.robot_control_writer = DataWriter(data_bus, const.CONTROL_TOPIC, 50)
         self.image_writer = DataWriter(data_bus, const.IMAGE_TOPIC, 20)
@@ -76,6 +77,17 @@ class SSLController(BaseProcessor):
         """
         self.actions = self.strategy.process(self.field)
 
+    def get_pass_points(self) -> None:
+        """
+        Получить точки для пасов
+        """
+        if self.ally_color == const.COLOR:
+            _points = self.passes_reader.read_last()
+            if _points is not None:
+                points = _points.content
+                self.field.pass_points = points
+
+
     def control_assign(self) -> None:
         """Send commands to robots"""
         for robot in self.field.active_allies(True):
@@ -100,6 +112,7 @@ class SSLController(BaseProcessor):
         self.field.strategy_image.timer.start(time())
 
         self.read_vision()
+        self.get_pass_points()
         self.control_loop()
 
         self.control_assign()

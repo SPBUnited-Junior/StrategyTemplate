@@ -91,6 +91,7 @@ class Field:
         self.active_team: const.Color = const.Color.ALL
         self.last_update = 0.0
         self.robot_with_ball: Optional[rbt.Robot] = None
+        self.pass_points: list[aux.Point] = []
 
         self.field_image = drawing.Image(drawing.ImageTopic.FIELD)
         self.strategy_image = drawing.Image(drawing.ImageTopic.STRATEGY)

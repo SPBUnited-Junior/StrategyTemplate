@@ -18,7 +18,9 @@ from bridge.strategy.myFunc import (
     doPassNearAllly,
     findPointForScore,
     openForPass,
-    isBallKickedToR
+    isBallKickedToR,
+    nearest2BallEnemy,
+    canRDoScoreAndInWhatPoint
 )
 
 
@@ -180,7 +182,9 @@ class Strategy:
 
                     case whatWeDoStates.SimpleTest:
 
-                        actions[0] = Actions.BallGrab(0)
+                        openForPass(field, 1, actions)
+                        # canRDoScoreAndInWhatPoint(field)
+                        # actions[0] = Actions.BallGrab(0)
                         # actions[0] = Actions.Kick(field.enemy_goal.center, is_upper=True)
                         # findPointForScore(field, field.ball.get_pos())
                         # if field.is_ball_in(field.allies[0]):
@@ -214,12 +218,21 @@ class Strategy:
             print("WE HAVENT ROBOTS")
 
     def updateTimerAndIdWeTryDoPass(self, field: fld.Field, actions: list[Optional[Action]]) -> None:
-        if self.idDoPass is not None and self.idGettingPass is None and self.TimeWeTryDoPass is None:
-            """if we try do pass, but do not done this yet"""
-            self.TimeWeTryDoPass = time()
-        elif self.idDoPass is None and self.idGettingPass is None:
+        ballPos = field.ball.get_pos()
+
+        if self.idDoPass is None:
             """if we dont try do or get pass"""
             self.TimeWeTryDoPass = None
+        
+        elif self.idGettingPass is None and self.TimeWeTryDoPass is None:
+            """if we try do pass, but do not done this yet"""
+            self.TimeWeTryDoPass = time()
+
+        elif aux.dist(ballPos, field.allies[self.idDoPass].get_pos()) > 100:
+            self.TimeWeTryDoPass = None
+
+        
+        
         if self.TimeWeTryDoPass is not None and time()-self.TimeWeTryDoPass > self.constForTimerWeTryDoPass:
             """if we try do pass too long"""
             idOtherR =  None
@@ -227,7 +240,10 @@ class Strategy:
                 if r.r_id != self.idDoPass:
                     idOtherR = r.r_id
             if idOtherR is not None and self.idDoPass is not None:
-                actions[self.idDoPass] = Actions.Kick(field.allies[idOtherR].get_pos(), is_upper=True)
+                if time()-self.TimeWeTryDoPass > self.constForTimerWeTryDoPass*2:
+                    actions[self.idDoPass] = Actions.Kick(nearest2BallEnemy(field).get_pos())#TODO check and add some logic to avoid self-goal
+                else:
+                    actions[self.idDoPass] = Actions.Kick(field.allies[idOtherR].get_pos(), is_upper=True)
                 if isBallKickedToR(field, idOtherR, self.idDoPass):
                     self.TimeWeTryDoPass = None
 
@@ -353,7 +369,16 @@ class Strategy:
                 else:
                     """pass in process"""
                     # field.strategy_image.draw_circle(aux.Point(0, 0), size_in_mms=1000)
-                    self.idGettingPass = doPassNearAllly(field, actions, idxThisR)
+                    if self.idGettingPass is None:
+                        pointForScore = canRDoScoreAndInWhatPoint(field)
+                        if pointForScore != None:
+                            """if r can do score he must break pass"""
+                            actions[idxThisR] = Actions.Kick(pointForScore)
+                        else:
+                            self.idGettingPass = doPassNearAllly(field, actions, idxThisR)
+
+                    else:
+                        self.idGettingPass = doPassNearAllly(field, actions, idxThisR)
             else:
                 """pass in process"""
                 # field.strategy_image.draw_circle(aux.Point(0, 0), size_in_mms=1000)
@@ -390,7 +415,7 @@ class Strategy:
                 if self.myIsBallInClass.myIsBallIn(thisR):
                     """if this robot have ball"""
                     status += "if this robot have ball"
-                    pointForScore = findPointForScore(field)
+                    pointForScore = canRDoScoreAndInWhatPoint(field)
                     if pointForScore != None:
                         """try do score if r can"""
                         status += "try do score if r can"
@@ -414,12 +439,9 @@ class Strategy:
             elif nearestRToBall == field.allies[idxOtherAttacker]:
                 """if other attacker have ball"""
                 status = "if other attacker have ball"
-                if ballPos.x * field.polarity < 0:
-                    """if ball not on our part field"""
-                    openForPass(field, idxThisR, actions)
-                else:
+                if ballPos.x * field.polarity > 0 and aux.dist(nearest2BallEnemy(field).get_pos(), ballPos) < 200:
                     """defend on our part of field"""
-                    """code from bottom, copyed"""
+                    # """code from bottom, copyed"""
                     mostLikelyPointForScore1 = findPointForScore(field, ballPos, reverse=True)
                     if mostLikelyPointForScore1 != None:
                         pointForR = aux.closest_point_on_line(ballPos, mostLikelyPointForScore1, thisR.get_pos())
@@ -430,6 +452,9 @@ class Strategy:
                             """if this r not block maybe score, block"""
                             status += "if this r not block maybe score, block"
                             actions[idxThisR] = Actions.GoToPoint(pointForR, (ballPos - thisR.get_pos()).arg())
+                else:
+                    """if ball not on our part field"""
+                    openForPass(field, idxThisR, actions)
             elif nearestRToBall == field.allies[const.GK]:
                 """if GK have ball"""
                 status = "if GK have ball"

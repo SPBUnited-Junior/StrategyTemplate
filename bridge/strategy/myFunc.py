@@ -22,6 +22,64 @@ from bridge.router.base_actions import Action, Actions, KickActions, DribblerAct
 #     PENALTY = 8
 #     RUN = 9
 
+def findBetterPointForOpen(center: aux.Point, points: list[aux.Point], centerEnemyGoal: aux.Point, field: fld.Field, draw: bool = True) -> aux.Point:
+    closests = [(10.0**10, 10.0**10, aux.Point(0, 0)), (10.0**10, 10.0**10, aux.Point(1, 0)), (10.0**10, 10.0**10, aux.Point(0, 1)), (10.0**10, 10.0**10, aux.Point(0, 1))]
+    minDist = 10.0**10
+
+    a = 500
+
+    for point in points:
+        dist2r = aux.dist(center, point)
+
+        dist2Goal = aux.dist(point, centerEnemyGoal)
+        if dist2r < minDist:
+            for i in range(4):                
+                if dist2r - closests[i][0] < -a:
+                    if i != 3:
+                        for j in range(i+1, 4):
+                            closests[j] = (closests[j-1][0], closests[j-1][1], closests[j-1][2])
+                    closests[i] = (dist2r, dist2Goal, point)
+                    break
+                elif abs(dist2r - closests[i][0]) < a and dist2Goal < closests[i][1]:
+                    if i != 3:
+                        for j in range(i+1, 4):
+                            closests[j] = (closests[j-1][0], closests[j-1][1], closests[j-1][2])
+                    closests[i] = (dist2r, dist2Goal, point)
+                    break
+            minDist = closests[3][0]
+
+    minDist2Goal = 10.0**10
+    betterPoint = aux.Point(0, 0)
+
+    for i in range(4):
+        dist2Goal = closests[i][1]
+        if dist2Goal < minDist2Goal:
+            minDist2Goal = dist2Goal
+            betterPoint = closests[i][2]
+        if draw:
+            field.strategy_image.draw_circle(closests[i][2], (255, 255, 255), 150)
+            # print(closests)
+
+    if draw:
+        field.strategy_image.draw_circle(betterPoint, (0, 255, 0), 15)
+    return betterPoint
+
+def canRDoScoreAndInWhatPoint(field: fld.Field, robotPos: Optional[aux.Point] = None, draw: bool = True) -> Optional[aux.Point]:
+    if robotPos is None: robotPos = field.ball.get_pos()
+
+    pointForScore = findPointForScore(field, robotPos)
+    
+    if draw and pointForScore is not None and aux.dist(robotPos, pointForScore) > myConst.maxDistForScore:
+        field.strategy_image.draw_line(field.ball.get_pos(), pointForScore, (255, 0, 0), 12)
+
+    if pointForScore is not None and aux.dist(robotPos, pointForScore) < myConst.maxDistForScore:
+        return pointForScore
+    else:
+        return None
+
+
+def nearest2BallEnemy(field: fld.Field, includeGK: bool = True) -> rbt.Robot:
+    return fld.find_nearest_robot(field.ball.get_pos(), field.active_enemies(includeGK))
 
 def isBallKickedToR(field: fld.Field, receiverRId: int, givingRId: int, check: bool = False) -> bool:
     ballPos = field.ball.get_pos()
@@ -213,9 +271,11 @@ def openForPass(field: fld.Field, idRWhichOpen: int, actions: list[Optional[Acti
     if len(pointsForOpening) != 0:
         """if we can open for pass or take pass"""
         if isBallOnOurPartOfField:
-            nearestPointForOpening = aux.find_nearest_point(thisRPos, pointsForOpening)
+            # nearestPointForOpening = aux.find_nearest_point(thisRPos, pointsForOpening)
+            nearestPointForOpening = findBetterPointForOpen(thisRPos, pointsForOpening, field.enemy_goal.center, field)
         else:
             nearestPointForOpening = aux.find_nearest_point(field.enemy_goal.center, pointsForOpening)
+            # nearestPointForOpening = findBetterPointForOpen(field.enemy_goal.center, pointsForOpening, field.enemy_goal.center, field)
         """depend from side of field we go to different points"""
         field.strategy_image.draw_circle(nearestPointForOpening, (0, 0, 255), 50)
         # field.strategy_image.draw_line(ballPos, nearestPointForOpening, (0, 0, 0), 20)

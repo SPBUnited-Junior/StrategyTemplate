@@ -1,4 +1,5 @@
 from enum import Enum
+from bridge import const
 
 class whatWeDoStates(Enum):
     """Класс с типо запускаемого нами кода"""
@@ -19,8 +20,12 @@ timerForRotate = 0.5
 timerForHoldBall = 3
 constForTimerWeTryDoPass = 3
 
-velRotateWithBall = 0.4*10#rad/sec
+velRotateWithBall = 0.4#rad/sec
+if const.IS_SIMULATOR_USED:
+    velRotateWithBall *= 5
 
-whatWeDoAtThisRun: whatWeDoStates = whatWeDoStates.SimpleTest
+maxDistForScore = 2000
+
+whatWeDoAtThisRun: whatWeDoStates = whatWeDoStates.BothPlay
 
 minErrAngleForRotateWithBall: int = 5

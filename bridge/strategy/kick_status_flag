@@ -1,0 +1,18 @@
+import math  # type: ignore
+from time import time  # type: ignore
+from typing import Optional
+from enum import Enum
+
+from bridge import const
+from bridge.auxiliary import aux, fld, rbt  # type: ignore
+from bridge.const import State as GameStates
+from bridge.router.base_actions import Action, Actions, KickActions, get_pass_voltage  # type: ignore
+from bridge.strategy.check_point import check_goal_point
+from bridge.strategy.Role import Role
+
+class Kick_Status(Enum):
+    Pass_Straight = 1
+    Pass_Turn_Kick= 2
+    Goal_Turn_Kick = 3
+    Goal_Straight = 4
+    Not_Kick = 5

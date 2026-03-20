@@ -28,8 +28,87 @@ class Role:
 
     class Attacker:
 
-        def __init__(self) -> None: 
-            pass
+        def __init__(self, 
+            field: fld.Field,
+            actions: list[Optional[Action]],
+        ) -> None:
+        
+            self.actions: list[Optional[Action]] = actions
+            self.field: fld.Field = field
+            self.attacker: Optional[rbt.Robot] = None
+
+        def push(self, robot: rbt.Robot) -> None:
+            is_ally: bool = robot.color == self.field.ally_color
+
+            if (not is_ally):
+                RuntimeError("In Role Block_Enemy_Pass push enemy robot")
+            if (robot.r_id == const.GK):
+                RuntimeError("In Role Block_Enemy_Pass push GK")
+            self.attacker = robot
+
+        def process(self) -> None:
+            if self.attacker is None: return
+        
+            pass_point: aux.Point = self.field.pass_points[0]
+            ball_pos = self.field.ball.get_pos()
+            voltage = get_pass_voltage(aux.dist(ball_pos, self.attacker.get_pos()))
+            angle_nearest_robot = (ball_pos - self.attacker.get_pos()).arg()
+            if self.kick_status == Kick_Status.Goal_Turn_Kick    and field.is_ball_in_ally_robot():
+                """
+                Если робот захватил мяч и бьет в ворота с Turn
+                """
+                actions[self.robot_catch_ball.r_id] = Actions.GoToPoint(optimal_point, (self.ball - self.robot_catch_ball.get_pos()).arg())
+                if self.point_kick_goal is None:
+                    self.kick_status = Kick_Status.Pass_Turn_Kick
+                    actions[self.nearest_robot.r_id] = KickActions.Turn_Kick(field.enemy_goal.center, angle_nearest_robot, voltage)
+                else:
+                    actions[self.nearest_robot.r_id] = KickActions.Turn_Kick(self.point_kick_goal, angle_nearest_robot)
+
+            elif self.kick_status == Kick_Status.Goal_Straight and field.is_ball_in_ally_robot():
+                """
+                Если робот захватил мяч и бьет в ворота с Straight
+                """
+                actions[self.robot_catch_ball.r_id] = Actions.GoToPoint(optimal_point, (self.ball - self.robot_catch_ball.get_pos()).arg())
+                if self.point_kick_goal is None:
+                    actions[self.nearest_robot.r_id] = KickActions.Straight(field.enemy_goal.center)
+                else:
+                    actions[self.nearest_robot.r_id] = KickActions.Straight(self.point_kick_goal)
+
+            elif self.kick_status == Kick_Status.Pass_Straight and field.is_ball_in_ally_robot():
+                """
+                Если робот захватил мяч и бьет пасс с Straight
+                """
+                actions[self.robot_catch_ball.r_id] = Actions.GoToPoint(optimal_point_not_kick, (self.ball - self.robot_catch_ball.get_pos()).arg())
+                actions[self.nearest_robot.r_id] = KickActions.Straight(self.robot_catch_ball.get_pos(), voltage)
+            
+            elif self.kick_status == Kick_Status.Pass_Turn_Kick and field.is_ball_in_ally_robot():
+                """
+                Если робот захватил мяч и бьет пасс с Turn
+                """
+                actions[self.robot_catch_ball.r_id] = Actions.GoToPoint(optimal_point_not_kick, (self.ball - self.robot_catch_ball.get_pos()).arg())
+                actions[self.nearest_robot.r_id] = KickActions.Turn_Kick(self.robot_catch_ball.get_pos(), angle_nearest_robot, voltage)
+
+            else:
+                """
+                Если робот не бьет  мяч
+                """
+                if ((self.kick_status == Kick_Status.Pass_Straight or self.kick_status == Kick_Status.Pass_Turn_Kick) 
+                    and self.check_cath_ball(field, self.robot_catch_ball) and not field.is_ball_in_ally_robot()):
+
+                    actions[self.robot_catch_ball.r_id] = self.process_catch_ball(field, self.robot_catch_ball)
+                    actions[self.nearest_robot.r_id] = Actions.GoToPoint(self.optimal_point(field, self.ball, None), (self.ball - self.nearest_robot.get_pos()).arg())
+
+                elif self.point_kick_goal is not None and aux.dist(self.nearest_robot.get_pos(), field.enemy_goal.center) < 3500:
+                    self.kick_status = Kick_Status.Goal_Turn_Kick
+                    actions[self.nearest_robot.r_id] = KickActions.Turn_Kick(field.enemy_goal.center, angle_nearest_robot)
+                    actions[self.robot_catch_ball.r_id] = Actions.GoToPoint(optimal_point, (self.ball - self.robot_catch_ball.get_pos()).arg())
+                else:
+                    actions[self.robot_catch_ball.r_id] = Actions.GoToPoint(optimal_point_not_kick, (self.ball - self.robot_catch_ball.get_pos()).arg())
+                    self.kick_status = Kick_Status.Pass_Turn_Kick
+                    actions[self.nearest_robot.r_id] = KickActions.Turn_Kick(self.robot_catch_ball.get_pos(), angle_nearest_robot, voltage)  
+
+
+            return actions
 
 
     class Goalkeper:
@@ -53,6 +132,7 @@ class Role:
             if (robot.r_id == const.GK):
                 RuntimeError("In Role Block_Enemy_Pass push GK")
             self.ally_robots.append(robot)
+        
 
         def block_pass_point(self, 
             ally_robot: rbt.Robot, 

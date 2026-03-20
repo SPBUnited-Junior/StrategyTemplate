@@ -43,13 +43,6 @@ class FlagToPasses(Enum): #флаги для состояние приянтия
     TRUE = 1 # ловим
     RELEASE = 2 # поймали и отпускаем
 
-class Kick_Status(Enum):
-    Pass_Straight = 1
-    Pass_Turn_Kick= 2
-    Goal_Turn_Kick = 3
-    Goal_Straight = 4
-    Not_Kick = 5
-
 class BallStatus(Enum):
     Active = 0
     Passive = 1

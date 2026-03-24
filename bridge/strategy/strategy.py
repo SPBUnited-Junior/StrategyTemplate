@@ -56,7 +56,7 @@ class Strategy:
             actions.append(None)
 
         # TODO make game states
-        # print(field.game_state)#for real
+        print(field.game_state)#for real
         match field.game_state:
             case GameStates.RUN: # GOOD
                 self.run(field, actions)
@@ -71,13 +71,13 @@ class Strategy:
                 states.PREPARE_PENALTY(field, actions, self.we_active, self.idFirstAttacker, self.idSecondAttacker)
 
             case GameStates.PENALTY:
-                states.PENALTY(field, actions, self.we_active, self.idFirstAttacker, self.idSecondAttacker)  # one r(our or not) kick ball from center of field, GK other team defend goal
+                self.GKLastState = states.PENALTY(field, actions, self.we_active, self.idFirstAttacker, self.idSecondAttacker, self.GKLastState)  # one r(our or not) kick ball from center of field, GK other team defend goal
 
             case GameStates.PREPARE_KICKOFF:
-                states.PREPARE_KICKOFF(field, actions, self.we_active, self.idFirstAttacker, self.idSecondAttacker)  # our Rs on our part of field
+                self.GKLastState = states.PREPARE_KICKOFF(field, actions, self.we_active, self.idFirstAttacker, self.idSecondAttacker, self.GKLastState)  # our Rs on our part of field
                 
             case GameStates.KICKOFF:# GOOD
-                states.KICKOFF(field, actions, self.we_active, self.idFirstAttacker, self.idSecondAttacker)  # our Rs on our part of field
+                self.GKLastState = states.KICKOFF(field, actions, self.we_active, self.idFirstAttacker, self.idSecondAttacker, self.GKLastState)  # our Rs on our part of field
 
             case GameStates.FREE_KICK:
                 self.run(field, actions)

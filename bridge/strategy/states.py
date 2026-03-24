@@ -5,7 +5,9 @@ from typing import Optional
 from bridge import const
 from bridge.auxiliary import aux, fld, rbt  # type: ignore
 from bridge.router.base_actions import Action, Actions, KickActions  # type: ignore
-from bridge.strategy.myFunc import findPointForScore
+from bridge.strategy.myFunc import findPointForScore, GK
+from bridge.strategy.myConst import minDistForScorePenalty, angleBetweenRsInWall
+
 
 
 def TIMEOUT(field: fld.Field, actions: list[Optional[Action]], we_active: bool, idFirstAttacker: int, idSecondAttacker: int) -> None:
@@ -67,63 +69,56 @@ def PREPARE_PENALTY(field: fld.Field, actions: list[Optional[Action]], we_active
         else:
             # code for GK, its for time:
             if field.allies[gkId].is_used():
-                actions[gkId] = Actions.GoToPoint(field.ally_goal.frw, 0)
+                actions[gkId] = Actions.GoToPoint(field.ally_goal.center, 0)
             # ////
             if field.allies[idFirstAttacker].is_used():
                 actions[idFirstAttacker] = Actions.GoToPoint(point_first, 0)
             if field.allies[idSecondAttacker].is_used():
                 actions[idSecondAttacker] = Actions.GoToPoint(point_second, 0)
-            actions[gkId] = Actions.GoToPoint(field.ally_goal.frw, 0)
 
 
-def PENALTY(field: fld.Field, actions: list[Optional[Action]], we_active: bool, idFirstAttacker: int, idSecondAttacker: int) -> None:
-    if len(field.active_allies(True)) > 0:
-        gkId = field.gk_id
+def PENALTY(field: fld.Field, actions: list[Optional[Action]], we_active: bool, idFirstAttacker: int, idSecondAttacker: int, GKLastState: Optional[str]) -> str | None:
+    GKNewState = None
+    gkId = field.gk_id
+    ballPos = field.ball.get_pos()
 
-        if not field.allies[idSecondAttacker].is_used() and field.allies[idFirstAttacker].is_used():
-            idSecondAttacker = idFirstAttacker
-        elif not field.allies[idFirstAttacker].is_used() and not field.allies[idSecondAttacker].is_used():
-            idSecondAttacker = gkId
+    point_first = aux.Point(const.FIELD_DX / 2 * -field.polarity, const.FIELD_DY / 2)
+    point_second = aux.Point(const.FIELD_DX / 2 * -field.polarity, -const.FIELD_DY / 2)
+    if we_active:
+        actions[gkId] = Actions.GoToPoint(field.ally_goal.frw, 0)
+        # if field.allies[idFirstAttacker].is_used():
+        #     actions[idFirstAttacker] = Actions.GoToPoint(-point_first, 0)
+        point_for_score: Optional[aux.Point] = findPointForScore(field, ballPos)
+        print(aux.dist(ballPos, field.enemy_goal.center))
+        if aux.dist(ballPos, field.enemy_goal.center) > minDistForScorePenalty:
+            field.strategy_image.draw_line(ballPos, field.enemy_goal.center)
+            if field.allies[idSecondAttacker].is_used():
+                actions[idSecondAttacker] = Actions.Kick(field.enemy_goal.center, is_pass=True, is_upper=True)
+            elif field.allies[idFirstAttacker].is_used():
+                actions[idFirstAttacker] = Actions.Kick(field.enemy_goal.center, is_pass=True, is_upper=True)
+        elif point_for_score is not None:
+            if field.allies[idSecondAttacker].is_used():
+                actions[idSecondAttacker] = Actions.Kick(point_for_score, is_upper=False)
+            elif field.allies[idFirstAttacker].is_used():
+                actions[idFirstAttacker] = Actions.Kick(point_for_score)
+        else:#TODO stupid code
+            if field.allies[idSecondAttacker].is_used():
+                actions[idSecondAttacker] = Actions.Kick(field.enemy_goal.center)
+            elif field.allies[idFirstAttacker].is_used():
+                actions[idFirstAttacker] = Actions.Kick(field.enemy_goal.center)
 
-        if not field.allies[idFirstAttacker].is_used() and field.allies[idSecondAttacker].is_used():
-            idFirstAttacker = idSecondAttacker
-        elif not field.allies[idFirstAttacker].is_used() and not field.allies[idSecondAttacker].is_used():
-            idFirstAttacker = gkId
-
-        if field.allies[gkId].is_used():
-            field.allies[gkId].get_pos()
-            field.enemies[gkId]
+    else:
+        GKNewState = GK(field, actions, GKLastState)
+        
         if field.allies[idFirstAttacker].is_used():
-            field.allies[idFirstAttacker].get_pos()
-            field.allies[idFirstAttacker]
-
+            actions[idFirstAttacker] = Actions.GoToPoint(point_first, 0)
         if field.allies[idSecondAttacker].is_used():
-            field.allies[idSecondAttacker].get_pos()
-            field.allies[idSecondAttacker]
-        ball = field.ball.get_pos()
-
-        point_first = aux.Point(const.FIELD_DX / 2 * -field.polarity, const.FIELD_DY / 2)
-        point_second = aux.Point(const.FIELD_DX / 2 * -field.polarity, -const.FIELD_DY / 2)
-        if we_active:
-            actions[gkId] = Actions.GoToPoint(field.ally_goal.frw, 0)
-            if field.allies[idFirstAttacker].is_used():
-                actions[idFirstAttacker] = Actions.GoToPoint(-point_first, 0)
-            point_for_score: Optional[aux.Point] = findPointForScore(field, ball)
-            if point_for_score is not None and field.allies[idSecondAttacker].is_used():
-                actions[idSecondAttacker] = Actions.Kick(point_for_score)
-
-        else:
-            # code for GK, its for time:
-            actions[gkId] = Actions.GoToPoint(field.ally_goal.center, 0)
-            # ////
-            if field.allies[idFirstAttacker].is_used():
-                actions[idFirstAttacker] = Actions.GoToPoint(point_first, 0)
-            if field.allies[idSecondAttacker].is_used():
-                actions[idSecondAttacker] = Actions.GoToPoint(point_second, 0)
-            actions[gkId] = Actions.GoToPoint(field.ally_goal.frw, 0)
+            actions[idSecondAttacker] = Actions.GoToPoint(point_second, 0)
+    return GKNewState
 
 
-def PREPARE_KICKOFF(field: fld.Field, actions: list[Optional[Action]], we_active: bool, idFirstAttacker: int, idSecondAttacker: int) -> None:
+def PREPARE_KICKOFF(field: fld.Field, actions: list[Optional[Action]], we_active: bool, idFirstAttacker: int, idSecondAttacker: int, GKLastState: Optional[str]) -> str | None:
+    GKNewState = None
     if len(field.active_allies(True)) > 0:
         gkId = field.gk_id
         actions[gkId] = Actions.GoToPoint(field.ally_goal.frw, 0)
@@ -146,18 +141,34 @@ def PREPARE_KICKOFF(field: fld.Field, actions: list[Optional[Action]], we_active
                     aux.Point(200 * const.POLARITY), (field.ball.get_pos() - field.allies[idSecondAttacker].get_pos()).arg()
                 )
         else:
-            y = 130
-            x = 300
-            if field.allies[idFirstAttacker].is_used():
-                actions[idFirstAttacker] = Actions.GoToPoint(
-                    aux.Point(x, y), (field.ball.get_pos() - field.allies[idFirstAttacker].get_pos()).arg()
-                )
-            actions[gkId] = Actions.GoToPoint(field.ally_goal.frw, 0)
-            if field.allies[idSecondAttacker].is_used():
-                actions[idSecondAttacker] = Actions.GoToPoint(
-                    aux.Point(x, -y), (field.ball.get_pos() - field.allies[idSecondAttacker].get_pos()).arg()
-                )
-            actions[gkId] = Actions.GoToPoint(field.ally_goal.frw, 0)
+            # y = 130
+            # x = 300
+            # if field.allies[idFirstAttacker].is_used():
+            #     actions[idFirstAttacker] = Actions.GoToPoint(
+            #         aux.Point(x, y), (field.ball.get_pos() - field.allies[idFirstAttacker].get_pos()).arg()
+            #     )
+            # actions[gkId] = Actions.GoToPoint(field.ally_goal.frw, 0)
+            # if field.allies[idSecondAttacker].is_used():
+            #     actions[idSecondAttacker] = Actions.GoToPoint(
+            #         aux.Point(x, -y), (field.ball.get_pos() - field.allies[idSecondAttacker].get_pos()).arg()
+            #     )
+            vectFromBallToCenter = field.ally_goal.center-field.ball.get_pos()
+            if field.allies[idFirstAttacker].is_used() and field.allies[idSecondAttacker].is_used():
+                point1 = field.ball.get_pos()+aux.rotate(vectFromBallToCenter.unity()*(const.KEEP_BALL_DIST+50), angleBetweenRsInWall)
+                point2 = field.ball.get_pos()+aux.rotate(vectFromBallToCenter.unity()*(const.KEEP_BALL_DIST+50), -angleBetweenRsInWall)
+                actions[idFirstAttacker] = Actions.GoToPoint(point1, 0)#TODO fix angle
+                actions[idSecondAttacker] = Actions.GoToPoint(point2, 0)#TODO fix angle
+
+                # field.strategy_image.draw_circle(point1, size_in_mms=100)
+                # field.strategy_image.draw_circle(point2, size_in_mms=100)
+            elif field.allies[idFirstAttacker].is_used():
+                actions[idFirstAttacker] = Actions.GoToPoint(field.ball.get_pos()+(vectFromBallToCenter.unity()*(const.KEEP_BALL_DIST+50)), 0)#TODO fix angle
+            else:
+                actions[idSecondAttacker] = Actions.GoToPoint(field.ball.get_pos()+(vectFromBallToCenter.unity()*(const.KEEP_BALL_DIST+50)), 0)#TODO fix angle
+
+
+            # actions[gkId] = Actions.GoToPoint(field.ally_goal.frw, 0)
+            GKNewState = GK(field, actions, GKLastState)
 
             # points_first = aux.get_tangent_points(field.allies[idFirstAttacker].get_pos(), field.allies[gkId].get_pos() + aux.Point(0, 100), 100.0)
             # if points_first[0].y < points_first[1].y:
@@ -175,9 +186,11 @@ def PREPARE_KICKOFF(field: fld.Field, actions: list[Optional[Action]], we_active
             # field.strategy_image.draw_line(field.ball.get_pos(), field.allies[gkId].get_pos() + aux.Point(0, 100) - (field.ball.get_pos() - field.allies[gkId].get_pos() + aux.Point(0, 100)) * 100)
             # field.strategy_image.draw_line(field.ball.get_pos(), point_first + (field.allies[idFirstAttacker].get_pos() - field.ball.get_pos() + aux.Point(0, -100)) * 100, (0, 0, 0))
             # field.strategy_image.draw_line(field.ball.get_pos(), point_second + (field.allies[idSecondAttacker].get_pos() - field.ball.get_pos() + aux.Point(0, 100)) * 100, (0, 0, 0))
+    return GKNewState
 
 
-def KICKOFF(field: fld.Field, actions: list[Optional[Action]], we_active: bool, idFirstAttacker: int, idSecondAttacker: int) -> None:
+def KICKOFF(field: fld.Field, actions: list[Optional[Action]], we_active: bool, idFirstAttacker: int, idSecondAttacker: int, GKLastState: Optional[str]) -> str | None:
+    GKNewState = None
     if len(field.active_allies(True)) > 0:
         gkId = field.gk_id
 
@@ -206,14 +219,29 @@ def KICKOFF(field: fld.Field, actions: list[Optional[Action]], we_active: bool, 
                 else:
                     actions[gkId] = Actions.Kick(field.enemy_goal.frw)
         else:
-            y = 130
-            x = math.sqrt(600 * 600 - y * y) * -const.POLARITY
-            if idFirstAttacker != idSecondAttacker and field.allies[idFirstAttacker].is_used():
-                actions[idFirstAttacker] = Actions.GoToPoint(
-                    aux.Point(x, y), (field.ball.get_pos() - field.allies[idFirstAttacker].get_pos()).arg()
-                )
-            if field.allies[idSecondAttacker].is_used():
-                actions[idSecondAttacker] = Actions.GoToPoint(
-                    aux.Point(x, -y), (field.ball.get_pos() - field.allies[idSecondAttacker].get_pos()).arg()
-                )
-            actions[gkId] = Actions.GoToPoint(field.ally_goal.frw, 0)
+            vectFromBallToCenter = field.ally_goal.center-field.ball.get_pos()
+            if field.allies[idFirstAttacker].is_used() and field.allies[idSecondAttacker].is_used():
+                point1 = field.ball.get_pos()+aux.rotate(vectFromBallToCenter.unity()*(const.KEEP_BALL_DIST+50), angleBetweenRsInWall)
+                point2 = field.ball.get_pos()+aux.rotate(vectFromBallToCenter.unity()*(const.KEEP_BALL_DIST+50), -angleBetweenRsInWall)
+                actions[idFirstAttacker] = Actions.GoToPoint(point1, 0)#TODO fix angle
+                actions[idSecondAttacker] = Actions.GoToPoint(point2, 0)#TODO fix angle
+
+                # field.strategy_image.draw_circle(point1, size_in_mms=100)
+                # field.strategy_image.draw_circle(point2, size_in_mms=100)
+            elif field.allies[idFirstAttacker].is_used():
+                actions[idFirstAttacker] = Actions.GoToPoint(field.ball.get_pos()+(vectFromBallToCenter.unity()*(const.KEEP_BALL_DIST+50)), 0)#TODO fix angle
+            else:
+                actions[idSecondAttacker] = Actions.GoToPoint(field.ball.get_pos()+(vectFromBallToCenter.unity()*(const.KEEP_BALL_DIST+50)), 0)#TODO fix angle
+            # y = 130
+            # x = math.sqrt(600 * 600 - y * y) * -const.POLARITY
+            # if idFirstAttacker != idSecondAttacker and field.allies[idFirstAttacker].is_used():
+            #     actions[idFirstAttacker] = Actions.GoToPoint(
+            #         aux.Point(x, y), (field.ball.get_pos() - field.allies[idFirstAttacker].get_pos()).arg()
+            #     )
+            # if field.allies[idSecondAttacker].is_used():
+            #     actions[idSecondAttacker] = Actions.GoToPoint(
+            #         aux.Point(x, -y), (field.ball.get_pos() - field.allies[idSecondAttacker].get_pos()).arg()
+            #     )
+            # actions[gkId] = Actions.GoToPoint(field.ally_goal.frw, 0)
+            GKNewState = GK(field, actions, GKLastState)
+    return GKNewState

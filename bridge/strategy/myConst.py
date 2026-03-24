@@ -1,5 +1,6 @@
 from enum import Enum
 from bridge import const
+from math import asin
 
 class whatWeDoStates(Enum):
     """Класс с типо запускаемого нами кода"""
@@ -13,8 +14,8 @@ class whatWeDoStates(Enum):
 
 
 
-idFirstAttacker: int = 1
-idSecondAttacker: int = 2
+idFirstAttacker: int = 2
+idSecondAttacker: int = 3
 
 timerForRotate = 0.5
 timerForHoldBall = 3
@@ -25,6 +26,10 @@ if const.IS_SIMULATOR_USED:
     velRotateWithBall *= 5
 
 maxDistForScore = 2000
+minDistForScorePenalty = 1200
+
+distBetweenRsInWall = 250
+angleBetweenRsInWall = asin((distBetweenRsInWall/2)/((distBetweenRsInWall/2)**2+(const.KEEP_BALL_DIST+50)**2)**0.5)
 
 whatWeDoAtThisRun: whatWeDoStates = whatWeDoStates.BothPlay
 

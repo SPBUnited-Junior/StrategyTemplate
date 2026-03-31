@@ -1,0 +1,25 @@
+import math  # type: ignore
+from time import time  # type: ignore
+from typing import Optional
+from enum import Enum
+
+from bridge import const
+from bridge.auxiliary import aux, fld, rbt  # type: ignore
+from bridge.const import State as GameStates
+
+class Kick_Status(Enum):
+    Pass_Straight = 1
+    Pass_Turn_Kick= 2
+    Goal_Turn_Kick = 3
+    Goal_Straight = 4
+    Not_Kick = 5
+
+class Kick_Status_Holder:
+    def __init__(self) -> None:
+        self.kick_status = Kick_Status.Not_Kick
+
+    @property
+    def Status(self) -> Kick_Status:
+        return self.kick_status
+    
+kick_status = Kick_Status_Holder()

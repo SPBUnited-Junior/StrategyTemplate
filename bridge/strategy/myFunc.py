@@ -363,7 +363,7 @@ def doPassNearAllly(field: fld.Field, actions: list[Optional[Action]], idFrom: i
                     """TODO maybe we do openForPass several times for one run - bad"""
                     # field.strategy_image.draw_circle(pointToPass, color=(255, 255, 0), size_in_mms=1000)
                     pointToPass = pointToOpenForPass
-                actions[idFrom] = Actions.Kick(pointToPass, is_pass=True)# type: ignore
+                actions[idFrom] = Actions.DelayedSlowKick(pointToPass, is_pass=True)# type: ignore
         else:
             """if enemy r prevent pass"""
             field.strategy_image.send_telemetry("status pass", "dont have straight pass point")
@@ -383,7 +383,7 @@ def doPassNearAllly(field: fld.Field, actions: list[Optional[Action]], idFrom: i
                         """if this r will arrive at point earlyer that ball"""
                         """TODO maybe we do openForPass several times for one run - bad"""
                         field.strategy_image.draw_circle(pointToOpenForPass, color=(255, 255, 0), size_in_mms=1000)
-                        actions[idFrom] = Actions.Kick(pointToOpenForPass, is_pass=False)  # type:ignore
+                        actions[idFrom] = Actions.DelayedSlowKick(pointToOpenForPass, is_pass=False)  # type:ignore
     if actions[idFrom] is None:
         """if this r now cant do pass"""
         actions[idFrom] = Actions.GoToPoint(
@@ -405,6 +405,9 @@ def GK(
 ) -> str:  # TODO change string variable on enum class
     GKState = None
 
+    a = aux.dist(field.allies[const.GK].get_pos(), field.ball.get_pos())
+    field.strategy_image.send_telemetry("dist", str(a))
+
     # field.allies[const.GK].set_dribbler_speed(0)
 
     oldBallPos = field.ball_start_point
@@ -423,6 +426,13 @@ def GK(
         # field.strategy_image.send_telemetry("GK State", "Pass")
         GKState = "Pass"
         doPassNearAllly(field, actions)
+    elif (field.ball.get_vel().mag() < myConst.velBallForGoOutGK and 
+        aux.dist(aux.nearest_point_on_poly(ballPos, field.ally_goal.hull), ballPos) < myConst.distToBallForGoOutGK and 
+        not aux.is_point_inside_poly(ballPos, field.ally_goal.hull)):
+        """if ball dangerously close to goal GK need to go out"""
+        GKState = "go out"
+        vectFromBallToGK = (GKPos-ballPos)
+        actions[const.GK] = Actions.GoToPointIgnore((vectFromBallToGK.unity()*myConst.distToStopForGoOutGK)+ballPos, aux.rotate(vectFromBallToGK, math.pi).arg()).compose(DribblerActions.SetDribblerSpeed(15))
     elif field.is_ball_moves_to_goal() and not enemyRGrabBall:
         if not aux.is_point_on_line(GKPos, oldBallPos, ballPos, "R"):
             interseptBallPoint = aux.closest_point_on_line(oldBallPos, ballPos, GKPos, "R")
@@ -454,7 +464,7 @@ def GK(
         if len(field.active_allies(False)) != 0:
             doPassNearAllly(field, actions)
         else:
-            actions[const.GK] = Actions.Kick(field.enemy_goal.center, is_upper=True)
+            actions[const.GK] = Actions.DelayedSlowKick(field.enemy_goal.center, is_upper=True)
     else:
         GKState = "block maybe kick"
         # field.strategy_image.send_telemetry("GK State", "Block maybe kick")
@@ -476,14 +486,14 @@ def GK(
 
 
 def findPointForScore(
-    field: fld.Field, pointFrom: None | aux.Point = None, draw: bool = True, k: float | None = None, reverse: bool = False
+    field: fld.Field, pointFrom: None | aux.Point = None, draw: bool = False, OtherK: float | None = None, reverseGoal: bool = False, reverse: bool = False
 ) -> aux.Point | None:  # TODO do comments
     if pointFrom == None:
         pointFrom = field.ball.get_pos()
     qPoint = 8
     qPoint += 2
     ballPos = field.ball.get_pos()
-    if not reverse:
+    if not reverseGoal:
         d = field.enemy_goal.up.y - field.enemy_goal.down.y
         points = [aux.Point(field.enemy_goal.up.x, field.enemy_goal.up.y - (d / qPoint * i)) for i in range(1, qPoint)]
         enemys = field.active_enemies(True)
@@ -493,29 +503,59 @@ def findPointForScore(
         enemys = field.active_allies(True)
     # enemys = [field.enemies[1]]
     closest = None
-    min_dist = 10e10
-    for point in points:
-        if aux.dist(pointFrom, point) < min_dist:
-            if len(enemys) != 0:
-                for enemyR in enemys:
-                    if k == None:
-                        k = getKoefForEnemysRobotR(ballPos, enemyR.get_pos())
-                    if len(aux.line_circle_intersect(pointFrom, point, enemyR.get_pos(), const.ROBOT_R * k, "S")) != 0:
-                        break
-                    k = None
+    
+
+    
+    if not reverse:
+        min_dist = 10e10
+        for point in points:
+            if aux.dist(pointFrom, point) < min_dist:
+                if len(enemys) != 0:
+                    for enemyR in enemys:
+                        if OtherK is None:
+                            k = getKoefForEnemysRobotR(ballPos, enemyR.get_pos())
+                        else:
+                            k = OtherK
+                        if len(aux.line_circle_intersect(pointFrom, point, enemyR.get_pos(), const.ROBOT_R * k, "S")) != 0:
+                            break
+                    else:
+                        """if no one enemy r prevent this kick"""
+                        min_dist = aux.dist(pointFrom, point)
+                        closest = point
                 else:
                     """if no one enemy r prevent this kick"""
                     min_dist = aux.dist(pointFrom, point)
                     closest = point
-                    k = None
-            else:
-                """if no one enemy r prevent this kick"""
-                min_dist = aux.dist(pointFrom, point)
-                closest = point
+    else:
+        max_dist = 0.0
+        for point in points:
+            if aux.dist(pointFrom, point) > max_dist:
+                if len(enemys) != 0:
+                    for enemyR in enemys:
+                        if OtherK is None:
+                            k = getKoefForEnemysRobotR(ballPos, enemyR.get_pos())
+                        else:
+                            k = OtherK
+                        if len(aux.line_circle_intersect(pointFrom, point, enemyR.get_pos(), const.ROBOT_R * k, "S")) != 0:
+                            break
+                    else:
+                        """if no one enemy r prevent this kick"""
+                        max_dist = aux.dist(pointFrom, point)
+                        closest = point
+                else:
+                    """if no one enemy r prevent this kick"""
+                    max_dist = aux.dist(pointFrom, point)
+                    closest = point
+
     if draw:
         if closest != None:
-            field.strategy_image.draw_line(pointFrom, closest, color=(0, 255, 0), size_in_pixels=5)
-            pass
+            field.strategy_image.draw_line(pointFrom, closest, color=(0, 150, 0), size_in_pixels=5)
+            for enemyR in enemys:
+                if OtherK is None:
+                    k = getKoefForEnemysRobotR(ballPos, enemyR.get_pos())
+                else:
+                    k = OtherK
+                field.strategy_image.draw_circle(enemyR.get_pos(), (0, 255, 255), const.ROBOT_R*k)    
         else:
             field.strategy_image.draw_circle(pointFrom, color=(0, 0, 0), size_in_mms=50)
     return closest

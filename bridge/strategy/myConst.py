@@ -15,11 +15,11 @@ class whatWeDoStates(Enum):
 
 
 idFirstAttacker: int = 2
-idSecondAttacker: int = 3
+idSecondAttacker: int = 1
 
-timerForRotate = 0.5
-timerForHoldBall = 3
-constForTimerWeTryDoPass = 3
+timerForRotate = 0.5#sec
+timerForHoldBall = 3#sec
+constForTimerWeTryDoPass = 3#sec
 
 velRotateWithBall = 0.4#rad/sec
 if const.IS_SIMULATOR_USED:
@@ -28,9 +28,13 @@ if const.IS_SIMULATOR_USED:
 maxDistForScore = 2000
 minDistForScorePenalty = 1200
 
+distToBallForGoOutGK = 450
+velBallForGoOutGK = 200
+distToStopForGoOutGK = 200
+
 distBetweenRsInWall = 250
 angleBetweenRsInWall = asin((distBetweenRsInWall/2)/((distBetweenRsInWall/2)**2+(const.KEEP_BALL_DIST+50)**2)**0.5)
 
-whatWeDoAtThisRun: whatWeDoStates = whatWeDoStates.BothPlay
+whatWeDoAtThisRun: whatWeDoStates = whatWeDoStates.Play
 
 minErrAngleForRotateWithBall: int = 5

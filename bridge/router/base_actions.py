@@ -241,7 +241,24 @@ class Actions:
 
         def use_behavior_of(self, domain: ActionDomain, current_action: ActionValues) -> list["Action"]:
             #print(self.kick_args)
-            # return [KickActions.Straight(*self.kick_args)]
+            return [KickActions.Straight(*self.kick_args)]
+        
+    class DelayedSlowKick(Action):
+        """Choose type of kick (from KickActions)"""
+
+        def __init__(
+            self,
+            target_pos: aux.Point,
+            voltage: int = const.VOLTAGE_SHOOT,
+            is_pass: bool = False,
+            is_upper: bool = False,
+            timer_for_rotate: float = myConst.timerForRotate
+
+        ) -> None:
+            self.kick_args = (target_pos, voltage, is_pass, is_upper, timer_for_rotate)
+
+        def use_behavior_of(self, domain: ActionDomain, current_action: ActionValues) -> list["Action"]:
+            #print(self.kick_args)
             return [KickActions.delayedSLowKick(*self.kick_args)]
         
     class Dribbler(Action):
@@ -308,6 +325,28 @@ class KickActions:
             return actions
 
     class delayedSLowKick(Kick):
+        def __init__(
+            self,
+            target_pos: aux.Point,
+            voltage: int = const.VOLTAGE_SHOOT,
+            is_pass: bool = False,
+            is_upper: bool = False,
+            timer_for_rotate: float = myConst.timerForRotate
+        ) -> None:
+            self.target_pos = target_pos
+            self.voltage = voltage  # ignore if is_pass
+            self.is_upper = is_upper
+            self.timer_for_rotate = timer_for_rotate
+
+            if self.voltage > const.VOLTAGE_SHOOT:
+                self.voltage = const.VOLTAGE_SHOOT
+
+            if self.is_upper:
+                self.voltage = const.VOLTAGE_UP
+
+            self.pass_pos: Optional[aux.Point] = None
+            if is_pass:
+                self.pass_pos = self.target_pos
         def use_behavior_of(self, domain: ActionDomain, current_action: ActionValues) -> list["Action"]:
             kick_angle = aux.angle_to_point(domain.field.ball.get_pos(), self.target_pos)
             distToAim = aux.dist(domain.field.ball.get_pos(), self.target_pos)
@@ -315,7 +354,7 @@ class KickActions:
             actions = [
                 Actions.BallGrab(kick_angle),
                 DumbActions.slowRotateWithBall(target_angle=kick_angle, distToAim=distToAim),
-                DumbActions.delayedShootAction(self.target_pos, self.is_upper),
+                DumbActions.delayedShootAction(self.target_pos, self.is_upper, timerForRotate=self.timer_for_rotate),
                 DumbActions.ControlVoltageAction(self.voltage, self.pass_pos),
             ]
 
@@ -376,10 +415,11 @@ class DumbActions:
     class delayedShootAction(Action):
         """Shoot the target when kick is aligned"""
 
-        def __init__(self, target_pos: aux.Point, is_upper: bool = False, angle_bounds: Optional[float] = None) -> None:
+        def __init__(self, target_pos: aux.Point, is_upper: bool = False, angle_bounds: Optional[float] = None, timerForRotate: float = myConst.timerForRotate) -> None:
             self.target_pos = target_pos
             self.autokick = 2 if is_upper else 1
             self.angle_bounds = angle_bounds
+            self.timerForRotate = timerForRotate
 
         def is_defined(self, domain: ActionDomain) -> bool:
             kick_angle = aux.angle_to_point(domain.robot.get_pos(), self.target_pos)
@@ -397,7 +437,7 @@ class DumbActions:
                 DumbActions.timerForIsBallIn = time() + 10**10
                 DumbActions.oldIs_ball_in = False
             #print(time() - DumbActions.timerForAlignned > 0.1)
-            return isBallIn and is_aligned and time() - DumbActions.timerForIsBallIn > myConst.timerForRotate and time() - DumbActions.timerForAlignned > myConst.timerForRotate
+            return isBallIn and is_aligned and time() - DumbActions.timerForIsBallIn > self.timerForRotate and time() - DumbActions.timerForAlignned > self.timerForRotate
 
         def behavior(self, domain: ActionDomain, current_action: ActionValues) -> None:
             # DumbActions.timerForAlignned = time()+10**10

@@ -87,7 +87,7 @@ def PENALTY(field: fld.Field, actions: list[Optional[Action]], we_active: bool, 
         actions[gkId] = Actions.GoToPoint(field.ally_goal.frw, 0)
         # if field.allies[idFirstAttacker].is_used():
         #     actions[idFirstAttacker] = Actions.GoToPoint(-point_first, 0)
-        point_for_score: Optional[aux.Point] = findPointForScore(field, ballPos, reverse=True, draw=True)
+        point_for_score: Optional[aux.Point] = findPointForScore(field, ballPos, reverse=False, draw=True)
         # print(aux.dist(ballPos, field.enemy_goal.center))
         if aux.dist(ballPos, field.enemy_goal.center) > minDistForScorePenalty:
             field.strategy_image.draw_line(ballPos, field.enemy_goal.center)

@@ -80,6 +80,7 @@ class ExplorePasses(BaseProcessor):
                 minim: float = 10000
                 red = int(max(0, 255 / 22500000 * (22500000 - self.quality_point(field, cand))))
                 green = int(min(255, 255 / 22500000 * self.quality_point(field, cand)))
+               # print(self.quality_point(field, cand))
                 #print(quality_point(field, cand, mid))
                 self.image.draw_circle(cand, (red, green, 0))
                 points.append((self.quality_point(field, cand), cand))
@@ -110,10 +111,13 @@ class ExplorePasses(BaseProcessor):
         ball = field.ball.get_pos()
 
         if self.point_in_goal(field, point): 
+            #print(point)
             return 0
         if self.block_kick_goal(field, point, kick_goal_point):
+            #print(point)
             return 0
         if self.nearest_to_ball(field, point):
+            #print(point)
             return 0
         
         """

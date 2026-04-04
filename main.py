@@ -21,7 +21,9 @@ if __name__ == "__main__":
         ),
         Drawer(),
         CommandSink(),
-        ExplorePasses()
+        ExplorePasses(
+            ally_color=const.COLOR,
+        )
     ]
 
     RUNNER = Runner(processors=PROCESSORS)

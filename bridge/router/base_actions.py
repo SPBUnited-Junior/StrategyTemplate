@@ -206,7 +206,7 @@ class Actions:
             current_action.vel = transl_vel
             current_action.angle = self.target_angle
 
-            current_action.dribbler_speed = 13
+            current_action.dribbler_speed = 14
 
         def use_behavior_of(self, domain: ActionDomain, current_action: ActionValues) -> list["Action"]:
             ball_pos = domain.field.ball.get_pos()
@@ -223,10 +223,10 @@ class Actions:
         def behavior(self, domain: ActionDomain, current_action: ActionValues) -> None:
             if domain.field.is_ball_in(domain.robot):
                 if aux.wind_down_angle(self.target_angle - domain.robot.get_angle()) < 0:
-                    current_action.vel = aux.Point(180, -160)
+                    current_action.vel = aux.Point(210, -70)
                     current_action.angle = -0.5
                 else:
-                    current_action.vel = aux.Point(180, 160)
+                    current_action.vel = aux.Point(210, 70)
                     current_action.angle = 0.5
                 current_action.beep = 1
                 current_action.dribbler_speed = 12
@@ -281,10 +281,6 @@ class Actions:
                 current_action.beep = 1
 
 
-         
-
-                
-
     class Correct(Action):
         """""" 
         def __init__(self, target_angle: float) -> None:
@@ -293,8 +289,8 @@ class Actions:
         def behavior(self, domain: ActionDomain, current_action: ActionValues) -> None:
                 current_action.angle = self.target_angle
                 current_action.beep = 0
-                current_action.vel = aux.rotate(aux.Point(120, 0), domain.robot.get_angle())
-                current_action.dribbler_speed = 15
+                current_action.vel = aux.rotate(aux.Point(250, 0), domain.robot.get_angle())
+                current_action.dribbler_speed = 12
 
 
     class Velocity(Action):
@@ -401,7 +397,7 @@ class KickActions:
             global timer_to_stop
             kick_angle = aux.angle_to_point(domain.field.ball.get_pos(), self.target_pos)
             target_angle = (self.target_pos - domain.field.ball.get_pos()).arg()
-            time_to_kick = 0.4 + 0.3 * self.flag_kick_pas
+            time_to_kick = 0.6 + 0.3 * self.flag_kick_pas
 
             actions = [
                 Actions.BallGrab(self.start_angle),
@@ -423,7 +419,6 @@ class KickActions:
 
             if domain.field.is_ball_in(domain.robot) and abs(aux.wind_down_angle(target_angle - domain.robot.get_angle())) <= const.KICK_ALIGN_ANGLE + 0.2:
                 print(time() - timer_to_stop, abs(aux.wind_down_angle(target_angle - domain.robot.get_angle())), "this")
-
             return actions
 
 

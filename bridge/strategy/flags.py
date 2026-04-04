@@ -22,9 +22,7 @@ class Kick_Status_Holder:
     def value(self) -> Enum:
         return self.kick_status
 
-    
     @value.setter
     def value(self, new_kick_status : Enum) -> None:
         self.kick_status = new_kick_status
 
-kick_status = Kick_Status_Holder()

@@ -12,7 +12,7 @@ from bridge.const import State as GameStates
 from bridge.router.base_actions import Action, Actions, KickActions, get_pass_voltage  # type: ignore
 from bridge.strategy.check_point import check_goal_point
 from bridge.strategy.Role import Role
-from bridge.strategy.flags import kick_status
+from bridge.strategy.flags import Kick_Status_Holder
 from bridge.strategy.flags import Kick_Status
 
 """
@@ -92,15 +92,15 @@ class Strategy:
 
         # Индексы роботов
 
-        self.goalkeeper_idx = 3
-        self.idx1 = 0
-        self.idx2 = 2
+        self.goalkeeper_idx = 1
+        self.idx1 = 2
+        self.idx2 = 3
         
         # Индексы роботов соперника
 
         self.goalkeeper_idx_enemy = 0
-        self.idx_enemy1 = 1
-        self.idx_enemy2 = 2
+        self.idx_enemy1 = 6
+        self.idx_enemy2 = 7
 
         self.enemies : list[aux.Point] = [] # массив позиций вражеских роботов
 
@@ -129,12 +129,12 @@ class Strategy:
         self.dist_to_ball = 450
 
         self.ball_status = BallStatus.Passive
-        self.kick_status = Kick_Status.Not_Kick
         self.ball_status_poly = BallStatusInsidePoly.NotInsidePoly
         self.kick_up_is_used = 1
 
         #массив для функции go_to_position
         self.used = [False] * const.ROBOTS_MAX_COUNT
+        self.kick_status: Kick_Status_Holder = Kick_Status_Holder()
 
 #
     def process(self, field: fld.Field) -> list[Optional[Action]]:
@@ -142,10 +142,7 @@ class Strategy:
         Подсчет статических переменных (self)
         
         """
-        print(kick_status.value)
-        kick_status.value = Kick_Status.Goal_Turn_Kick
-        print(kick_status.value)
-        kick_status.value = Kick_Status.Goal_Straight
+
         field.active_enemies # масив роботов на поле
         self.old_ball = field.ball_start_point or aux.Point(0, 0)
 
@@ -205,7 +202,7 @@ class Strategy:
             actions.append(None)
 
         print(field.game_state, self.we_active)
-
+        Goalkeeper = Role.Goalkeper(field, actions)
         if field.game_state == GameStates.RUN:
             self.run(field, actions)
             #self.process_ricochet(field,actions)
@@ -312,15 +309,14 @@ class Strategy:
             actions[self.goalkeeper_idx] = Actions.Stop()
             print("мяч за полем")
 
-        
+        Goalkeeper.process()
         return actions
 
     def run(self, field: fld.Field, actions: list[Optional[Action]]) -> None:
         
 
         Block = Role.Block_Enemy_Pass(field, actions)
-        Attacker = Role.Attacker(field, actions)
-        Goalkeeper = Role.Goalkeper(field, actions)
+        Attacker = Role.Attacker(field, actions, self.kick_status)
         Pass = Role.Pass(field, actions)
         Defer = Role.Defer(field, actions)
 
@@ -330,7 +326,18 @@ class Strategy:
         enemy_dist = aux.dist(enemy_nearest_robot.get_pos(), self.ball)
 
 
-        if (ally_dist <= enemy_dist or ally_dist < 50):
+        flag = False
+        for rbt in field.active_allies(False):
+            if (self.check_cath_ball(field, rbt.get_pos())):
+                flag = True
+
+        if (flag and field.is_ball_not_in_robot()):
+            print("Pass all")
+            for rbt in field.active_allies(False):
+                Pass.push(rbt)
+
+
+        elif (ally_dist <= enemy_dist or ally_dist < 200):
             robot = ally_nearest_robot
             if (robot is None):
                 raise ValueError("field.is_ball_in_ally_robot() and field.in_robot_with_ball() is None")
@@ -339,12 +346,10 @@ class Strategy:
                     Pass.push(rbt)
             else:
                 for rbt in field.active_allies(False):
-                    if ((self.ball.x < 0) and (field.enemy_goal.center.x < 0)):
+                    if ((self.ball.x < 0) == (field.enemy_goal.center.x < 0)):
                         if (rbt != robot):
+                            print("push pass")
                             Pass.push(rbt)
-                    else:
-                        if (rbt != robot):
-                            Defer.push(rbt)
 
                 Attacker.push(robot)
 
@@ -357,7 +362,7 @@ class Strategy:
                     Block.push(rbt)
             else:
 
-                if ((self.ball.x < 0) and (field.enemy_goal.center.x < 0)):
+                if ((self.ball.x < 0) == (field.enemy_goal.center.x < 0)):
                     Attacker.push(robot)
                 else:
                     Defer.push(robot)
@@ -365,20 +370,21 @@ class Strategy:
                 for rbt in field.active_allies(False):
                     if (rbt == robot):
                         continue
-                    if ((self.ball.x < 0) and (field.enemy_goal.center.x < 0)):
+                    if ((self.ball.x < 0) == (field.enemy_goal.center.x < 0)):
                         if (rbt != robot):
                             Block.push(rbt)
                     else:
                         if (rbt != robot):
-                            Defer.push(rbt)
-
-                Attacker.push(robot)
+                            Block.push(rbt)
             
 
         Block.process()
         Attacker.process()
-        Goalkeeper.process()
         Pass.process()
+
+        # actions[0] = KickActions.Turn_Kick(field.enemy_goal.center, 0)
+        # actions[7] = Actions.Stop()
+        # actions[2] = Actions.Stop()
 
         
 

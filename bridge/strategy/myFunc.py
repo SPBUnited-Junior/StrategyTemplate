@@ -81,11 +81,19 @@ def canRDoScoreAndInWhatPoint(field: fld.Field, robotPos: Optional[aux.Point] = 
 def nearest2BallEnemy(field: fld.Field, includeGK: bool = True) -> rbt.Robot:
     return fld.find_nearest_robot(field.ball.get_pos(), field.active_enemies(includeGK))
 
-def isBallKickedToR(field: fld.Field, receiverRId: int, givingRId: int, check: bool = False) -> bool:
+def isBallKickedToR(field: fld.Field, receiverRId: int, givingRId: int, check: bool = False, forEnemyes: bool = False) -> bool:
     ballPos = field.ball.get_pos()
-    receiverR = field.allies[receiverRId]
-    givingR = field.allies[givingRId]
-    receiverRPos = receiverR.get_pos()
+    if not forEnemyes:
+        receiverR = field.allies[receiverRId]
+        givingR = field.allies[givingRId]
+    else:
+        givingR = field.enemies[givingRId]
+        if receiverRId != -1:
+            receiverR = field.enemies[receiverRId]
+            receiverRPos = receiverR.get_pos()
+        else:
+            receiverRPos = aux.rotate(aux.RIGHT, givingR.get_angle())*(((const.FIELD_DX*2)**2+(const.FIELD_DY*2)**2)**0.5)
+
     givingRPos = givingR.get_pos()
     vectFormGivingPassToReceiver = receiverRPos-givingRPos
     vectNormalToVectFormGivingPassToReceiver = aux.rotate(vectFormGivingPassToReceiver, 90/180*math.pi)
@@ -105,16 +113,20 @@ def isBallKickedToR(field: fld.Field, receiverRId: int, givingRId: int, check: b
     if (check): field.strategy_image.send_telemetry("test", "in")
     
     if pointPlusErr is not None and pointMinusErr is not None:
+        """check is prog work how it must"""
         if (check): field.strategy_image.send_telemetry("test", "if we have points")
         polygon1: list[aux.Point] = [givingRPos, pointMinusErr, pointPlusErr]
         field.strategy_image.draw_poly(polygon1, size_in_pixels=4)
         # if aux.is_point_inside_poly(ballPos, polygon1):
         if aux.dist(aux.nearest_point_in_poly(ballPos, polygon1), ballPos) < 100:
+            """if ball moves in triangle in what it must move if it kicked"""
             if (check): field.strategy_image.send_telemetry("test", "if point in triangle")
             vectFromBallToReceiver = receiverRPos-ballPos
             if abs(field.ball.get_vel().arg()-vectFromBallToReceiver.arg())/math.pi*180 < myConst.minErrAngleForRotateWithBall*koefForErr:
+                """if ball moves to point where he must be kicked"""
                 if (check): field.strategy_image.send_telemetry("test", "if ball moving to point")
                 if field.ball.get_vel().mag() > 1000:
+                    """if he moves fast enough"""
                     if (check): field.strategy_image.send_telemetry("test", "if ball moving fast enough")
                     # print("True")
                     if (check): field.strategy_image.draw_circle(aux.Point(0, 0), size_in_mms=1000)
@@ -401,7 +413,7 @@ def doPassNearAllly(field: fld.Field, actions: list[Optional[Action]], idFrom: i
 
 # TODO do comments
 def GK(
-    field: fld.Field, actions: list[Optional[Action]], oldGKState: str | None
+    field: fld.Field, actions: list[Optional[Action]], oldGKState: str | None, pointFromBallKicked: Optional[aux.Point] = None, angleWithWhatBallKicked: Optional[float] = None, draw: bool = True
 ) -> str:  # TODO change string variable on enum class
     GKState = None
 
@@ -416,6 +428,12 @@ def GK(
     enenmies = field.active_enemies(False).copy()
     allies = field.active_allies(True).copy()
     allR = enenmies + allies
+
+    if draw and pointFromBallKicked is not None and angleWithWhatBallKicked is not None:
+        field.strategy_image.draw_line(oldBallPos, ballPos, (255, 0, 0))
+        secondPointForLine = pointFromBallKicked+aux.rotate(aux.RIGHT, angleWithWhatBallKicked)
+        field.strategy_image.draw_line(pointFromBallKicked, secondPointForLine, (0, 0, 255))
+
 
     nearestEnemyRToBall = fld.find_nearest_robot(ballPos, field.active_enemies(False))
     nearestRToBall = fld.find_nearest_robot(ballPos, allR)

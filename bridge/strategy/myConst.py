@@ -35,6 +35,6 @@ distToStopForGoOutGK = 200
 distBetweenRsInWall = 250
 angleBetweenRsInWall = asin((distBetweenRsInWall/2)/((distBetweenRsInWall/2)**2+(const.KEEP_BALL_DIST+50)**2)**0.5)
 
-whatWeDoAtThisRun: whatWeDoStates = whatWeDoStates.Play
+whatWeDoAtThisRun: whatWeDoStates = whatWeDoStates.SimpleTest
 
 minErrAngleForRotateWithBall: int = 5

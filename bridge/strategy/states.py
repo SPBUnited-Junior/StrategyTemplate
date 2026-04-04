@@ -54,8 +54,6 @@ def PREPARE_PENALTY(field: fld.Field, actions: list[Optional[Action]], we_active
         point_first = aux.Point(const.FIELD_DX / 2 * -field.polarity, const.FIELD_DY / 2)
         point_second = aux.Point(const.FIELD_DX / 2 * -field.polarity, -const.FIELD_DY / 2)
         if we_active:
-            if field.allies[gkId].is_used():
-                actions[gkId] = Actions.GoToPoint(field.ally_goal.frw, 0)
                 # pass
             if field.allies[idFirstAttacker].is_used():
                 actions[idFirstAttacker] = Actions.GoToPoint(aux.Point(const.FIELD_DX / 2 * field.polarity, const.FIELD_DY / 2), 0)
@@ -65,18 +63,20 @@ def PREPARE_PENALTY(field: fld.Field, actions: list[Optional[Action]], we_active
                     aux.Point(200 * field.polarity), (field.ball.get_pos() - atacker_second_pos).arg()
                 )
                 # pass
+            if field.allies[gkId].is_used():
+                actions[gkId] = Actions.GoToPoint(field.ally_goal.frw, 0)
         else:
             # code for GK, its for time:
-            if field.allies[gkId].is_used():
-                actions[gkId] = Actions.GoToPoint(field.ally_goal.center, 0)
             # ////
             if field.allies[idFirstAttacker].is_used():
                 actions[idFirstAttacker] = Actions.GoToPoint(point_first, 0)
             if field.allies[idSecondAttacker].is_used():
                 actions[idSecondAttacker] = Actions.GoToPoint(point_second, 0)
+            if field.allies[gkId].is_used():
+                actions[gkId] = Actions.GoToPoint(field.ally_goal.center, 0)
 
 
-def PENALTY(field: fld.Field, actions: list[Optional[Action]], we_active: bool, idFirstAttacker: int, idSecondAttacker: int, GKLastState: Optional[str]) -> str | None:
+def PENALTY(field: fld.Field, actions: list[Optional[Action]], we_active: bool, idFirstAttacker: int, idSecondAttacker: int, GKLastState: Optional[str], pointFromBallKicked: aux.Point, angleFromBallKicked: float) -> str | None:
     GKNewState = None
     gkId = field.gk_id
     ballPos = field.ball.get_pos()
@@ -87,7 +87,7 @@ def PENALTY(field: fld.Field, actions: list[Optional[Action]], we_active: bool, 
         actions[gkId] = Actions.GoToPoint(field.ally_goal.frw, 0)
         # if field.allies[idFirstAttacker].is_used():
         #     actions[idFirstAttacker] = Actions.GoToPoint(-point_first, 0)
-        point_for_score: Optional[aux.Point] = findPointForScore(field, ballPos, reverse=False, draw=True)
+        point_for_score: Optional[aux.Point] = findPointForScore(field, ballPos, reverse=True, draw=True)
         # print(aux.dist(ballPos, field.enemy_goal.center))
         if aux.dist(ballPos, field.enemy_goal.center) > minDistForScorePenalty:
             field.strategy_image.draw_line(ballPos, field.enemy_goal.center)
@@ -114,7 +114,7 @@ def PENALTY(field: fld.Field, actions: list[Optional[Action]], we_active: bool, 
                     actions[idFirstAttacker] = Actions.DelayedSlowKick(field.enemy_goal.center, timer_for_rotate=timerForRotate/2)
 
     else:
-        GKNewState = GK(field, actions, GKLastState)
+        GKNewState = GK(field, actions, GKLastState, pointFromBallKicked, angleFromBallKicked)
         
         if field.allies[idFirstAttacker].is_used():
             actions[idFirstAttacker] = Actions.GoToPoint(point_first, 0)

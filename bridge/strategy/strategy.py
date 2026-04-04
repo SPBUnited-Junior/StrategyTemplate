@@ -77,7 +77,8 @@ class Strategy:
                 states.PREPARE_PENALTY(field, actions, self.we_active, self.idFirstAttacker, self.idSecondAttacker)
 
             case GameStates.PENALTY:
-                self.GKLastState = states.PENALTY(field, actions, self.we_active, self.idFirstAttacker, self.idSecondAttacker, self.GKLastState)  # one r(our or not) kick ball from center of field, GK other team defend goal
+                self.updatePointAndAngleFromWhatBallKicked(field)
+                self.GKLastState = states.PENALTY(field, actions, self.we_active, self.idFirstAttacker, self.idSecondAttacker, self.GKLastState, self.PointFromBallKicked, self.AngleWithWhatBallKicked)  # one r(our or not) kick ball from center of field, GK other team defend goal
 
             case GameStates.PREPARE_KICKOFF:
                 self.GKLastState = states.PREPARE_KICKOFF(field, actions, self.we_active, self.idFirstAttacker, self.idSecondAttacker, self.GKLastState)  # our Rs on our part of field
@@ -101,6 +102,7 @@ class Strategy:
                 """code for blue"""
                 self.myIsBallInClass.updateTimerWeHoldBall(field)
                 self.updateTimerAndIdWeTryDoPass(field, actions)
+                self.updatePointAndAngleFromWhatBallKicked(field)
                 if self.TimeWeTryDoPass is not None:
                     field.strategy_image.send_telemetry("timerPass", str(time()-self.TimeWeTryDoPass))
                 else:
@@ -189,10 +191,14 @@ class Strategy:
                                 # field.strategy_image.send_telemetry("ids:", "self.idDoPass" + str(self.idDoPass) + "self.idGettingPass:" + str(self.idGettingPass))
 
                     case whatWeDoStates.SimpleTest:
-
+                        print(1)
+                        list = field.active_enemies(True)+field.active_allies(True)
+                        nearestRToBall = fld.find_nearest_robot(field.ball.get_pos(), list)
+                        field.strategy_image.draw_circle(nearestRToBall.get_pos(), color=(255, 255, 0), size_in_mms=1000)
+                        isBallKickedToR(field, nearestRToBall.r_id, -1, forEnemyes=True)
                         # a = (aux.dist(aux.nearest_point_on_poly(field.ball.get_pos(), field.ally_goal.hull), field.ball.get_pos()))
-                        a = aux.dist(field.allies[const.GK].get_pos(), field.ball.get_pos())
-                        field.strategy_image.send_telemetry("dist", str(a))
+                        # a = aux.dist(field.allies[const.GK].get_pos(), field.ball.get_pos())
+                        # field.strategy_image.send_telemetry("dist", str(a))
                         # print(field.allies[0].get_angle()/math.pi*180)
                         # openForPass(field, 1, actions)
                         # canRDoScoreAndInWhatPoint(field)
@@ -228,6 +234,15 @@ class Strategy:
                     self.attacker(field, actions, self.idSecondAttacker, self.idFirstAttacker)
         else:
             print("WE HAVENT ROBOTS")
+
+    def updatePointAndAngleFromWhatBallKicked(self, field: fld.Field) -> None:
+        list = field.active_enemies(True)+field.active_allies(True)
+        nearestRToBall = fld.find_nearest_robot(field.ball.get_pos(), list)
+        if nearestRToBall in field.active_enemies(True):
+            if isBallKickedToR(field, nearestRToBall.r_id, -1, forEnemyes=True):
+                self.PointFromBallKicked = nearestRToBall.get_pos()
+                self.AngleWithWhatBallKicked = nearestRToBall.get_angle()
+
 
     def updateTimerAndIdWeTryDoPass(self, field: fld.Field, actions: list[Optional[Action]]) -> None:
         ballPos = field.ball.get_pos()

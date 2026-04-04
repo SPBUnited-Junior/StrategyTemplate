@@ -49,13 +49,9 @@ class ExplorePasses(BaseProcessor):
             return
         self.image.timer.start(time())
 
-        points: list[aux.Point] = []
-        #
-        
-        self.optimal_point(self.field, self.field.ball.get_pos())
-        print(9)
+        list_points: list[aux.Point] = self.optimal_point(self.field, self.field.ball.get_pos())
 
-        self.passes_writer.write(points)
+        self.passes_writer.write(list_points)
         self.image.timer.end(time())
         self.image_writer.write(self.image)
         self.image.clear()
@@ -64,12 +60,12 @@ class ExplorePasses(BaseProcessor):
         self,
         field: fld.Field,
         ball: aux.Point,
-    ) -> aux.Point:
+    ) -> list[aux.Point]:
         """
         Находит оптимальную точку для паса, сравнивая расстояния.
         """
         maxim = 0.0
-        res = aux.Point(0, 0)
+        points: list[tuple[float, aux.Point]] = []
         for x in range(int(ball.x) - 1400, int(ball.x) + 1400, 200):
             for y in range(int(ball.y) - 1400, int(ball.y) + 1400, 200):
                 if abs(x) > 2250:
@@ -80,22 +76,31 @@ class ExplorePasses(BaseProcessor):
                 if ((const.GOAL_DX - const.GOAL_PEN_DX) - abs(cand.x) < 100) and (abs(cand.y) - abs(const.GOAL_PEN_DY / 2) < 100):
                     cond = 0
                     continue
-                #field.strategy_image.draw_circle(cand, (255, 0, 255), 30)
+
                 minim: float = 10000
-                # flag_to_point = True
-                # if aux.dist(cand, ball) < 700 or aux.dist(cand, ball) > 1400:
-                #     flag_to_point = False
-                #     continue
                 red = int(max(0, 255 / 22500000 * (22500000 - self.quality_point(field, cand))))
                 green = int(min(255, 255 / 22500000 * self.quality_point(field, cand)))
+               # print(self.quality_point(field, cand))
                 #print(quality_point(field, cand, mid))
                 self.image.draw_circle(cand, (red, green, 0))
-                if (
-                    self.quality_point(field, cand) > maxim
-                ):
-                    res = cand
-                    maxim = self.quality_point(field, cand)
-        return res
+                points.append((self.quality_point(field, cand), cand))
+        points.sort(key=lambda x: x[0])
+        points.reverse()
+        positions: list[aux.Point] = []
+        for i in range(len(points)):
+            is_correct_point: bool = True
+            cord = points[i][1]
+            for pnt in positions:
+                if aux.dist(pnt, cord) < const.DIST_PASSES_POINT:
+                    is_correct_point = False
+            
+            if is_correct_point:
+                positions.append(cord)
+
+            if len(positions) >= const.COUNT_PASSES_POINT:
+                return positions
+
+        return positions
 
     def quality_point(
         self,
@@ -106,10 +111,13 @@ class ExplorePasses(BaseProcessor):
         ball = field.ball.get_pos()
 
         if self.point_in_goal(field, point): 
+            #print(point)
             return 0
         if self.block_kick_goal(field, point, kick_goal_point):
+            #print(point)
             return 0
         if self.nearest_to_ball(field, point):
+            #print(point)
             return 0
         
         """

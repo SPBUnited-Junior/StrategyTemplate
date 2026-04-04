@@ -98,4 +98,5 @@ def check_goal_point(
             maximum = left - right
             mid = aux.Point(field_up.x, (left + right) // 2)
 
+    #print(mid)
     return mid, maximum

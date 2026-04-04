@@ -70,6 +70,7 @@ class Role:
             return True
 
         def process(self) -> None:
+            print("attacker Role: ", self.attacker)
             print(self.kick_status.value)
             if self.attacker is None: return
             if (len(self.field.pass_points) == 0): return
@@ -95,8 +96,8 @@ class Role:
                 """
                 Если робот захватил мяч и бьет в ворота с Straight
                 """
-                print("Straigth")
                 if point_kick_goal is None:
+                    self.kick_status.value = Kick_Status.Pass_Turn_Kick
                     self.actions[self.attacker.r_id] = KickActions.Straight(self.field.enemy_goal.center)
                 else:
                     self.actions[self.attacker.r_id] = KickActions.Straight(point_kick_goal)
@@ -121,11 +122,18 @@ class Role:
                     and self.check_cath_ball(optimal_point) and not self.field.is_ball_in_ally_robot()):
 
                     arg = (ball_pos - self.attacker.get_pos()).arg()
-                    self.actions[self.attacker.r_id] = Actions.GoToPoint(self.field.pass_points[1], arg)
+                    if (len(self.field.pass_points) >= 1):
+                        self.actions[self.attacker.r_id] = Actions.GoToPoint(self.field.pass_points[1], arg)
 
                 elif point_kick_goal is not None and aux.dist(self.attacker.get_pos(), self.field.enemy_goal.center) < 3500:
-                    self.kick_status.value = Kick_Status.Goal_Turn_Kick
-                    self.actions[self.attacker.r_id] = KickActions.Turn_Kick(self.field.enemy_goal.center, angle_nearest_robot)
+                    angle = (point_kick_goal - ball_pos).arg()
+                    diff_angle = aux.wind_down_angle(angle - self.attacker.get_angle())
+                    if (aux.dist(self.attacker.get_pos(), ball_pos) > 600 or diff_angle < 0.8):
+                        self.kick_status.value = Kick_Status.Goal_Straight
+                        self.actions[self.attacker.r_id] = KickActions.Straight(point_kick_goal)
+                    else:
+                        self.kick_status.value = Kick_Status.Goal_Turn_Kick
+                        self.actions[self.attacker.r_id] = KickActions.Turn_Kick(self.field.enemy_goal.center, angle_nearest_robot)
                 else:
                     self.kick_status.value = Kick_Status.Pass_Turn_Kick
                     #, angle_nearest_robot
@@ -150,7 +158,7 @@ class Role:
 
             includes (it is necessary to list the main points of the goalkeeper's strategy):
             """
-
+            print(const.GK, "GK")
             voltage_kik = 5
 
             robot_position_goalkeeper = self.goalkeeper.get_pos()
@@ -284,7 +292,7 @@ class Role:
 
 
         def process(self) -> None:
-            print(*self.field.pass_points)
+            print("Block pass Role: ", *self.ally_robots)
             self.build_list()
             if (len(self.enemy_robots) == len(self.ally_robots)):
                 self.block_robot()
@@ -329,6 +337,7 @@ class Role:
 
         def process(self) -> None:
             if (len(self.ally_robots) == 0): return
+            print("Defer Role: ", *self.ally_robots)
 
             ball_pos = self.field.ball.get_pos()
             for rbt in self.ally_robots:
@@ -372,7 +381,7 @@ class Role:
         
         def process(self) -> None:
             if (len(self.field.pass_points) == 0): return
-            print(self.ally_robots, "pass list")
+            print("Pass Role: ", *self.ally_robots)
             ball_pos = self.field.ball.get_pos()
             idx : int = 0
             for robot in self.ally_robots:

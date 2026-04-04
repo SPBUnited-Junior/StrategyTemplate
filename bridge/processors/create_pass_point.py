@@ -123,10 +123,18 @@ class ExplorePasses(BaseProcessor):
         """
         коэффицент возможности блокировки пасса вражеским роботом 
         """
-        block_weight: float = 3000
+        block_weight: float = 5000
         for rbt in field.active_enemies(False):
             dist_to_point = (rbt.get_pos() - aux.closest_point_on_line(ball, point, rbt.get_pos(), "S")).mag()
             block_weight = min(block_weight, dist_to_point * 3)
+
+        """
+        коэффицент чем ближе наш робот тем больше коэффицент 
+        """
+        pass_weight: float = 5000
+        for rbt in field.active_allies(False):
+            dist_to_point = (rbt.get_pos() - aux.closest_point_on_line(ball, point, rbt.get_pos(), "S")).mag()
+            pass_weight = max(block_weight, (4000 - dist_to_point) * 3)
         """
         коэффициент возможностьи ударить в ворота
         """
@@ -135,7 +143,7 @@ class ExplorePasses(BaseProcessor):
         """
         сумма весов
         """
-        weight: float = block_weight * kick_to_goal_weight
+        weight: float = block_weight * kick_to_goal_weight * pass_weight
         return weight
     
     def point_in_goal(

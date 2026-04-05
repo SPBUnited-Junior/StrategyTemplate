@@ -6,7 +6,7 @@ from bridge import const
 from bridge.auxiliary import aux, fld, rbt  # type: ignore
 from bridge.router.base_actions import Action, Actions, KickActions  # type: ignore
 from bridge.strategy.myFunc import findPointForScore, GK
-from bridge.strategy.myConst import minDistForScorePenalty, angleBetweenRsInWall, timerForRotate
+from bridge.strategy.myConst import minDistForScorePenalty, angleBetweenRsInWall, timerForRotate, idFirstAttacker, idSecondAttacker
 
 
 
@@ -80,7 +80,6 @@ def PENALTY(field: fld.Field, actions: list[Optional[Action]], we_active: bool, 
     GKNewState = None
     gkId = field.gk_id
     ballPos = field.ball.get_pos()
-
     point_first = aux.Point(const.FIELD_DX / 2 * -field.polarity, const.FIELD_DY / 2)
     point_second = aux.Point(const.FIELD_DX / 2 * -field.polarity, -const.FIELD_DY / 2)
     if we_active:
@@ -249,3 +248,18 @@ def KICKOFF(field: fld.Field, actions: list[Optional[Action]], we_active: bool, 
             # actions[gkId] = Actions.GoToPoint(field.ally_goal.frw, 0)
             GKNewState = GK(field, actions, GKLastState)
     return GKNewState
+
+def STOP(field: fld.Field, actions: list[Optional[Action]], GKLastState: Optional[str]) -> str | None:
+    vectFromBallToCenter = field.ally_goal.center-field.ball.get_pos()
+    if field.allies[idFirstAttacker].is_used() and field.allies[idSecondAttacker].is_used():
+        point1 = field.ball.get_pos()+aux.rotate(vectFromBallToCenter.unity()*(const.KEEP_BALL_DIST+50), angleBetweenRsInWall)
+        point2 = field.ball.get_pos()+aux.rotate(vectFromBallToCenter.unity()*(const.KEEP_BALL_DIST+50), -angleBetweenRsInWall)
+        actions[idFirstAttacker] = Actions.GoToPoint(point1, 0)#TODO fix angle
+        actions[idSecondAttacker] = Actions.GoToPoint(point2, 0)#TODO fix angle
+    elif field.allies[idFirstAttacker].is_used():
+        actions[idFirstAttacker] = Actions.GoToPoint(field.ball.get_pos()+(vectFromBallToCenter.unity()*(const.KEEP_BALL_DIST+50)), 0)#TODO fix angle
+    else:
+        actions[idSecondAttacker] = Actions.GoToPoint(field.ball.get_pos()+(vectFromBallToCenter.unity()*(const.KEEP_BALL_DIST+50)), 0)#TODO fix angle
+    GKNewState = GK(field, actions, GKLastState)
+    return GKNewState
+

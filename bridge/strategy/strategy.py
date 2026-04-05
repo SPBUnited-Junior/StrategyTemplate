@@ -91,7 +91,8 @@ class Strategy:
 
             case GameStates.STOP:
                 # The router will automatically prevent robots from getting too close to the ball
-                self.run(field, actions)
+                # self.run(field, actions)
+                self.GKLastState = states.STOP(field, actions, self.GKLastState)
 
         return actions
 
@@ -192,7 +193,7 @@ class Strategy:
 
                     case whatWeDoStates.SimpleTest:
 
-                        print(1)
+                        # print(1)
                         # list = field.active_enemies(True)+field.active_allies(True)
                         # nearestRToBall = fld.find_nearest_robot(field.ball.get_pos(), list)
                         # field.strategy_image.draw_circle(nearestRToBall.get_pos(), color=(255, 255, 0), size_in_mms=1000)
@@ -204,12 +205,13 @@ class Strategy:
                         # openForPass(field, 1, actions)
                         # canRDoScoreAndInWhatPoint(field)
                         # actions[0] = Actions.BallGrab(0)
-                        # actions[0] = Actions.DelayedSlowKick(field.enemy_goal.center, is_upper=True)
+                        actions[7] = Actions.DelayedSlowKick(field.enemy_goal.center)
                         # findPointForScore(field, field.ball.get_pos(), reverseGoal=True, draw=True, reverse=False)
                         # if field.is_ball_in(field.allies[0]):
                         #     doPassNearAllly(field, actions, 0)
                         # else:
                         #     actions[0] = Actions.BallGrab((field.enemy_goal.center-field.allies[0].get_pos()).arg())
+                        pass
 
                     case whatWeDoStates.TestRotateWithBall:
                         thisR = field.allies[self.idFirstAttacker]

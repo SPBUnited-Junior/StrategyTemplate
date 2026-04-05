@@ -14,7 +14,7 @@ class whatWeDoStates(Enum):
 
 
 
-idFirstAttacker: int = 0
+idFirstAttacker: int = 1
 idSecondAttacker: int = 2
 
 timerForRotate = 0.5#sec

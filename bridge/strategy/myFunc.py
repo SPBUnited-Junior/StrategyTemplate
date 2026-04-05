@@ -87,6 +87,7 @@ def isBallKickedToR(field: fld.Field, receiverRId: int, givingRId: int, check: b
     ballPos = field.ball.get_pos()
     if not forEnemyes:
         receiverR = field.allies[receiverRId]
+        receiverRPos = receiverR.get_pos()
         givingR = field.allies[givingRId]
         givingRPos = givingR.get_pos()
     else:
@@ -435,10 +436,10 @@ def GK(
     allies = field.active_allies(True).copy()
     allR = enenmies + allies
 
-    field.strategy_image.draw_line(oldBallPos, ballPos.unity()*1000+oldBallPos, (255, 0, 0), 100)
     if draw and pointFromBallKicked is not None and angleWithWhatBallKicked is not None:
         secondPointForLine = pointFromBallKicked+aux.rotate(aux.RIGHT, angleWithWhatBallKicked)
         field.strategy_image.draw_line(pointFromBallKicked, secondPointForLine, (0, 0, 255), 120)
+        field.strategy_image.draw_line(oldBallPos, ballPos.unity()*1000+oldBallPos, (255, 0, 0), 100)
 
 
     nearestEnemyRToBall = fld.find_nearest_robot(ballPos, field.active_enemies(False))
@@ -538,7 +539,6 @@ def findPointForScore(
         enemys = field.active_allies(True)
     # enemys = [field.enemies[1]]
     closest = None
-    
 
     
     if not reverse:
@@ -584,7 +584,7 @@ def findPointForScore(
 
     if draw:
         if closest != None:
-            field.strategy_image.draw_line(pointFrom, closest, color=(0, 150, 0), size_in_pixels=5)
+            field.strategy_image.draw_line(pointFrom, closest, color=(0, 150, 0), size_in_pixels=15)
             for enemyR in enemys:
                 if OtherK is None:
                     k = getKoefForEnemysRobotR(ballPos, enemyR.get_pos())

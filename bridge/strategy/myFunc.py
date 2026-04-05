@@ -529,16 +529,19 @@ def findPointForScore(
         qPoint = 8
     qPoint += 2
     ballPos = field.ball.get_pos()
+    spaceForFindingPoints = myConst.spaceFromEdgedForFindingPointsForScore
     if not reverseGoal:
-        d = field.enemy_goal.up.y - field.enemy_goal.down.y
-        points = [aux.Point(field.enemy_goal.up.x, field.enemy_goal.up.y - (d / qPoint * i)) for i in range(1, qPoint)]
+        d = const.GOAL_DY - spaceForFindingPoints*2
+        points = [aux.Point(field.enemy_goal.up.x, max(field.enemy_goal.up.y, field.enemy_goal.down.y) - spaceForFindingPoints - (d / qPoint * i)) for i in range(1, qPoint)]
         enemys = field.active_enemies(True)
     else:
-        d = field.ally_goal.up.y - field.ally_goal.down.y
-        points = [aux.Point(field.ally_goal.up.x, field.ally_goal.up.y - (d / qPoint * i)) for i in range(1, qPoint)]
+        d = const.GOAL_DY - spaceForFindingPoints*2
+        points = [aux.Point(field.ally_goal.up.x, max(field.ally_goal.up.y, field.ally_goal.down.y) - spaceForFindingPoints - (d / qPoint * i)) for i in range(1, qPoint)]
         enemys = field.active_allies(True)
     # enemys = [field.enemies[1]]
     closest = None
+    for point in points:
+        field.strategy_image.draw_circle(point)
 
     
     if not reverse:

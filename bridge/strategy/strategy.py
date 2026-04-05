@@ -95,7 +95,7 @@ class Strategy:
                 self.GKLastState = states.STOP(field, actions, self.GKLastState)
 
         return actions
-
+ 
     def run(self, field: fld.Field, actions: list[Optional[Action]]) -> None:
         # TODO fix problem with that robots comes so close to each other,when they try take ball
         if len(field.active_allies(True)) != 0:  # if our Rs on field
@@ -190,9 +190,17 @@ class Strategy:
                             if oldIdDoPass != self.idDoPass or oldIdGettingPass != self.idGettingPass:
                                 print(self.idDoPass, self.idGettingPass)
                                 # field.strategy_image.send_telemetry("ids:", "self.idDoPass" + str(self.idDoPass) + "self.idGettingPass:" + str(self.idGettingPass))
+                    
+                    case whatWeDoStates.TestGK:
+                        if field.ally_color == const.COLOR:
+                            self.GKLastState = GK(field, actions, self.GKLastState, self.PointFromBallKicked, self.AngleWithWhatBallKicked)
+                        # else:
+
+                        
 
                     case whatWeDoStates.SimpleTest:
-
+                        findPointForScore(field, reverseGoal=True)
+                        # print(myConst.useDebug)
                         # print(1)
                         # list = field.active_enemies(True)+field.active_allies(True)
                         # nearestRToBall = fld.find_nearest_robot(field.ball.get_pos(), list)
@@ -205,7 +213,7 @@ class Strategy:
                         # openForPass(field, 1, actions)
                         # canRDoScoreAndInWhatPoint(field)
                         # actions[0] = Actions.BallGrab(0)
-                        actions[7] = Actions.DelayedSlowKick(field.enemy_goal.center)
+                        # actions[7] = Actions.DelayedSlowKick(field.enemy_goal.center)
                         # findPointForScore(field, field.ball.get_pos(), reverseGoal=True, draw=True, reverse=False)
                         # if field.is_ball_in(field.allies[0]):
                         #     doPassNearAllly(field, actions, 0)

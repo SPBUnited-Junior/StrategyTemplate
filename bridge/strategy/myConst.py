@@ -1,6 +1,7 @@
 from enum import Enum
 from bridge import const
 from math import asin
+from environment.setup_environment import get_from_env
 
 class whatWeDoStates(Enum):
     """Класс с типо запускаемого нами кода"""
@@ -11,11 +12,12 @@ class whatWeDoStates(Enum):
     SimpleTest = 3
     TestRotateWithBall = 4
     NewIsBallInTest = 5
+    TestGK = 6
 
 
 
-idFirstAttacker: int = 1
-idSecondAttacker: int = 2
+idFirstAttacker: int = 6
+idSecondAttacker: int = 7
 
 timerForRotate = 0.5#sec
 timerForHoldBall = 3#sec
@@ -33,9 +35,15 @@ distToBallForGoOutGK = 450
 velBallForGoOutGK = 200
 distToStopForGoOutGK = 200
 
+spaceFromEdgedForFindingPointsForScore = 50
+
 distBetweenRsInWall = 250
 angleBetweenRsInWall = asin((distBetweenRsInWall/2)/((distBetweenRsInWall/2)**2+(const.KEEP_BALL_DIST+50)**2)**0.5)
 
-whatWeDoAtThisRun: whatWeDoStates = whatWeDoStates.SimpleTest
+whatWeDoAtThisRun: whatWeDoStates = whatWeDoStates.Play
+
+useDebug = get_from_env("DEBUG_MODE", bool)
+if not const.IS_SIMULATOR_USED and not useDebug:
+    whatWeDoAtThisRun = whatWeDoStates.Play#DONT TOUCH!!!!!!!!
 
 minErrAngleForRotateWithBall: int = 5

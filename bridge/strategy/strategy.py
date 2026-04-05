@@ -191,11 +191,12 @@ class Strategy:
                                 # field.strategy_image.send_telemetry("ids:", "self.idDoPass" + str(self.idDoPass) + "self.idGettingPass:" + str(self.idGettingPass))
 
                     case whatWeDoStates.SimpleTest:
+
                         print(1)
-                        list = field.active_enemies(True)+field.active_allies(True)
-                        nearestRToBall = fld.find_nearest_robot(field.ball.get_pos(), list)
-                        field.strategy_image.draw_circle(nearestRToBall.get_pos(), color=(255, 255, 0), size_in_mms=1000)
-                        isBallKickedToR(field, nearestRToBall.r_id, -1, forEnemyes=True)
+                        # list = field.active_enemies(True)+field.active_allies(True)
+                        # nearestRToBall = fld.find_nearest_robot(field.ball.get_pos(), list)
+                        # field.strategy_image.draw_circle(nearestRToBall.get_pos(), color=(255, 255, 0), size_in_mms=1000)
+                        # isBallKickedToR(field, -1, nearestRToBall.r_id, forEnemyes=True)
                         # a = (aux.dist(aux.nearest_point_on_poly(field.ball.get_pos(), field.ally_goal.hull), field.ball.get_pos()))
                         # a = aux.dist(field.allies[const.GK].get_pos(), field.ball.get_pos())
                         # field.strategy_image.send_telemetry("dist", str(a))
@@ -239,7 +240,7 @@ class Strategy:
         list = field.active_enemies(True)+field.active_allies(True)
         nearestRToBall = fld.find_nearest_robot(field.ball.get_pos(), list)
         if nearestRToBall in field.active_enemies(True):
-            if isBallKickedToR(field, nearestRToBall.r_id, -1, forEnemyes=True):
+            if isBallKickedToR(field, -1, nearestRToBall.r_id, forEnemyes=True):
                 self.PointFromBallKicked = nearestRToBall.get_pos()
                 self.AngleWithWhatBallKicked = nearestRToBall.get_angle()
 

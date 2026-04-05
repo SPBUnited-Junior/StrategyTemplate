@@ -4,6 +4,8 @@ from typing import Optional  # type: ignore
 from bridge import const
 import bridge.strategy.myConst as myConst
 from bridge.auxiliary import aux, fld, rbt  # type: ignore
+from bridge.const import State as GameStates
+
 
 # from bridge.const import State as GameStates
 from bridge.router.base_actions import Action, Actions, KickActions, DribblerActions  # type: ignore
@@ -86,15 +88,19 @@ def isBallKickedToR(field: fld.Field, receiverRId: int, givingRId: int, check: b
     if not forEnemyes:
         receiverR = field.allies[receiverRId]
         givingR = field.allies[givingRId]
+        givingRPos = givingR.get_pos()
     else:
         givingR = field.enemies[givingRId]
+        givingRPos = givingR.get_pos()
         if receiverRId != -1:
             receiverR = field.enemies[receiverRId]
             receiverRPos = receiverR.get_pos()
         else:
-            receiverRPos = aux.rotate(aux.RIGHT, givingR.get_angle())*(((const.FIELD_DX*2)**2+(const.FIELD_DY*2)**2)**0.5)
+            receiverRPos = aux.rotate(aux.RIGHT, givingR.get_angle())*(((const.FIELD_DX*2)**2+(const.FIELD_DY*2)**2)**0.5)+givingRPos
+            # print(givingRId)
+            # field.strategy_image.draw_circle(receiverRPos, size_in_mms=1000)
 
-    givingRPos = givingR.get_pos()
+
     vectFormGivingPassToReceiver = receiverRPos-givingRPos
     vectNormalToVectFormGivingPassToReceiver = aux.rotate(vectFormGivingPassToReceiver, 90/180*math.pi)
     koefForErr = 1.5
@@ -116,7 +122,7 @@ def isBallKickedToR(field: fld.Field, receiverRId: int, givingRId: int, check: b
         """check is prog work how it must"""
         if (check): field.strategy_image.send_telemetry("test", "if we have points")
         polygon1: list[aux.Point] = [givingRPos, pointMinusErr, pointPlusErr]
-        field.strategy_image.draw_poly(polygon1, size_in_pixels=4)
+        # field.strategy_image.draw_poly(polygon1, size_in_pixels=4)
         # if aux.is_point_inside_poly(ballPos, polygon1):
         if aux.dist(aux.nearest_point_in_poly(ballPos, polygon1), ballPos) < 100:
             """if ball moves in triangle in what it must move if it kicked"""
@@ -413,7 +419,7 @@ def doPassNearAllly(field: fld.Field, actions: list[Optional[Action]], idFrom: i
 
 # TODO do comments
 def GK(
-    field: fld.Field, actions: list[Optional[Action]], oldGKState: str | None, pointFromBallKicked: Optional[aux.Point] = None, angleWithWhatBallKicked: Optional[float] = None, draw: bool = True
+    field: fld.Field, actions: list[Optional[Action]], oldGKState: str | None, pointFromBallKicked: Optional[aux.Point] = None, angleWithWhatBallKicked: Optional[float] = None, draw: bool = False
 ) -> str:  # TODO change string variable on enum class
     GKState = None
 
@@ -429,10 +435,10 @@ def GK(
     allies = field.active_allies(True).copy()
     allR = enenmies + allies
 
+    field.strategy_image.draw_line(oldBallPos, ballPos.unity()*1000+oldBallPos, (255, 0, 0), 100)
     if draw and pointFromBallKicked is not None and angleWithWhatBallKicked is not None:
-        field.strategy_image.draw_line(oldBallPos, ballPos, (255, 0, 0))
         secondPointForLine = pointFromBallKicked+aux.rotate(aux.RIGHT, angleWithWhatBallKicked)
-        field.strategy_image.draw_line(pointFromBallKicked, secondPointForLine, (0, 0, 255))
+        field.strategy_image.draw_line(pointFromBallKicked, secondPointForLine, (0, 0, 255), 120)
 
 
     nearestEnemyRToBall = fld.find_nearest_robot(ballPos, field.active_enemies(False))
@@ -449,8 +455,12 @@ def GK(
         not aux.is_point_inside_poly(ballPos, field.ally_goal.hull)):
         """if ball dangerously close to goal GK need to go out"""
         GKState = "go out"
-        vectFromBallToGK = (GKPos-ballPos)
-        actions[const.GK] = Actions.GoToPointIgnore((vectFromBallToGK.unity()*myConst.distToStopForGoOutGK)+ballPos, aux.rotate(vectFromBallToGK, math.pi).arg()).compose(DribblerActions.SetDribblerSpeed(15))
+        pointForScore = findPointForScore(field, reverseGoal=True)
+        if pointForScore is not None:
+            vectFromBallToDefend = (pointForScore-ballPos)
+        else:
+            vectFromBallToDefend = (GKPos-ballPos)
+        actions[const.GK] = Actions.GoToPointIgnore((vectFromBallToDefend.unity()*myConst.distToStopForGoOutGK)+ballPos, aux.rotate(vectFromBallToDefend, math.pi).arg()).compose(DribblerActions.SetDribblerSpeed(15))
     elif field.is_ball_moves_to_goal() and not enemyRGrabBall:
         if not aux.is_point_on_line(GKPos, oldBallPos, ballPos, "R"):
             interseptBallPoint = aux.closest_point_on_line(oldBallPos, ballPos, GKPos, "R")
@@ -504,11 +514,18 @@ def GK(
 
 
 def findPointForScore(
-    field: fld.Field, pointFrom: None | aux.Point = None, draw: bool = False, OtherK: float | None = None, reverseGoal: bool = False, reverse: bool = False
+    field: fld.Field, pointFrom: None | aux.Point = None, draw: bool = True, OtherK: float | None = None, reverseGoal: bool = False, reverse: bool = False
 ) -> aux.Point | None:  # TODO do comments
     if pointFrom == None:
         pointFrom = field.ball.get_pos()
-    qPoint = 8
+    if field.game_state == GameStates.PENALTY:
+        qPoint = 24
+        OtherK = 1.1
+        # print(aux.dist(field.ball.get_pos(), field.enemies[const.ENEMY_GK].get_pos()))
+        if aux.dist(field.ball.get_pos(), field.enemies[const.ENEMY_GK].get_pos()) < myConst.maxDistToChangeModeForScroreBallInPenalty:
+            reverse = False
+    else:
+        qPoint = 8
     qPoint += 2
     ballPos = field.ball.get_pos()
     if not reverseGoal:

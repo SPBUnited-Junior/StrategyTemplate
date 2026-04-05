@@ -76,7 +76,7 @@ def PREPARE_PENALTY(field: fld.Field, actions: list[Optional[Action]], we_active
                 actions[gkId] = Actions.GoToPoint(field.ally_goal.center, 0)
 
 
-def PENALTY(field: fld.Field, actions: list[Optional[Action]], we_active: bool, idFirstAttacker: int, idSecondAttacker: int, GKLastState: Optional[str], pointFromBallKicked: aux.Point, angleFromBallKicked: float) -> str | None:
+def PENALTY(field: fld.Field, actions: list[Optional[Action]], we_active: bool, idFirstAttacker: int, idSecondAttacker: int, GKLastState: Optional[str], pointFromBallKicked: Optional[aux.Point], angleFromBallKicked: float) -> str | None:
     GKNewState = None
     gkId = field.gk_id
     ballPos = field.ball.get_pos()

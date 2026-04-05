@@ -92,15 +92,15 @@ class Strategy:
 
         # Индексы роботов
 
-        self.goalkeeper_idx = 1
-        self.idx1 = 2
-        self.idx2 = 3
+        self.goalkeeper_idx = 0
+        self.idx1 = 1
+        self.idx2 = 2
         
         # Индексы роботов соперника
 
         self.goalkeeper_idx_enemy = 0
-        self.idx_enemy1 = 6
-        self.idx_enemy2 = 7
+        self.idx_enemy1 = 1
+        self.idx_enemy2 = 2
 
         self.enemies : list[aux.Point] = [] # массив позиций вражеских роботов
 
@@ -203,6 +203,7 @@ class Strategy:
 
         print(field.game_state, self.we_active)
         Goalkeeper = Role.Goalkeper(field, actions)
+        
         if field.game_state == GameStates.RUN:
             self.run(field, actions)
             #self.process_ricochet(field,actions)

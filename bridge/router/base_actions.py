@@ -229,12 +229,12 @@ class Actions:
                     current_action.vel = aux.Point(210, 50)
                     current_action.angle = 0.5
                 current_action.beep = 1
-                current_action.dribbler_speed = 12
+                current_action.dribbler_speed = 13
                 if abs(aux.wind_down_angle(self.target_angle - domain.robot.get_angle())) <= const.KICK_ALIGN_ANGLE + 0.1:
                     current_action.vel = aux.Point(0, 0)
                     current_action.angle = 0
                     current_action.beep = 1
-                    current_action.dribbler_speed = 12
+                    current_action.dribbler_speed = 13
 
 
     class SimpleDribbler(Action):

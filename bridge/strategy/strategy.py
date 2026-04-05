@@ -92,15 +92,15 @@ class Strategy:
 
         # Индексы роботов
 
-        self.goalkeeper_idx = 0
-        self.idx1 = 6
-        self.idx2 = 7
+        self.goalkeeper_idx = 2
+        self.idx1 = 1
+        self.idx2 = 3
         
         # Индексы роботов соперника
 
-        self.goalkeeper_idx_enemy = 1
-        self.idx_enemy1 = 2
-        self.idx_enemy2 = 5
+        self.goalkeeper_idx_enemy = 0
+        self.idx_enemy1 = 6
+        self.idx_enemy2 = 7
 
         self.enemies : list[aux.Point] = [] # массив позиций вражеских роботов
 
@@ -207,7 +207,7 @@ class Strategy:
         ally_nearest_robot = fld.find_nearest_robot(self.ball, field.active_allies(False))
         enemy_nearest_robot = fld.find_nearest_robot(self.ball, field.active_enemies(False))
         goalkeeper = field.allies[const.GK]
-
+        Goalkeeper.process()
         if field.game_state == GameStates.RUN:
             self.run(field, actions)
             
@@ -229,8 +229,8 @@ class Strategy:
         elif field.game_state == GameStates.PREPARE_PENALTY and  self.we_active:
             kik_angle1 = robot_position1_enemy - robot_position1
             kik_angle2 = robot_position2_enemy - robot_position2
-            pos_kikoff1 = aux.Point(00 * field.polarity, 0)
-            pos_kikoff2 = aux.Point(1500 * -field.polarity, 0)
+            pos_kikoff1 = aux.Point(300 * field.polarity, 0)
+            pos_kikoff2 = aux.Point(1500 * field.polarity, 0)
 
             actions[self.idx1] = Actions.GoToPoint(pos_kikoff1, kik_angle1.arg())
             actions[self.idx2] = Actions.GoToPoint(pos_kikoff2, kik_angle2.arg())       
@@ -255,6 +255,7 @@ class Strategy:
 
             actions[self.idx1] = KickActions.Straight(position_attacker_gate)
             actions[self.idx2] = Actions.Stop()
+            actions[const.GK] = Actions.Stop()
 
         elif field.game_state == GameStates.PREPARE_KICKOFF:
             kik_angle1 = self.ball - robot_position1
@@ -299,7 +300,7 @@ class Strategy:
             self.flag = False
             pos_attacker1 =  self.ball + (field.ally_goal.center - self.ball).unity() * self.dist_to_ball
             angle_attacker1 = (self.ball - robot_position1).arg()
-            pos_attacker2 = field.ally_goal.center
+            pos_attacker2 = aux.Point(0, 0)
             angle_attacker2 = (self.ball - robot_position2).arg()
 
             if aux.dist(pos_attacker1, self.ball) < 500:
@@ -329,7 +330,6 @@ class Strategy:
             Attacker.process()
             Pass.process()
             Defer.process()
-        Goalkeeper.process()
         
         return actions
 
@@ -401,12 +401,7 @@ class Strategy:
         Block.process()
         Pass.process()
         Defer.process()
-        Attacker.push(field.allies[3])
         Attacker.process()
-
-        #actions[3] = KickActions.Turn_Kick(field.enemy_goal.center, 0)
-        actions[2] = Actions.Stop()
-        #actions[2] = Actions.Stop()
 
 
         

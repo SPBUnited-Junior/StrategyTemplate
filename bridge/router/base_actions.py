@@ -223,10 +223,10 @@ class Actions:
         def behavior(self, domain: ActionDomain, current_action: ActionValues) -> None:
             if domain.field.is_ball_in(domain.robot):
                 if aux.wind_down_angle(self.target_angle - domain.robot.get_angle()) < 0:
-                    current_action.vel = aux.Point(210, -70)
+                    current_action.vel = aux.Point(210, -50)
                     current_action.angle = -0.5
                 else:
-                    current_action.vel = aux.Point(210, 70)
+                    current_action.vel = aux.Point(210, 50)
                     current_action.angle = 0.5
                 current_action.beep = 1
                 current_action.dribbler_speed = 12

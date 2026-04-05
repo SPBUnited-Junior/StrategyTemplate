@@ -85,7 +85,6 @@ class Role:
                 """
                 Если робот захватил мяч и бьет в ворота с Turn
                 """
-                print("Turn")
                 if point_kick_goal is None:
                     self.kick_status.value = Kick_Status.Pass_Turn_Kick
                     self.actions[self.attacker.r_id] = KickActions.Turn_Kick(self.field.enemy_goal.center, angle_nearest_robot, voltage)
@@ -106,6 +105,10 @@ class Role:
                 """
                 Если робот захватил мяч и бьет пасс с Straight
                 """
+                angle = (optimal_point - ball_pos).arg()
+                diff_angle = aux.wind_down_angle(angle - self.attacker.get_angle())
+                if (diff_angle > 0.2):
+                    self.kick_status.value = Kick_Status.Pass_Turn_Kick
                 self.actions[self.attacker.r_id] = KickActions.Straight(optimal_point, voltage)
             
             elif self.kick_status.value == Kick_Status.Pass_Turn_Kick and self.field.is_ball_in_ally_robot():
@@ -128,16 +131,25 @@ class Role:
                 elif point_kick_goal is not None and aux.dist(self.attacker.get_pos(), self.field.enemy_goal.center) < 3500:
                     angle = (point_kick_goal - ball_pos).arg()
                     diff_angle = aux.wind_down_angle(angle - self.attacker.get_angle())
-                    if (aux.dist(self.attacker.get_pos(), ball_pos) > 600 or diff_angle < 0.8):
+                    if (aux.dist(self.attacker.get_pos(), ball_pos) > 300 or diff_angle < 0.4 
+                        and (aux.dist(self.attacker.get_pos(), ball_pos) > 150 or self.kick_status.value == Kick_Status.Goal_Straight)):
                         self.kick_status.value = Kick_Status.Goal_Straight
                         self.actions[self.attacker.r_id] = KickActions.Straight(point_kick_goal)
                     else:
                         self.kick_status.value = Kick_Status.Goal_Turn_Kick
                         self.actions[self.attacker.r_id] = KickActions.Turn_Kick(self.field.enemy_goal.center, angle_nearest_robot)
                 else:
-                    self.kick_status.value = Kick_Status.Pass_Turn_Kick
-                    #, angle_nearest_robot
-                    self.actions[self.attacker.r_id] = KickActions.Turn_Kick(optimal_point, angle_nearest_robot, voltage)
+
+                    angle = (optimal_point - ball_pos).arg()
+                    diff_angle = aux.wind_down_angle(angle - self.attacker.get_angle())
+                    if (aux.dist(self.attacker.get_pos(), ball_pos) > 300 or diff_angle < 0.4 
+                        and (aux.dist(self.attacker.get_pos(), ball_pos) > 150 or self.kick_status.value == Kick_Status.Pass_Straight)):
+                        self.kick_status.value = Kick_Status.Pass_Straight
+                        self.actions[self.attacker.r_id] = KickActions.Straight(optimal_point, voltage)
+                    else:
+                        self.kick_status.value = Kick_Status.Pass_Turn_Kick
+                        self.actions[self.attacker.r_id] = KickActions.Turn_Kick(optimal_point, angle_nearest_robot, voltage)
+
             print(self.kick_status.value)
 
 
@@ -181,7 +193,7 @@ class Role:
             angle_goal_ball = (goal_position_gates - robot_position_goalkeeper).arg()
         
             # Определяем позицию для вратаря
-            if self.field.ball_start_point is not None:
+            if self.field.ball_start_point is not None and self.field.ball.get_vel().mag() > 60:
                 goal_position = aux.closest_point_on_line(self.field.ball_start_point, ball, robot_position_goalkeeper, "R")
             else:
                 goal_position = self.field.ally_goal.center

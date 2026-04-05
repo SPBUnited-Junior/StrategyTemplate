@@ -353,7 +353,6 @@ class Strategy:
                 flag = True
 
         if (flag and field.is_ball_not_in_robot()):
-            print("Pass all")
             for rbt in field.active_allies(False):
                 Pass.push(rbt)
 
@@ -398,15 +397,16 @@ class Strategy:
                         if (rbt != robot):
                             Block.push(rbt)
             
-
+        
         Block.process()
-        Attacker.process()
         Pass.process()
         Defer.process()
+        Attacker.push(field.allies[3])
+        Attacker.process()
 
-        # actions[0] = KickActions.Turn_Kick(field.enemy_goal.center, 0)
-        # actions[7] = Actions.Stop()
-        # actions[2] = Actions.Stop()
+        #actions[3] = KickActions.Turn_Kick(field.enemy_goal.center, 0)
+        actions[2] = Actions.Stop()
+        #actions[2] = Actions.Stop()
 
 
         

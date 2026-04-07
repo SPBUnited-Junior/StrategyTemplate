@@ -40,7 +40,7 @@ spaceFromEdgedForFindingPointsForScore = 50
 distBetweenRsInWall = 250
 angleBetweenRsInWall = asin((distBetweenRsInWall/2)/((distBetweenRsInWall/2)**2+(const.KEEP_BALL_DIST+50)**2)**0.5)
 
-whatWeDoAtThisRun: whatWeDoStates = whatWeDoStates.SimpleTest
+whatWeDoAtThisRun: whatWeDoStates = whatWeDoStates.TestGK
 
 useDebug = get_from_env("DEBUG_MODE", bool)
 if not const.IS_SIMULATOR_USED and not useDebug:

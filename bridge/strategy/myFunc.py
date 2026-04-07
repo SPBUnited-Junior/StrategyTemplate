@@ -5,7 +5,6 @@ from bridge import const
 import bridge.strategy.myConst as myConst
 from bridge.auxiliary import aux, fld, rbt  # type: ignore
 from bridge.const import State as GameStates
-from bridge.strategy.myLogicFunc import isBallOnOurPartOfField
 
 
 # from bridge.const import State as GameStates
@@ -24,6 +23,9 @@ from bridge.router.base_actions import Action, Actions, KickActions, DribblerAct
 #     FREE_KICK = 7
 #     PENALTY = 8
 #     RUN = 9
+
+def isBallOnOurPartOfField(field: fld.Field)-> bool:
+    return field.ball.get_pos().x * field.polarity > 0
 
 def findBetterPointForOpen(center: aux.Point, points: list[aux.Point], centerEnemyGoal: aux.Point, field: fld.Field, draw: bool = True) -> aux.Point:
     closests = [(10.0**10, 10.0**10, aux.Point(0, 0)), (10.0**10, 10.0**10, aux.Point(1, 0)), (10.0**10, 10.0**10, aux.Point(0, 1)), (10.0**10, 10.0**10, aux.Point(0, 1))]
@@ -267,7 +269,6 @@ def openForPass(field: fld.Field, idRWhichOpen: int, actions: list[Optional[Acti
         vectFromBallToR = aux.UP * 700
     else:
         vectFromBallToR = aux.UP * vectFromBallToR.mag()
-    isBallOnOurPartOfField = isBallOnOurPartOfField(field)
     
     for angel in range(-180, 180 + 1, 10):
         """add points on circle"""
@@ -290,7 +291,7 @@ def openForPass(field: fld.Field, idRWhichOpen: int, actions: list[Optional[Acti
     # print("len = ", len(pointsForOpening))
     if len(pointsForOpening) != 0:
         """if we can open for pass or take pass"""
-        if isBallOnOurPartOfField:
+        if isBallOnOurPartOfField(field):
             # nearestPointForOpening = aux.find_nearest_point(thisRPos, pointsForOpening)
             nearestPointForOpening = findBetterPointForOpen(thisRPos, pointsForOpening, field.enemy_goal.center, field)
         else:

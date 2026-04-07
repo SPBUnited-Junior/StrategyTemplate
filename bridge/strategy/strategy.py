@@ -398,10 +398,11 @@ class Strategy:
                             Block.push(rbt)
             
         
-        Block.process()
-        Pass.process()
-        Defer.process()
-        Attacker.process()
+        # Block.process()
+        # Pass.process()
+        # Defer.process()
+        # Attacker.process()
+        actions[1] = KickActions.Turn_Kick(field.enemy_goal.center, 3)
 
 
         

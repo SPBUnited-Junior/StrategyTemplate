@@ -5,6 +5,7 @@ from bridge import const
 import bridge.strategy.myConst as myConst
 from bridge.auxiliary import aux, fld, rbt  # type: ignore
 from bridge.const import State as GameStates
+from bridge.strategy.myLogicFunc import isBallOnOurPartOfField
 
 
 # from bridge.const import State as GameStates
@@ -266,8 +267,8 @@ def openForPass(field: fld.Field, idRWhichOpen: int, actions: list[Optional[Acti
         vectFromBallToR = aux.UP * 700
     else:
         vectFromBallToR = aux.UP * vectFromBallToR.mag()
-    isBallOnOurPartOfField = ballPos.x * field.polarity > 0
-
+    isBallOnOurPartOfField = isBallOnOurPartOfField(field)
+    
     for angel in range(-180, 180 + 1, 10):
         """add points on circle"""
         angelInRad = angel / 180 * math.pi

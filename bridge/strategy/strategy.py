@@ -13,6 +13,11 @@ from bridge.router.base_actions import Action, Actions, KickActions, DribblerAct
 from bridge.router.myDefaultFunc import myIsBallInClass  # type: ignore
 import bridge.strategy.myConst as myConst
 from bridge.strategy.myConst import whatWeDoStates
+from bridge.strategy.myLogicFunc import (
+    isBallOnOurPartOfField, 
+    getAngleFromOurGoalToEnemysGoal,
+    buildWallInFrontOfBall
+)
 from bridge.strategy.myFunc import (
     GK,
     doPassNearAllly,
@@ -177,7 +182,7 @@ class Strategy:
                                 elif self.idGettingPass != None:
                                     """if we kick ball for pass, but ally dont yet catch him"""
                                     status = "if we kick ball for pass, but ally dont yet catch him"
-                                    if ballPos.x * field.polarity > 0:
+                                    if isBallOnOurPartOfField(field):
                                         """if ball on our part of field"""
                                         status += "if ball on our part of field"
                                         openForPass(field, idxThisR, actions)
@@ -199,7 +204,12 @@ class Strategy:
                         
 
                     case whatWeDoStates.SimpleTest:
-                        findPointForScore(field, reverseGoal=True)
+                        buildWallInFrontOfBall(field, actions)
+                        # actions[0] = Actions.GoToPoint(aux.Point(), angleFromOurGoalToEnemysGoal(field))
+                        # actions[0] = Actions.GoToPoint(field.ally_goal.center, angleFromOurGoalToEnemysGoal(field))
+                        # print(angleFromOurGoalToEnemysGoal(field))
+                        # print(field.polarity)
+                        # findPointForScore(field, reverseGoal=True)
                         # print(myConst.useDebug)
                         # print(1)
                         # list = field.active_enemies(True)+field.active_allies(True)
@@ -363,7 +373,7 @@ class Strategy:
             """if this attacker alone on field"""
             status = "No 1 r"
             nearestEnemyR = fld.find_nearest_robot(ballPos, enemies)
-            if ballPos.x * field.polarity > 0:
+            if isBallOnOurPartOfField(field):
                 """if ball on our part of field"""
                 if not self.myIsBallInClass.myIsBallIn(thisR):
                     mostLikelyPointForScore = aux.closest_point_on_line(field.ally_goal.up, field.ally_goal.down, ballPos)
@@ -442,7 +452,7 @@ class Strategy:
         elif self.idGettingPass != None:
             """if we kick ball for pass, but ally dont yet catch him"""
             status = "if we kick ball for pass, but ally dont yet catch him"
-            if ballPos.x * field.polarity > 0:
+            if isBallOnOurPartOfField(field):
                 """if ball on our part of field"""
                 status += "if ball on our part of field"
                 openForPass(field, idxThisR, actions)
@@ -491,7 +501,7 @@ class Strategy:
             elif nearestRToBall == field.allies[idxOtherAttacker]:
                 """if other attacker have ball"""
                 status = "if other attacker have ball"
-                if ballPos.x * field.polarity > 0 and aux.dist(nearest2BallEnemy(field).get_pos(), ballPos) < 200:
+                if isBallOnOurPartOfField(field) and aux.dist(nearest2BallEnemy(field).get_pos(), ballPos) < 200:
                     """defend on our part of field"""
                     # """code from bottom, copyed"""
                     mostLikelyPointForScore1 = findPointForScore(field, ballPos, reverseGoal=True)
@@ -536,7 +546,7 @@ class Strategy:
                     """if this ally r nearest to ball"""
                     status += "if this ally r nearest to ball"
                     actions[idxThisR] = Actions.BallGrab((ballPos - field.enemy_goal.center).arg())
-            elif ballPos.x * field.polarity > 0:
+            elif isBallOnOurPartOfField(field):
                 """if ball on our part of field"""
                 status = "if ball on our part of field"
                 dist2BallFromThisR = aux.dist(ballPos, thisR.get_pos())

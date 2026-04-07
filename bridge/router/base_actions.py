@@ -544,8 +544,8 @@ def get_pass_voltage(length: float) -> int:
     """Calc voltage for pass by length"""
     if const.IS_SIMULATOR_USED:
         # TODO fix control decoder
-        return int(aux.minmax(0.003 * length + 1.8, 6, const.VOLTAGE_SHOOT))
-    return int(aux.minmax(0.0014 * length + 2.4, 6, const.VOLTAGE_SHOOT))
+        return int(aux.minmax(0.003 * length + 1.8, 4, const.VOLTAGE_SHOOT))
+    return int(aux.minmax(0.0014 * length + 2.4, 4, const.VOLTAGE_SHOOT))
 
 
 def get_grab_speed(

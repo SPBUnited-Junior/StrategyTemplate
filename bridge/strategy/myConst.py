@@ -16,8 +16,8 @@ class whatWeDoStates(Enum):
 
 
 
-idFirstAttacker: int = 1
-idSecondAttacker: int = 2
+idFirstAttacker: int = 3
+idSecondAttacker: int = 0
 
 timerForRotate = 0.5#sec
 timerForHoldBall = 3#sec
@@ -27,7 +27,7 @@ velRotateWithBall = 0.4#rad/sec
 if const.IS_SIMULATOR_USED:
     velRotateWithBall *= 5
 
-maxDistForScore = 2000
+maxDistForScore = 2300
 minDistForScorePenalty = 2000
 maxDistToChangeModeForScroreBallInPenalty = 350
 

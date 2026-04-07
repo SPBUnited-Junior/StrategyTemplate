@@ -17,12 +17,9 @@ from bridge.strategy.myConst import whatWeDoStates
 from bridge.strategy.myLogicFunc import (
     updatePointAndAngleFromWhatBallKicked, 
     updateTimerAndIdWeTryDoPass,
-    attacker
-)
-from bridge.strategy.myFunc import (
+    attacker, 
     GK
 )
-
 from bridge.strategy.testStates import (
     testPass,
     simpleTest,

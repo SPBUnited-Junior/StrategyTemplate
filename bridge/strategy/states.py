@@ -5,9 +5,9 @@ from typing import Optional
 from bridge import const
 from bridge.auxiliary import aux, fld, rbt  # type: ignore
 from bridge.router.base_actions import Action, Actions, KickActions  # type: ignore
-from bridge.strategy.myFunc import findPointForScore, GK
+from bridge.strategy.myFunc import findPointForScore
 from bridge.strategy.myConst import minDistForScorePenalty, timerForRotate, idFirstAttacker, idSecondAttacker
-from bridge.strategy.myLogicFunc import buildWallInFrontOfBall
+from bridge.strategy.myLogicFunc import buildWallInFrontOfBall, GK
 
 
 

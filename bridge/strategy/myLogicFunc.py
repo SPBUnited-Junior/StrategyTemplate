@@ -20,6 +20,19 @@ from bridge.strategy.myFunc import (
     isBallOnOurPartOfField
 )
 
+def updates(staticVariables: ClassWithMyStaticVariables, field: fld.Field, actions: list[Optional[Action]], showTimerPass: bool, showIdsPass: bool)->None:
+    """update variables for succesfull launch of programm"""
+    staticVariables.myIsBallInClass.updateTimerWeHoldBall(field)
+    updateTimerAndIdWeTryDoPass(staticVariables, field, actions)
+    updatePointAndAngleFromWhatBallKicked(staticVariables, field)
+    
+    if showIdsPass: field.strategy_image.send_telemetry("ids", str(staticVariables.idDoPass)+" "+str(staticVariables.idGettingPass))
+    if showTimerPass:
+        if staticVariables.TimeWeTryDoPass is not None:
+            field.strategy_image.send_telemetry("timerPass", str(time()-staticVariables.TimeWeTryDoPass))
+        else:
+            field.strategy_image.send_telemetry("timerPass", str(None))
+
 def getAngleFromOurGoalToEnemysGoal(field: fld.Field)->float:
     return math.pi * (1+field.polarity)/2
 
@@ -28,6 +41,7 @@ def buildWallInFrontOfBall(field: fld.Field, actions: list[Optional[Action]])->N
     if not isBallOnOurPartOfField(field):
         angle = angleBetweenRsInWall
     else:
+        """if ball of our part of field, build wall without space"""
         nowDistBetweenRsInWall = 110
         angle = math.asin((nowDistBetweenRsInWall/2)/((nowDistBetweenRsInWall/2)**2+(const.KEEP_BALL_DIST+50)**2)**0.5)
 
@@ -70,13 +84,10 @@ def updateTimerAndIdWeTryDoPass(staticVariables: ClassWithMyStaticVariables, fie
         staticVariables.TimeWeTryDoPass = time()
 
     elif aux.dist(ballPos, field.allies[staticVariables.idDoPass].get_pos()) > 100:
+        """if r so far away for ball"""
         staticVariables.TimeWeTryDoPass = None
         staticVariables.idDoPass = None
         staticVariables.idGettingPass = None
-
-
-
-    
     
     if staticVariables.TimeWeTryDoPass is not None and time()-staticVariables.TimeWeTryDoPass > staticVariables.constForTimerWeTryDoPass:
         """if we try do pass too long"""

@@ -14,9 +14,9 @@ class whatWeDoStates(Enum):
     NewIsBallInTest = 5
     TestGK = 6
 
+minDistForOpeningForPass = 700
 
-
-idFirstAttacker: int = 3
+idFirstAttacker: int = 2
 idSecondAttacker: int = 0
 
 timerForRotate = 0.5#sec

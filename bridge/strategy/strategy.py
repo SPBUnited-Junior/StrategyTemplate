@@ -16,7 +16,7 @@ import bridge.strategy.myConst as myConst
 from bridge.strategy.myConst import whatWeDoStates
 from bridge.strategy.myLogicFunc import (
     updatePointAndAngleFromWhatBallKicked, 
-    updateTimerAndIdWeTryDoPass,
+    updates,
     attacker, 
     GK
 )
@@ -56,7 +56,6 @@ class Strategy:
         for _ in range(const.TEAM_ROBOTS_MAX_COUNT):
             actions.append(None)
 
-        # TODO make game states
         print(field.game_state)#for real
         match field.game_state:
             case GameStates.RUN: # GOOD
@@ -95,23 +94,14 @@ class Strategy:
         # TODO fix problem with that robots comes so close to each other,when they try take ball
         if len(field.active_allies(True)) != 0:  # if our Rs on field
             if field.ally_color == const.COLOR:
-                """code for blue"""
-                self.staticVariables.myIsBallInClass.updateTimerWeHoldBall(field)
-                updateTimerAndIdWeTryDoPass(self.staticVariables, field, actions)
-                updatePointAndAngleFromWhatBallKicked(self.staticVariables, field)
-                if self.staticVariables.TimeWeTryDoPass is not None:
-                    field.strategy_image.send_telemetry("timerPass", str(time()-self.staticVariables.TimeWeTryDoPass))
-                else:
-                    field.strategy_image.send_telemetry("timerPass", str(None))
+                """code for ally"""
+                updates(self.staticVariables, field, actions, showTimerPass=False, showIdsPass=False)
                 if self.staticVariables.whatWeDoAtThisRun == whatWeDoStates.Play or self.staticVariables.whatWeDoAtThisRun == whatWeDoStates.BothPlay:
-                    # print(self.staticVariables.idDoPass, self.staticVariables.idGettingPass)
-                    field.strategy_image.send_telemetry("ids", str(self.staticVariables.idDoPass)+" "+str(self.staticVariables.idGettingPass))
                     attacker(self.staticVariables, field, actions, self.staticVariables.idFirstAttacker, self.staticVariables.idSecondAttacker)
                     attacker(self.staticVariables, field, actions, self.staticVariables.idSecondAttacker, self.staticVariables.idFirstAttacker)
                     if field.allies[const.GK].is_used():
                         self.staticVariables.GKLastState = GK(field, actions, self.staticVariables.GKLastState)
-                    field.strategy_image.draw_circle(field.ally_goal.center, (0, 0, 255), 20)
-                    # print(len(field.active_allies(True)), len(field.active_enemies(True)))#for real
+                    # field.strategy_image.draw_circle(field.ally_goal.center, (0, 0, 255), 20)
                 else:
                     testStates[self.staticVariables.whatWeDoAtThisRun](ClassWithMyStaticVariables(), field, actions)
             else:
@@ -123,6 +113,5 @@ class Strategy:
                     attacker(self.staticVariables, field, actions, self.staticVariables.idSecondAttacker, self.staticVariables.idFirstAttacker)
                 else:
                     testStates[self.staticVariables.whatWeDoAtThisRun](ClassWithMyStaticVariables(), field, actions)
-
         else:
             print("WE HAVENT ROBOTS")

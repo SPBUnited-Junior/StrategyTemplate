@@ -92,15 +92,15 @@ class Strategy:
 
         # Индексы роботов
 
-        self.goalkeeper_idx = 2
-        self.idx1 = 1
-        self.idx2 = 3
+        self.goalkeeper_idx = 4
+        self.idx1 = 6
+        self.idx2 = 7
         
         # Индексы роботов соперника
 
-        self.goalkeeper_idx_enemy = 0
-        self.idx_enemy1 = 6
-        self.idx_enemy2 = 7
+        self.goalkeeper_idx_enemy = 2
+        self.idx_enemy1 = 3
+        self.idx_enemy2 = 5
 
         self.enemies : list[aux.Point] = [] # массив позиций вражеских роботов
 
@@ -315,9 +315,6 @@ class Strategy:
             actions[self.idx1] = Actions.GoToPoint(pos_attacker1, angle_attacker1)
             actions[self.idx2] = Actions.GoToPoint(pos_attacker2, angle_attacker2)
         
-        for rbt in field.active_allies(True):
-            if abs(rbt.get_pos().x) > 2250 or abs(rbt.get_pos().y) > 1500:
-                actions[rbt.r_id] = Actions.GoToPoint(aux.Point(0, 0), 0)
 
         if abs(self.ball.x) > 2250 or abs(self.ball.y) > 1500:
             actions[self.idx1] = Actions.Stop()
@@ -402,7 +399,7 @@ class Strategy:
         # Pass.process()
         # Defer.process()
         # Attacker.process()
-        actions[1] = KickActions.Turn_Kick(field.enemy_goal.center, 3)
+        actions[4] = KickActions.Turn_Kick(field.enemy_goal.center, 0)
 
 
         

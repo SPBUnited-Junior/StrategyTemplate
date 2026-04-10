@@ -15,6 +15,8 @@ from bridge.strategy.strategy import GameStates
 
 # Actions: ActionDomain -> ActionValues
 timer_to_stop : float = 0
+old_speed_for_turn : float = 150
+old_correct_speed : float = 450
 
 class Actions:
     """Class with all user-available actions (except kicks)"""
@@ -221,16 +223,26 @@ class Actions:
             self.start_angle = start_angle
 
         def behavior(self, domain: ActionDomain, current_action: ActionValues) -> None:
+            global old_speed_for_turn
             if domain.field.is_ball_in(domain.robot):
+                speed_a = 3.4
+
+                speed: float = min(450, old_speed_for_turn + speed_a)
+                angle_speed : float = 0.7 * speed / 450
+                old_speed_for_turn = speed
+                print(speed, "speed")
                 if aux.wind_down_angle(self.target_angle - domain.robot.get_angle()) < 0:
-                    current_action.vel = aux.Point(450, -0)
-                    current_action.angle = -0.7
+                    current_action.vel = aux.Point(int(speed), -0)
+                    current_action.angle = -angle_speed
                 else:
-                    current_action.vel = aux.Point(450, 0)
-                    current_action.angle = 0.7
+                    current_action.vel = aux.Point(int(speed), 0)
+                    current_action.angle = angle_speed
                 current_action.beep = 1
-                current_action.dribbler_speed = 13
-                print(domain.robot.get_anglevel(), "anglse")
+                current_action.dribbler_speed = 14
+                print(domain.robot.get_anglevel(), "angles")
+            else:
+                old_speed_for_turn = 150
+
                 
 
 
@@ -284,10 +296,16 @@ class Actions:
             self.target_angle = target_angle
 
         def behavior(self, domain: ActionDomain, current_action: ActionValues) -> None:
+                global old_correct_speed
+                global old_speed_for_turn
+                old_speed_for_turn = 150
+                speed = max(old_correct_speed - 3.3, 0)
+                old_correct_speed = speed
                 current_action.angle = self.target_angle
                 current_action.beep = 0
-                current_action.vel = aux.rotate(aux.Point(450, 0), domain.robot.get_angle())
-                current_action.dribbler_speed = 13
+                current_action.vel = aux.rotate(aux.Point(speed, 0), domain.robot.get_angle())
+                current_action.dribbler_speed = 15
+                print(speed, "forward")
 
 
     class Velocity(Action):
@@ -391,16 +409,20 @@ class KickActions:
 
         """Grab the ball, rotates to the desired angle and kick it straight"""
         def use_behavior_of(self, domain: ActionDomain, current_action: ActionValues) -> list["Action"]:
+            global old_correct_speed
             global timer_to_stop
             kick_angle = aux.angle_to_point(domain.field.ball.get_pos(), self.target_pos)
             target_angle = (self.target_pos - domain.field.ball.get_pos()).arg()
-            time_to_kick = 0.6 + 0.3 * self.flag_kick_pas
+            time_to_kick = 0.7 + 0.3 * self.flag_kick_pas
 
             actions = [
                 Actions.BallGrab(self.start_angle),
                 Actions.Turn(kick_angle, self.start_angle),
                 DumbActions.ControlVoltageAction(self.voltage, self.pass_pos)
             ]
+            if(not domain.field.is_ball_in(domain.robot)) :
+                old_correct_speed = 400
+                print("old")
             if (not domain.field.is_ball_in(domain.robot)
                 or abs(aux.wind_down_angle(target_angle - domain.robot.get_angle())) > const.KICK_ALIGN_ANGLE + 0.1):
                 timer_to_stop = time()

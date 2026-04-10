@@ -18,13 +18,15 @@ from bridge.strategy.myFunc import (
 )
 
 def simpleTest(staticVariables: ClassWithMyStaticVariables, field: fld.Field, actions: list[Optional[Action]])-> None:
-    actions[staticVariables.idFirstAttacker] = Actions.Kick(field.enemy_goal.center)
-    if field.ball.get_pos().y > 6000:
-        print("!!!!!!!!!!!!!!!!!!!!!!!!")
-    else:
-        if staticVariables.maxVelBall < field.ball.get_vel().mag() and field.ball.get_vel().mag()<10000:
-            staticVariables.maxVelBall = field.ball.get_vel().mag()
-            print("staticVariables.maxVelBall =", staticVariables.maxVelBall)
+    doPassNearAllly(field, actions)
+    # findPointForScore(field, draw=True)
+    # actions[staticVariables.idFirstAttacker] = Actions.Kick(field.enemy_goal.center)
+    # if field.ball.get_pos().y > 6000:
+    #     print("!!!!!!!!!!!!!!!!!!!!!!!!")
+    # else:
+    #     if staticVariables.maxVelBall < field.ball.get_vel().mag() and field.ball.get_vel().mag()<10000:
+    #         staticVariables.maxVelBall = field.ball.get_vel().mag()
+    #         print("staticVariables.maxVelBall =", staticVariables.maxVelBall)
 
 def testPass(staticVariables: ClassWithMyStaticVariables, field: fld.Field, actions: list[Optional[Action]])-> None:
     actions[const.GK] = Actions.GoToPoint(aux.Point(const.FIELD_DX, const.FIELD_DY), 0)
@@ -101,6 +103,7 @@ def testPass(staticVariables: ClassWithMyStaticVariables, field: fld.Field, acti
 def testGK(staticVariables: ClassWithMyStaticVariables, field: fld.Field, actions: list[Optional[Action]])->None:
     if field.ally_color == const.COLOR:
         staticVariables.GKLastState = GK(field, actions, staticVariables.GKLastState, staticVariables.PointFromBallKicked, staticVariables.AngleWithWhatBallKicked)
+        # print(staticVariables.GKLastState)
     else:
         if field.allies[staticVariables.idFirstAttacker].is_used() or field.allies[staticVariables.idSecondAttacker].is_used():
             if field.allies[staticVariables.idFirstAttacker].is_used():

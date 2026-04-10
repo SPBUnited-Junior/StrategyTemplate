@@ -326,6 +326,7 @@ def doPassNearAllly(field: fld.Field, actions: list[Optional[Action]], idFrom: i
         """if our rs on field, except GK"""
         if idFrom == const.GK:
             ourRsSortedByDistToBall = fld.find_nearest_robots(pointFrom, points)
+            field.strategy_image.draw_circle(ourRsSortedByDistToBall[0].get_pos(), size_in_mms=1000)
         else:
             """we do not do pass to GK"""
             ourRsSortedByDistToBall = [fld.find_nearest_robot(pointFrom, points, avoid=exclude)]

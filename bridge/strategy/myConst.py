@@ -16,10 +16,10 @@ class whatWeDoStates(Enum):
 
 minDistForOpeningForPass = 700
 
-idFirstAttacker: int = 2
-idSecondAttacker: int = 0
+idFirstAttacker: int = 7
+idSecondAttacker: int = 6
 
-timerForRotate = 0.5#sec
+timerForRotate = 0.5/2#sec
 timerForHoldBall = 3#sec
 constForTimerWeTryDoPass = 3#sec
 
@@ -27,23 +27,23 @@ velRotateWithBall = 0.4#rad/sec
 if const.IS_SIMULATOR_USED:
     velRotateWithBall *= 5
 
-maxDistForScore = 2300
+maxDistForScore = 1500
 minDistForScorePenalty = 2000
 maxDistToChangeModeForScroreBallInPenalty = 350
 
-distToBallForGoOutGK = 450
-velBallForGoOutGK = 200
+distToBallForGoOutGK = 600
+velBallForGoOutGK = 400
 distToStopForGoOutGK = 200
 
-spaceFromEdgedForFindingPointsForScore = 50
+spaceFromEdgedForFindingPointsForScore = 200
 
 distBetweenRsInWall = 250
 angleBetweenRsInWall = asin((distBetweenRsInWall/2)/((distBetweenRsInWall/2)**2+(const.KEEP_BALL_DIST+50)**2)**0.5)
 
-whatWeDoAtThisRun: whatWeDoStates = whatWeDoStates.TestGK
+whatWeDoAtThisRun: whatWeDoStates = whatWeDoStates.Play
 
 useDebug = get_from_env("DEBUG_MODE", bool)
 if not const.IS_SIMULATOR_USED and not useDebug:
     whatWeDoAtThisRun = whatWeDoStates.Play#DONT TOUCH!!!!!!!!
 
-minErrAngleForRotateWithBall: int = 5
+minErrAngleForRotateWithBall: int = 4

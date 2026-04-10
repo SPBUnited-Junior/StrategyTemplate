@@ -56,7 +56,6 @@ class Strategy:
         for _ in range(const.TEAM_ROBOTS_MAX_COUNT):
             actions.append(None)
 
-        print(field.game_state)#for real
         match field.game_state:
             case GameStates.RUN: # GOOD
                 self.run(field, actions)
@@ -97,13 +96,14 @@ class Strategy:
                 """code for ally"""
                 updates(self.staticVariables, field, actions, showTimerPass=False, showIdsPass=False)
                 if self.staticVariables.whatWeDoAtThisRun == whatWeDoStates.Play or self.staticVariables.whatWeDoAtThisRun == whatWeDoStates.BothPlay:
+                    print(field.game_state)#for real
                     attacker(self.staticVariables, field, actions, self.staticVariables.idFirstAttacker, self.staticVariables.idSecondAttacker)
                     attacker(self.staticVariables, field, actions, self.staticVariables.idSecondAttacker, self.staticVariables.idFirstAttacker)
                     if field.allies[const.GK].is_used():
                         self.staticVariables.GKLastState = GK(field, actions, self.staticVariables.GKLastState)
                     # field.strategy_image.draw_circle(field.ally_goal.center, (0, 0, 255), 20)
                 else:
-                    testStates[self.staticVariables.whatWeDoAtThisRun](ClassWithMyStaticVariables(), field, actions)
+                    testStates[self.staticVariables.whatWeDoAtThisRun](self.staticVariables, field, actions)
             else:
                 """code for yellow"""
                 if self.staticVariables.whatWeDoAtThisRun == whatWeDoStates.BothPlay:
@@ -112,6 +112,6 @@ class Strategy:
                     attacker(self.staticVariables, field, actions, self.staticVariables.idFirstAttacker, self.staticVariables.idSecondAttacker)
                     attacker(self.staticVariables, field, actions, self.staticVariables.idSecondAttacker, self.staticVariables.idFirstAttacker)
                 else:
-                    testStates[self.staticVariables.whatWeDoAtThisRun](ClassWithMyStaticVariables(), field, actions)
+                    testStates[self.staticVariables.whatWeDoAtThisRun](self.staticVariables, field, actions)
         else:
             print("WE HAVENT ROBOTS")

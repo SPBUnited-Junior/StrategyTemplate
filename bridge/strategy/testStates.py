@@ -18,7 +18,8 @@ from bridge.strategy.myFunc import (
 )
 
 def simpleTest(staticVariables: ClassWithMyStaticVariables, field: fld.Field, actions: list[Optional[Action]])-> None:
-    doPassNearAllly(field, actions)
+    actions[6] = Actions.GoToPoint(aux.Point(), 0)
+    # doPassNearAllly(field, actions)
     # findPointForScore(field, draw=True)
     # actions[staticVariables.idFirstAttacker] = Actions.Kick(field.enemy_goal.center)
     # if field.ball.get_pos().y > 6000:
@@ -96,9 +97,9 @@ def testPass(staticVariables: ClassWithMyStaticVariables, field: fld.Field, acti
                     actions[idxThisR] = Actions.GoToPoint(
                         thisRPos, (field.allies[idxOtherAttacker].get_pos() - thisR.get_pos()).arg()
                     )
-        if oldIdDoPass != staticVariables.idDoPass or oldIdGettingPass != staticVariables.idGettingPass:
-            print(staticVariables.idDoPass, staticVariables.idGettingPass)
-            # field.strategy_image.send_telemetry("ids:", "staticVariables.idDoPass" + str(staticVariables.idDoPass) + "staticVariables.idGettingPass:" + str(staticVariables.idGettingPass))
+        # if oldIdDoPass != staticVariables.idDoPass or oldIdGettingPass != staticVariables.idGettingPass:
+        print(staticVariables.idDoPass, staticVariables.idGettingPass)
+        # field.strategy_image.send_telemetry("ids:", "staticVariables.idDoPass" + str(staticVariables.idDoPass) + "staticVariables.idGettingPass:" + str(staticVariables.idGettingPass))
 
 def testGK(staticVariables: ClassWithMyStaticVariables, field: fld.Field, actions: list[Optional[Action]])->None:
     if field.ally_color == const.COLOR:
@@ -112,7 +113,7 @@ def testGK(staticVariables: ClassWithMyStaticVariables, field: fld.Field, action
                 activeId = staticVariables.idSecondAttacker
             pointForScore = findPointForScore(field)
             if pointForScore is not None:
-                actions[activeId] = Actions.Kick(pointForScore)
+                actions[activeId] = Actions.DelayedSlowKick(pointForScore)
             else:
                 print("havent points for score")
         else:

@@ -21,3 +21,4 @@ class myIsBallInClass():
 
     def myIsBallIn(self, robot: rbt.Robot) -> bool:
         return self.TimerWeHoldBall is not None and self.TimerWeHoldBall > myConst.timerForHoldBall and self.rWhichHoldBall is not None and self.rWhichHoldBall.r_id == robot.r_id
+    

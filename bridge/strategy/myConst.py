@@ -16,8 +16,8 @@ class whatWeDoStates(Enum):
 
 minDistForOpeningForPass = 700
 
-idFirstAttacker: int = 7
-idSecondAttacker: int = 6
+idFirstAttacker: int = 6
+idSecondAttacker: int = 4
 
 timerForRotate = 0.5/2#sec
 timerForHoldBall = 3#sec
@@ -35,15 +35,17 @@ distToBallForGoOutGK = 600
 velBallForGoOutGK = 400
 distToStopForGoOutGK = 200
 
-spaceFromEdgedForFindingPointsForScore = 200
+spaceFromEdgedForFindingPointsForScore = 100
+
+dForCatchBall = 10
 
 distBetweenRsInWall = 250
 angleBetweenRsInWall = asin((distBetweenRsInWall/2)/((distBetweenRsInWall/2)**2+(const.KEEP_BALL_DIST+50)**2)**0.5)
 
-whatWeDoAtThisRun: whatWeDoStates = whatWeDoStates.Play
+whatWeDoAtThisRun: whatWeDoStates = whatWeDoStates.TestPass
 
 useDebug = get_from_env("DEBUG_MODE", bool)
 if not const.IS_SIMULATOR_USED and not useDebug:
     whatWeDoAtThisRun = whatWeDoStates.Play#DONT TOUCH!!!!!!!!
 
-minErrAngleForRotateWithBall: int = 4
+minErrAngleForRotateWithBall: float = 2.5

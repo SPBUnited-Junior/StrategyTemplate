@@ -261,6 +261,24 @@ class Actions:
             #print(self.kick_args)
             return [KickActions.delayedSLowKick(*self.kick_args)]
         
+    class CatchBall(Action):
+        """catch ball which moves straight to r"""
+        def __init__(self)->None:
+            pass
+            
+        def is_defined(self, domain: ActionDomain)->bool:
+            """if r not on line"""
+            ball = domain.field.ball
+            print("USED")   
+            return len(aux.line_circle_intersect(ball.get_pos(), ball.get_pos()+ball.get_vel(), domain.robot.get_pos(), myConst.dForCatchBall, "L")) == 0
+        
+        def behavior(self, domain: ActionDomain, current_action: ActionValues)->None:
+            print("ball not on line")
+            return super().behavior(domain, current_action)
+        
+        def use_behavior_of(self, domain: ActionDomain, current_action: ActionValues)-> list["Action"]:
+            return [Actions.GoToPoint(domain.robot.get_pos(), domain.robot.get_angle()).compose(DribblerActions.Dribbler(15))]
+        
     class Dribbler(Action):
 
         def __init__(self, dribbler_speed: int) -> None:
@@ -268,6 +286,8 @@ class Actions:
 
         def use_behavior_of(self, domain: ActionDomain, current_action: ActionValues) -> list["Action"]:
             return []
+    
+
 
 
 
@@ -545,7 +565,7 @@ def get_pass_voltage(length: float) -> int:
     if const.IS_SIMULATOR_USED:
         # TODO fix control decoder
         return int(aux.minmax(0.003 * length + 1.8, 4, const.VOLTAGE_SHOOT))
-    return int(aux.minmax(0.0014 * length + 2.4, 4, const.VOLTAGE_SHOOT))
+    return int(aux.minmax(0.001 * length + 2.0, 5, const.VOLTAGE_SHOOT))
 
 
 def get_grab_speed(

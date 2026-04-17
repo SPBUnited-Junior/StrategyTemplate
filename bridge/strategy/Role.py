@@ -131,8 +131,7 @@ class Role:
                 elif point_kick_goal is not None and aux.dist(self.attacker.get_pos(), self.field.enemy_goal.center) < 3500:
                     angle = (point_kick_goal - ball_pos).arg()
                     diff_angle = aux.wind_down_angle(angle - self.attacker.get_angle())
-                    if (aux.dist(ball_pos, self.field.enemy_goal.center) < 1000
-                        or (aux.dist(self.attacker.get_pos(), ball_pos) > 450 or diff_angle < 0.4 
+                    if ((aux.dist(self.attacker.get_pos(), ball_pos) > 450 or diff_angle < 0.4 
                         and (aux.dist(self.attacker.get_pos(), ball_pos) > 150 or self.kick_status.value == Kick_Status.Goal_Straight))):
                         self.kick_status.value = Kick_Status.Goal_Straight
                         self.actions[self.attacker.r_id] = KickActions.Straight(point_kick_goal)
@@ -143,9 +142,10 @@ class Role:
 
                     angle = (optimal_point - ball_pos).arg()
                     diff_angle = aux.wind_down_angle(angle - self.attacker.get_angle())
-                    if (aux.dist(ball_pos, self.field.enemy_goal.center) < 1000
-                        or (aux.dist(self.attacker.get_pos(), ball_pos) > 450 or diff_angle < 0.4 
-                        and (aux.dist(self.attacker.get_pos(), ball_pos) > 150 or self.kick_status.value == Kick_Status.Goal_Straight))):
+                    #aux.dist(ball_pos, self.field.enemy_goal.center) < 1000
+                    if (
+                        aux.dist(self.attacker.get_pos(), ball_pos) > 450 or diff_angle < 0.4 
+                        and (aux.dist(self.attacker.get_pos(), ball_pos) > 150 or self.kick_status.value == Kick_Status.Goal_Straight)):
                         self.kick_status.value = Kick_Status.Pass_Straight
                         self.actions[self.attacker.r_id] = KickActions.Straight(optimal_point, voltage)
                     else:
@@ -424,7 +424,7 @@ class Role:
 
                 if (self.check_cath_ball(robot.get_pos())):
                     pos = aux.closest_point_on_line(self.field.ball_start_point, ball_pos, robot.get_pos(), "R")
-                    self.actions[robot.r_id] = Actions.CatchBall(pos, (ball_pos - robot.get_pos()).arg(), 8)
+                    self.actions[robot.r_id] = Actions.CatchBall(pos, (ball_pos - robot.get_pos()).arg(), 12)
                 
                 else:
                     if (idx >= len(self.field.pass_points)): return

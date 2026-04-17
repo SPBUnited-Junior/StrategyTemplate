@@ -8,7 +8,8 @@ from bridge.auxiliary import aux, fld, rbt  # type: ignore
 
 def check_goal_point(
     field: fld.Field,
-    ball: aux.Point
+    ball: aux.Point,
+    flag_goalkeeper: bool = True
 ) -> tuple[aux.Point | None, float]:
     """
     Строим косательные к вражеским роботам от ball
@@ -21,8 +22,9 @@ def check_goal_point(
     # Расчёт касательных к вражеским роботам
     result_cords = []
     for rbt in field.active_enemies(True):
+        if (not flag_goalkeeper and rbt.r_id == const.ENEMY_GK): continue
         enemy = rbt.get_pos()
-        tangent_points = aux.get_tangent_points(enemy, ball, const.ROBOT_R + aux.dist(ball, enemy) * 0.03)
+        tangent_points = aux.get_tangent_points(enemy, ball, const.ROBOT_R + aux.dist(ball, enemy) * 0.07)
         if len(tangent_points) >= 2:
             cords_peresch = []
             for count in range(2):
@@ -38,15 +40,15 @@ def check_goal_point(
             if len(cords_peresch) > 1:
                 result_cords.append(sorted(cords_peresch))
 
-    # for cordes in result_cords:
-    #     field.strategy_image.draw_line(ball, aux.Point(field.enemy_goal.up.x, cordes[0]), (255, 0, 0), 3)
-    #     field.strategy_image.draw_line(ball, aux.Point(field.enemy_goal.up.x, cordes[1]), (255, 0, 0), 3)
-    #     field.strategy_image.draw_line(
-    #         aux.Point(field.enemy_goal.up.x, cordes[0]),
-    #         aux.Point(field.enemy_goal.up.x, cordes[1]),
-    #         (255, 0, 0),
-    #         3,
-    #     )
+    for cordes in result_cords:
+        field.strategy_image.draw_line(ball, aux.Point(field.enemy_goal.up.x, cordes[0]), (255, 0, 0), 3)
+        field.strategy_image.draw_line(ball, aux.Point(field.enemy_goal.up.x, cordes[1]), (255, 0, 0), 3)
+        field.strategy_image.draw_line(
+            aux.Point(field.enemy_goal.up.x, cordes[0]),
+            aux.Point(field.enemy_goal.up.x, cordes[1]),
+            (255, 0, 0),
+            3,
+        )
     
     result_cords = sorted(result_cords)
     maximum: float = 0

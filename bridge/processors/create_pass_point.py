@@ -66,8 +66,8 @@ class ExplorePasses(BaseProcessor):
         """
         maxim = 0.0
         points: list[tuple[float, aux.Point]] = []
-        for x in range(int(ball.x) - 1400, int(ball.x) + 1400, 200):
-            for y in range(int(ball.y) - 1400, int(ball.y) + 1400, 200):
+        for x in range(-const.FIELD_DX + 200, const.FIELD_DX - 200, 200):
+            for y in range(-const.FIELD_DY + 200, const.FIELD_DY - 200, 200):
                 if abs(x) > 2250:
                     continue
                 if abs(y) > 1500:
@@ -78,8 +78,8 @@ class ExplorePasses(BaseProcessor):
                     continue
 
                 minim: float = 10000
-                red = int(max(0, 255 / 22500000 * (22500000 - self.quality_point(field, cand))))
-                green = int(min(255, 255 / 22500000 * self.quality_point(field, cand)))
+                red = int(max(0, 255 / 5000 * (5000 - self.quality_point(field, cand))))
+                green = int(min(255, 255 / 5000 * self.quality_point(field, cand)))
                # print(self.quality_point(field, cand))
                 #print(quality_point(field, cand, mid))
                 self.image.draw_circle(cand, (red, green, 0))
@@ -123,27 +123,28 @@ class ExplorePasses(BaseProcessor):
         """
         коэффицент возможности блокировки пасса вражеским роботом 
         """
-        block_weight: float = 5000
         for rbt in field.active_enemies(False):
-            dist_to_point = (rbt.get_pos() - aux.closest_point_on_line(ball, point, rbt.get_pos(), "S")).mag()
-            block_weight = min(block_weight, dist_to_point * 3)
+            rbt_catch_point = aux.closest_point_on_line(ball, point, rbt.get_pos(), "S")
+            rbt_dist_to_point = (rbt.get_pos() - rbt_catch_point).mag()
+            if (rbt_dist_to_point * 3.2 < aux.dist(ball, rbt_catch_point)): return 0 
 
         """
         коэффицент чем ближе наш робот тем больше коэффицент 
         """
-        pass_weight: float = 5000
+        pass_weight: float = 0
         for rbt in field.active_allies(False):
-            dist_to_point = (rbt.get_pos() - aux.closest_point_on_line(ball, point, rbt.get_pos(), "S")).mag()
-            pass_weight = max(block_weight, (4000 - dist_to_point) * 3)
+            dist_to_point = aux.dist(rbt.get_pos(), point)
+            pass_weight = max(pass_weight, abs(3000 - dist_to_point))
         """
         коэффициент возможностьи ударить в ворота
         """
-        kick_to_goal_weight: float = check_goal_point(field, point)[1] * 11
+        kick_to_goal_weight: float = check_goal_point(field, point, False)[1] * 9
+        #print(kick_to_goal_weight)
 
         """
         сумма весов
         """
-        weight: float = block_weight * kick_to_goal_weight * pass_weight
+        weight: float = kick_to_goal_weight + pass_weight
         return weight
     
     def point_in_goal(
@@ -156,8 +157,8 @@ class ExplorePasses(BaseProcessor):
         """
         ball = field.ball.get_pos()
 
-        if aux.is_point_inside_poly(ball, field.ally_goal.hull): return True
-        if aux.is_point_inside_poly(ball, field.enemy_goal.hull): return True
+        if aux.is_point_inside_poly(point, field.ally_goal.hull): return True
+        if aux.is_point_inside_poly(point, field.enemy_goal.hull): return True
         return False
 
     def block_kick_goal(

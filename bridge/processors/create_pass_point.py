@@ -67,23 +67,22 @@ class ExplorePasses(BaseProcessor):
         maxim = 0.0
         points: list[tuple[float, aux.Point]] = []
         for x in range(-const.FIELD_DX + 200, const.FIELD_DX - 200, 200):
-            for y in range(-const.FIELD_DY + 200, const.FIELD_DY - 200, 200):
+            for y in range(-const.FIELD_DY + 200, const.FIELD_DY - 100, 200):
                 if abs(x) > 2250:
                     continue
                 if abs(y) > 1500:
                     continue 
                 cand = aux.Point(x, y)
-                if ((const.GOAL_DX - const.GOAL_PEN_DX) - abs(cand.x) < 100) and (abs(cand.y) - abs(const.GOAL_PEN_DY / 2) < 100):
+                if ((const.GOAL_DX - const.GOAL_PEN_DX) - abs(cand.x) < 500) and (abs(cand.y) - abs(const.GOAL_PEN_DY / 2) < 500):
                     cond = 0
                     continue
 
                 minim: float = 10000
-                red = int(max(0, 255 / 5000 * (5000 - self.quality_point(field, cand))))
-                green = int(min(255, 255 / 5000 * self.quality_point(field, cand)))
-               # print(self.quality_point(field, cand))
-                #print(quality_point(field, cand, mid))
+                quality = self.quality_point(field, cand)
+                red = int(max(0, 255 / 5000 * (5000 - quality)))
+                green = int(min(255, 255 / 5000 * quality))
                 self.image.draw_circle(cand, (red, green, 0))
-                points.append((self.quality_point(field, cand), cand))
+                points.append((quality, cand))
         points.sort(key=lambda x: x[0])
         points.reverse()
         positions: list[aux.Point] = []
@@ -131,15 +130,16 @@ class ExplorePasses(BaseProcessor):
         """
         коэффицент чем ближе наш робот тем больше коэффицент 
         """
+        nearest_robot = fld.find_nearest_robot(ball, field.active_allies(False))
         pass_weight: float = 0
         for rbt in field.active_allies(False):
+            if (rbt == nearest_robot): continue
             dist_to_point = aux.dist(rbt.get_pos(), point)
             pass_weight = max(pass_weight, abs(3000 - dist_to_point))
         """
         коэффициент возможностьи ударить в ворота
         """
-        kick_to_goal_weight: float = check_goal_point(field, point, False)[1] * 9
-        #print(kick_to_goal_weight)
+        kick_to_goal_weight: float = check_goal_point(field, point, False)[1] * 5
 
         """
         сумма весов

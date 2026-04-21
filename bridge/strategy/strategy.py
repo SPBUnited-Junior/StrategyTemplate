@@ -12,8 +12,7 @@ from bridge.const import State as GameStates
 from bridge.router.base_actions import Action, Actions, KickActions, get_pass_voltage  # type: ignore
 from bridge.strategy.check_point import check_goal_point
 from bridge.strategy.Role import Role
-from bridge.strategy.flags import Kick_Status_Holder
-from bridge.strategy.flags import Kick_Status
+from bridge.strategy.flags import kick_status
 
 """
 ONE ITERATION of strategy
@@ -92,7 +91,7 @@ class Strategy:
 
         # Индексы роботов
 
-        self.goalkeeper_idx = 4
+        self.goalkeeper_idx = 0
         self.idx1 = 6
         self.idx2 = 7
         
@@ -134,7 +133,6 @@ class Strategy:
 
         #массив для функции go_to_position
         self.used = [False] * const.ROBOTS_MAX_COUNT
-        self.kick_status: Kick_Status_Holder = Kick_Status_Holder()
 
         self.Block: Optional[Role.Block_Enemy_Pass] = None
         self.Attacker: Optional[Role.Attacker]  = None
@@ -176,7 +174,7 @@ class Strategy:
             actions.append(None)
 
         Block = Role.Block_Enemy_Pass(field, actions)
-        Attacker = Role.Attacker(field, actions, self.kick_status)
+        Attacker = Role.Attacker(field, actions)
         Pass = Role.Pass(field, actions)
         Defer = Role.Defer(field, actions)
         Goalkeeper = Role.Goalkeper(field, actions)
@@ -333,7 +331,7 @@ class Strategy:
 
     def run(self, field: fld.Field, actions: list[Optional[Action]]) -> None:
         Block = Role.Block_Enemy_Pass(field, actions)
-        Attacker = Role.Attacker(field, actions, self.kick_status)
+        Attacker = Role.Attacker(field, actions)
         Pass = Role.Pass(field, actions)
         Defer = Role.Defer(field, actions)
         Goalkeeper = Role.Goalkeper(field, actions)
@@ -418,11 +416,11 @@ class Strategy:
         #                     Block.push(rbt)
             
         
-        # Block.process()
-        # Pass.process()
-        # Defer.process()
-        # Attacker.process()
-        actions[0] = KickActions.Turn_Kick(field.enemy_goal.center, 0)
+        Block.process()
+        Pass.process()
+        Defer.process()
+        Attacker.process()
+        #actions[6] = KickActions.Turn_Kick(field.enemy_goal.center, 0)
 
 
         

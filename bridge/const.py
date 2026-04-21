@@ -181,7 +181,7 @@ KEEP_BALL_DIST = 300 + ROBOT_R
 # is_ball_in
 GRAB_ALIGN_DIST = 130
 BALL_GRABBED_ANGLE = 0.6
-BALL_GRABBED_DIST = 104
+BALL_GRABBED_DIST = 108
 # is_kick_aligned
 KICK_ALIGN_DIST_MULT = 1.5
 KICK_ALIGN_ANGLE = 0.08
@@ -192,7 +192,7 @@ KICK_ALIGN_OFFSET = 40
 GRAB_AREA = GRAB_ALIGN_DIST
 # GRAB_DIST = 45  # 30 is good
 GRAB_DIST = 45
-GRAB_MULT = 3  # speed = dist * mult
+GRAB_MULT = 4  # speed = dist * mult
 GRAB_OFFSET_ANGLE = 0.35
 
 #check_catch_ball
@@ -208,7 +208,7 @@ if IS_SIMULATOR_USED:
     GRAB_OFFSET_ANGLE = 0.45
 
 #check point to kick
-MIN_PASS_DIST = 580
+MIN_PASS_DIST = 800
 MIN_DIST_FROM_KICK = 400
 
 #count passes point

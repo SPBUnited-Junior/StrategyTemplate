@@ -97,7 +97,7 @@ class Actions:
             ignore_ball: bool = False,
             target_vel: aux.Point = aux.Point(0, 0),
             ignore_robots: dict[const.Color, list[int]] = {},
-            dribbler_speed: Optional[float] = None
+            dribbler_speed: Optional[int] = None
         ) -> None:
             self.target_pos = target_pos
             self.target_angle = target_angle
@@ -106,7 +106,7 @@ class Actions:
             self.target_vel = target_vel
             self.ignore_robots = ignore_robots
 
-            self.dribbler_speed = dribbler_speed
+            self.dribbler_speed: Optional[int] = dribbler_speed
 
         def use_behavior_of(self, domain: ActionDomain, current_action: ActionValues) -> list["Action"]:
             avoid_ball = domain.game_state in [GameStates.STOP, GameStates.PREPARE_KICKOFF] or (
@@ -207,7 +207,7 @@ class Actions:
             current_action.vel = transl_vel
             current_action.angle = self.target_angle
 
-            current_action.dribbler_speed = 14
+            current_action.dribbler_speed = 15
 
         def use_behavior_of(self, domain: ActionDomain, current_action: ActionValues) -> list["Action"]:
             ball_pos = domain.field.ball.get_pos()
@@ -300,7 +300,7 @@ class Actions:
 
         def behavior(self, domain: ActionDomain, current_action: ActionValues) -> None:
                 global old_speed_for_turn
-                speed = max(old_speed_for_turn - 5, 0)
+                speed = max(old_speed_for_turn - 3, 0)
                 old_speed_for_turn = speed
                 current_action.angle = self.target_angle
                 current_action.beep = 0
@@ -519,7 +519,8 @@ def get_pass_voltage(length: float) -> int:
     if const.IS_SIMULATOR_USED:
         # TODO fix control decoder
         return int(aux.minmax(0.0011 * length + 1.2, 7, const.VOLTAGE_SHOOT))
-    return int(aux.minmax(0.0001 * length + 1.7, 7, const.VOLTAGE_SHOOT))
+    print(int(aux.minmax(0.003 * length + 1.7, 5, const.VOLTAGE_SHOOT)))
+    return int(aux.minmax(0.003 * length + 1.7, 5, const.VOLTAGE_SHOOT))
 
 
 def get_grab_speed(

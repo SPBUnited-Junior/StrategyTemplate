@@ -85,7 +85,7 @@ def canRDoScoreAndInWhatPoint(field: fld.Field, robotPos: Optional[aux.Point] = 
 def nearest2BallEnemy(field: fld.Field, includeGK: bool = True) -> rbt.Robot:
     return fld.find_nearest_robot(field.ball.get_pos(), field.active_enemies(includeGK))
 
-def isBallKickedToR(field: fld.Field, receiverRId: int, givingRId: int, check: bool = False, forEnemyes: bool = False) -> bool:
+def isBallKickedToR(field: fld.Field, receiverRId: int, givingRId: int, check: bool = True, forEnemyes: bool = False) -> bool:
     ballPos = field.ball.get_pos()
     if not forEnemyes:
         receiverR = field.allies[receiverRId]
@@ -104,8 +104,7 @@ def isBallKickedToR(field: fld.Field, receiverRId: int, givingRId: int, check: b
     vectFormGivingPassToReceiver = receiverRPos-givingRPos
     vectNormalToVectFormGivingPassToReceiver = aux.rotate(vectFormGivingPassToReceiver, 90/180*math.pi)
     koefForErr = 1.5
-    # newErrAngle = myConst.minErrAngleForRotateWithBall*koefForErr
-    newErrAngle = myConst.minErrAngleForRotateWithBall
+    newErrAngle = myConst.calculateMinAngleErrForRotate(aux.dist(receiverRPos, givingRPos))
     pointPlusErr = aux.get_line_intersection(receiverRPos, receiverRPos+vectNormalToVectFormGivingPassToReceiver, givingRPos, givingRPos+aux.rotate(vectFormGivingPassToReceiver, newErrAngle/180*math.pi*koefForErr), "LL")
     
     if check:
@@ -128,11 +127,11 @@ def isBallKickedToR(field: fld.Field, receiverRId: int, givingRId: int, check: b
             if (check): field.strategy_image.send_telemetry("test", "if point in triangle")
             vectFromBallToReceiver = receiverRPos-ballPos
 
-            if abs(field.ball.get_vel().arg()-vectFromBallToReceiver.arg())/math.pi*180 < myConst.minErrAngleForRotateWithBall*koefForErr:
+            if abs(field.ball.get_vel().arg()-vectFromBallToReceiver.arg())/math.pi*180 < newErrAngle*koefForErr:
                 """if ball moves to point where he must be kicked"""
                 if (check): field.strategy_image.send_telemetry("test", "if ball moving to point")
 
-                if field.ball.get_vel().mag() > 1000:
+                if field.ball.get_vel().mag() > 300:
                     """if he moves fast enough"""
                     if (check): field.strategy_image.send_telemetry("test", "if ball moving fast enough")
                     if (check): field.strategy_image.draw_circle(aux.Point(0, 0), size_in_mms=1000)
@@ -352,21 +351,25 @@ def doPassNearAllly(field: fld.Field, actions: list[Optional[Action]], idFrom: i
             field.strategy_image.send_telemetry("status pass", "dont have straight pass point")
             if actions[ourRsSortedByDistToBall[0].r_id] is not None:
                 """do pass ahead"""
-                idRWhichOpen = ourRsSortedByDistToBall[0].r_id
-                try:
-                    pointToOpenForPass = actions[idRWhichOpen].target_pos# type:ignore
-                    field.strategy_image.draw_line( field.ball.get_pos(), pointToOpenForPass, (150, 0, 255), 20)  # type:ignore
-                except:
-                    pointToOpenForPass = field.allies[idRWhichOpen].get_pos()
-                if pointToOpenForPass is not None and rToPass is not None:
-                    """if code works how it must"""
-                    distToPointForPassFromRWhichOpen = (pointToOpenForPass-field.allies[idRWhichOpen].get_pos()).mag()
-                    distToPointForPassFromBall = (pointToOpenForPass-field.ball.get_pos()).mag()
-                    if (distToPointForPassFromRWhichOpen/rToPass.get_vel().mag()) < (distToPointForPassFromBall/const.MAX_SPEED_BALL)*1.5:
-                        """if this r will arrive at point earlyer that ball"""
-                        """TODO maybe we do openForPass several times for one run - bad"""
-                        field.strategy_image.draw_circle(pointToOpenForPass, color=(255, 255, 0), size_in_mms=1000)
-                        actions[idFrom] = Actions.DelayedSlowKick(pointToOpenForPass, is_pass=False)  # type:ignore
+                # idRWhichOpen = ourRsSortedByDistToBall[0].r_id
+                # pointToOpenForPass = None
+                # try:
+                #     maybePointToOpenForPass = actions[idRWhichOpen].target_pos# type:ignore
+                #     if maybePointToOpenForPass is not None and aux.dist(maybePointToOpenForPass, field.allies[idRWhichOpen].get_pos()) < 50 and field.allies[idRWhichOpen].get_vel().mag() < 50:
+                #         # print
+                #         pointToOpenForPass = maybePointToOpenForPass
+                #     field.strategy_image.draw_line( field.ball.get_pos(), pointToOpenForPass, (150, 0, 255), 20)  # type:ignore
+                # except:
+                #     pointToOpenForPass = field.allies[idRWhichOpen].get_pos()
+                # if pointToOpenForPass is not None and rToPass is not None:
+                #     """if code works how it must"""
+                #     distToPointForPassFromRWhichOpen = (pointToOpenForPass-field.allies[idRWhichOpen].get_pos()).mag()
+                #     distToPointForPassFromBall = (pointToOpenForPass-field.ball.get_pos()).mag()
+                #     if (distToPointForPassFromRWhichOpen/rToPass.get_vel().mag()) < (distToPointForPassFromBall/const.MAX_SPEED_BALL)*1.5:
+                #         """if this r will arrive at point earlyer that ball"""
+                #         """TODO maybe we do openForPass several times for one run - bad"""
+                #         field.strategy_image.draw_circle(pointToOpenForPass, color=(255, 255, 0), size_in_mms=1000)
+                #         actions[idFrom] = Actions.DelayedSlowKick(pointToOpenForPass, is_pass=True)  # type:ignore
     if actions[idFrom] is None:
         """if this r now cant do pass"""
         actions[idFrom] = Actions.GoToPoint(

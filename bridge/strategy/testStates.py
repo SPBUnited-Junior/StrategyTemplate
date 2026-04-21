@@ -8,7 +8,8 @@ from bridge.strategy.ClassWithMyStaticVariables import ClassWithMyStaticVariable
 from bridge.strategy.myLogicFunc import (
     isBallOnOurPartOfField,
     gettingPass,
-    GK
+    GK, 
+    getStatusOfPassLogic
 )
 from bridge.strategy.myFunc import (
     doPassNearAllly,
@@ -37,7 +38,7 @@ def testPass(staticVariables: ClassWithMyStaticVariables, field: fld.Field, acti
     else:
         if staticVariables.maxVelBall < field.ball.get_vel().mag() and field.ball.get_vel().mag()<10000:
             staticVariables.maxVelBall = field.ball.get_vel().mag()
-            print("staticVariables.maxVelBall =", staticVariables.maxVelBall)
+            # print("staticVariables.maxVelBall =", staticVariables.maxVelBall)
 
         staticVariables.myIsBallInClass.updateTimerWeHoldBall(field)
         # print("ballVel =", field.ball.get_vel().mag())
@@ -57,46 +58,11 @@ def testPass(staticVariables: ClassWithMyStaticVariables, field: fld.Field, acti
             otherAttackerR = field.allies[(idxThisR==staticVariables.idFirstAttacker)*staticVariables.idSecondAttacker + (idxThisR==staticVariables.idSecondAttacker)*staticVariables.idFirstAttacker]
             idxOtherAttacker = otherAttackerR.r_id
 
-            if staticVariables.idDoPass == idxThisR and not field.is_ball_in(thisR):
-                """if we not yet catch ball"""
-                otherAttackerR = field.allies[(nearestR.r_id==staticVariables.idFirstAttacker)*staticVariables.idSecondAttacker + (nearestR.r_id==staticVariables.idSecondAttacker)*staticVariables.idFirstAttacker]
-                if staticVariables.idGettingPass is None:
-                    actions[idxThisR] = Actions.BallGrab((-nearestR.get_pos()+otherAttackerR.get_pos()).arg())
-                elif isBallKickedToR(field, idxOtherAttacker, staticVariables.idDoPass):
-                    staticVariables.idDoPass = None
-            elif staticVariables.idDoPass == idxThisR and staticVariables.myIsBallInClass.myIsBallIn(thisR):
-                """if this R do pass"""
-                status = "if this R do pass"
-                if staticVariables.idGettingPass is not None and staticVariables.idDoPass is not None:
-                    if isBallKickedToR(field, staticVariables.idGettingPass, staticVariables.idDoPass):
-                        staticVariables.idDoPass = None
-                        # print("pass done")
-                        # field.strategy_image.send_telemetry("pass test state", "pass done")
-                    else:
-                        # field.strategy_image.draw_circle(aux.Point(0, 0), size_in_mms=1000)
-                        staticVariables.idGettingPass = doPassNearAllly(field, actions, idxThisR)
-                else:
-                    """do pass"""
-                    # print("do pass")
-                    # field.strategy_image.draw_circle(aux.Point(0, 0), size_in_mms=1000)
-                    staticVariables.idGettingPass = doPassNearAllly(field, actions, idxThisR)
-            elif idxThisR == staticVariables.idGettingPass:
-                """if this R getting pass"""
-                status = "if this R getting pass"
-                gettingPass(staticVariables, field, actions)
-            elif staticVariables.idGettingPass != None:
-                """if we kick ball for pass, but ally dont yet catch him"""
-                status = "if we kick ball for pass, but ally dont yet catch him"
-                if isBallOnOurPartOfField(field):
-                    """if ball on our part of field"""
-                    status += "if ball on our part of field"
-                    openForPass(field, idxThisR, actions)
-                else:
-                    """if ball not on our part of field"""
-                    status += "if ball not on our part of field"
-                    actions[idxThisR] = Actions.GoToPoint(
-                        thisRPos, (field.allies[idxOtherAttacker].get_pos() - thisR.get_pos()).arg()
-                    )
+            status = getStatusOfPassLogic(staticVariables, field, actions, idxThisR, idxOtherAttacker)
+            if status is None:
+                openForPass(field, thisR.r_id, actions)
+            else:
+                print(idxThisR, status)
         # if oldIdDoPass != staticVariables.idDoPass or oldIdGettingPass != staticVariables.idGettingPass:
         print(staticVariables.idDoPass, staticVariables.idGettingPass)
         # field.strategy_image.send_telemetry("ids:", "staticVariables.idDoPass" + str(staticVariables.idDoPass) + "staticVariables.idGettingPass:" + str(staticVariables.idGettingPass))

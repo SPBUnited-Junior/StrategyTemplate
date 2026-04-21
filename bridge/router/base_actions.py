@@ -518,7 +518,7 @@ class DumbActions:
         def __init__(self, target_angle: float, distToAim: float, angle_bounds: float = math.pi / 18) -> None:
             self.target_angle = target_angle
             # print(angle_bounds*180/math.pi)
-            minDeltaAngle = myConst.minErrAngleForRotateWithBall
+            minDeltaAngle = myConst.calculateMinAngleErrForRotate(distToAim)
             # minDeltaAngle = distToAim/(((const.FIELD_DX*2)**2+(const.FIELD_DY*2)**2)**0.5)*3
             # print(minDeltaAngle)
 
@@ -565,7 +565,9 @@ def get_pass_voltage(length: float) -> int:
     if const.IS_SIMULATOR_USED:
         # TODO fix control decoder
         return int(aux.minmax(0.003 * length + 1.8, 4, const.VOLTAGE_SHOOT))
-    return int(aux.minmax(0.001 * length + 2.0, 5, const.VOLTAGE_SHOOT))
+    r = int(aux.minmax(1 * length/myConst.minDistForOpeningForPass + 2, 5, const.VOLTAGE_SHOOT))
+    print("pass_voltage =", r)
+    return r
 
 
 def get_grab_speed(

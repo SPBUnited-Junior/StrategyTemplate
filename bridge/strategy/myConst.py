@@ -2,6 +2,7 @@ from enum import Enum
 from bridge import const
 from math import asin
 from environment.setup_environment import get_from_env
+from bridge.auxiliary import aux, fld, rbt  # type: ignore
 
 class whatWeDoStates(Enum):
     """Класс с типо запускаемого нами кода"""
@@ -17,7 +18,7 @@ class whatWeDoStates(Enum):
 minDistForOpeningForPass = 700
 
 idFirstAttacker: int = 6
-idSecondAttacker: int = 4
+idSecondAttacker: int = 7
 
 timerForRotate = 0.5/2#sec
 timerForHoldBall = 3#sec
@@ -42,10 +43,17 @@ dForCatchBall = 10
 distBetweenRsInWall = 250
 angleBetweenRsInWall = asin((distBetweenRsInWall/2)/((distBetweenRsInWall/2)**2+(const.KEEP_BALL_DIST+50)**2)**0.5)
 
-whatWeDoAtThisRun: whatWeDoStates = whatWeDoStates.TestPass
+whatWeDoAtThisRun: whatWeDoStates = whatWeDoStates.Play
 
 useDebug = get_from_env("DEBUG_MODE", bool)
 if not const.IS_SIMULATOR_USED and not useDebug:
     whatWeDoAtThisRun = whatWeDoStates.Play#DONT TOUCH!!!!!!!!
 
-minErrAngleForRotateWithBall: float = 2.5
+lowerEdgeForMinAngleErr = 0.25
+upperEdgeForMinAngleErr = 2.5
+koeffForCalculatingMinAngleErr = (upperEdgeForMinAngleErr-lowerEdgeForMinAngleErr)/(((const.FIELD_DX)**2+(const.FIELD_DY)**2)**0.5-minDistForOpeningForPass)
+
+def calculateMinAngleErrForRotate(distToPointForPass: float)->float:
+    minAngleErrForRotate = aux.minmax(distToPointForPass*koeffForCalculatingMinAngleErr, lowerEdgeForMinAngleErr, upperEdgeForMinAngleErr)
+    # print("minAngleErrForRotate =", minAngleErrForRotate)
+    return minAngleErrForRotate

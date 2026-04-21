@@ -71,12 +71,13 @@ def updatePointAndAngleFromWhatBallKicked(staticVariables: ClassWithMyStaticVari
 
 def updateTimerAndIdWeTryDoPass(staticVariables: ClassWithMyStaticVariables, field: fld.Field, actions: list[Optional[Action]]) -> None:
     ballPos = field.ball.get_pos()
+    nearestRToBall = fld.find_nearest_robot(ballPos, field.allies)
 
     if staticVariables.idDoPass is None:
         """if we dont try do or get pass"""
         staticVariables.TimeWeTryDoPass = None
     
-    elif staticVariables.idGettingPass is None and staticVariables.TimeWeTryDoPass is None:
+    elif staticVariables.idGettingPass is None and staticVariables.TimeWeTryDoPass is None and staticVariables.myIsBallInClass.myIsBallIn(nearestRToBall):
         """if we try do pass, but do not done this yet"""
         staticVariables.TimeWeTryDoPass = time()
 
@@ -130,38 +131,45 @@ def doingPass(staticVariables: ClassWithMyStaticVariables, field: fld.Field, act
         """pass in process"""
         staticVariables.idGettingPass = doPassNearAllly(field, actions, idxThisR)
 
-def gettingPass(staticVariables: ClassWithMyStaticVariables, field: fld.Field, actions: list[Optional[Action]], test: bool = False) -> None:
+def gettingPass(staticVariables: ClassWithMyStaticVariables, field: fld.Field, actions: list[Optional[Action]], test: bool = True, sendTelemetry: bool = False) -> None:
     thisRId: Optional[int] = staticVariables.idGettingPass
     if thisRId is not None:
+        print("in")
         thisR = field.allies[thisRId]
         thisRPos = thisR.get_pos()
         ballPos = field.ball.get_pos()
 
-        if staticVariables.idDoPass != None:
+        if staticVariables.idDoPass is not None:
             """r not yet kick ball"""
-            if actions[thisRId] == None:
+            if test and not sendTelemetry: print("status pass:", "r not yet kick ball")
+            if test and sendTelemetry: field.strategy_image.send_telemetry("status pass", "r not yet kick ball")
+
+            if actions[thisRId] is None:
                 openForPass(field, thisRId, actions)
             staticVariables.PointFromBallKicked = field.allies[staticVariables.idDoPass].get_pos()
             staticVariables.AngleWithWhatBallKicked = field.allies[staticVariables.idDoPass].get_angle()
         elif not staticVariables.myIsBallInClass.myIsBallIn(thisR):
-            print("thisRid:", thisRId)
-            if test: field.strategy_image.send_telemetry("status pass", "getting pass")
             """if ball already kicked"""
+            if test and not sendTelemetry: print("status pass:", "if ball already kicked")
+            if test and sendTelemetry: field.strategy_image.send_telemetry("status pass", "if ball already kicked")
+
             if staticVariables.AngleWithWhatBallKicked is None or staticVariables.PointFromBallKicked is None:
                 print("PROBLEM WITH POINT")
             else:
                 secondPointForLine = staticVariables.PointFromBallKicked+aux.rotate(aux.RIGHT, staticVariables.AngleWithWhatBallKicked)
+                vectFromBallToR = field.allies[thisRId].get_pos()-ballPos
                 if not aux.is_point_on_line(thisRPos, staticVariables.PointFromBallKicked, secondPointForLine, "R"):
+                    """if we not yet on line between ball and point from what it was kicked"""
                     interseptBallPoint = aux.closest_point_on_line(staticVariables.PointFromBallKicked, secondPointForLine, thisRPos, "R")
-                    if interseptBallPoint != ballPos:
+                    if abs((vectFromBallToR.arg()-field.ball.get_vel().arg())) < 5/180*math.pi:
+                        print("Intersept")
                         if test: field.strategy_image.send_telemetry("status pass", "Intersept")
                         """ intersept ball"""
                         actions[thisRId] = Actions.GoToPointIgnore(interseptBallPoint, (ballPos - interseptBallPoint).arg())
                     else:
                         if test: field.strategy_image.send_telemetry("status pass", "Grab ball")
-                        """grab ball if it maybe in hull and we cant intersept him"""
                         # actions[thisRId] = Actions.BallGrab((ballPos - thisRPos).arg())
-                        actions[thisRId] = Actions.CatchBall()
+                        actions[thisRId] = Actions.BallGrab(aux.wind_down_angle(vectFromBallToR.arg()+math.pi))
                         print("First")
                 else:
                     # actions[thisRId] = Actions.BallGrab((field.ball.get_pos()-field.allies[thisRId].get_pos()).arg())
@@ -169,12 +177,48 @@ def gettingPass(staticVariables: ClassWithMyStaticVariables, field: fld.Field, a
                     print("Second")
         elif staticVariables.myIsBallInClass.myIsBallIn(field.allies[thisRId]):
             """get pass"""
-            if test: field.strategy_image.send_telemetry("status pass", "get pass")
+            if test and not sendTelemetry: print("status pass:", "get pass")
+            if test and sendTelemetry: field.strategy_image.send_telemetry("status pass", "get pass")
             staticVariables.idGettingPass = None
 
         actionThisR = actions[thisRId]
         if actionThisR is not None:
             actions[thisRId] = actionThisR.compose(DribblerActions.SetDribblerSpeed(15))
+
+def getStatusOfPassLogic(staticVariables: ClassWithMyStaticVariables, field: fld.Field, actions: list[Optional[Action]], idxThisR: int, idxOtherAttacker: int, test: bool = False) -> Optional[str]:
+    thisR = field.allies[idxThisR]
+    thisRPos = thisR.get_pos()
+    otherAttackerR = field.allies[idxOtherAttacker]
+    status = None
+    if staticVariables.idDoPass == idxThisR and not staticVariables.myIsBallInClass.myIsBallIn(thisR):
+        """if we not yet catch ball"""
+        status = "we not yet catch ball"
+        if staticVariables.idGettingPass is None:
+            actions[idxThisR] = Actions.BallGrab((-thisRPos+otherAttackerR.get_pos()).arg())
+        elif isBallKickedToR(field, idxOtherAttacker, staticVariables.idDoPass):
+            staticVariables.idDoPass = None
+    elif staticVariables.idDoPass == idxThisR and staticVariables.myIsBallInClass.myIsBallIn(thisR):
+        """if this R do pass"""
+        status = "if this R do pass"
+        doingPass(staticVariables, field, actions, idxThisR)
+    elif idxThisR == staticVariables.idGettingPass:
+        """if this R getting pass"""
+        status = "if this R getting pass"
+        gettingPass(staticVariables, field, actions)
+    elif staticVariables.idGettingPass != None:
+        """if we kick ball for pass, but ally dont yet catch him"""
+        status = "if we kick ball for pass, but ally dont yet catch him"
+        if isBallOnOurPartOfField(field):
+            """if ball on our part of field"""
+            status += "if ball on our part of field"
+            openForPass(field, idxThisR, actions)
+        else:
+            """if ball not on our part of field"""
+            status += "if ball not on our part of field"
+            actions[idxThisR] = Actions.GoToPoint(
+                thisRPos, (field.allies[idxOtherAttacker].get_pos() - thisR.get_pos()).arg()
+            )
+    return status
 
 # TODO do comments
 def GK(
@@ -338,33 +382,8 @@ def attacker(
 
             """ ↓ ↓ ↓ logic for pass  ↓ ↓ ↓""" 
 
-        elif staticVariables.idDoPass == idxThisR and not staticVariables.myIsBallInClass.myIsBallIn(thisR):
-            """if we not yet catch ball"""
-            if staticVariables.idGettingPass is None:
-                actions[idxThisR] = Actions.BallGrab((-thisRPos+otherAttackerR.get_pos()).arg())
-            elif isBallKickedToR(field, idxOtherAttacker, staticVariables.idDoPass):
-                staticVariables.idDoPass = None
-        elif staticVariables.idDoPass == idxThisR and staticVariables.myIsBallInClass.myIsBallIn(thisR):
-            """if this R do pass"""
-            status = "if this R do pass"
-            doingPass(staticVariables, field, actions, idxThisR)
-        elif idxThisR == staticVariables.idGettingPass:
-            """if this R getting pass"""
-            status = "if this R getting pass"
-            gettingPass(staticVariables, field, actions)
-        elif staticVariables.idGettingPass != None:
-            """if we kick ball for pass, but ally dont yet catch him"""
-            status = "if we kick ball for pass, but ally dont yet catch him"
-            if isBallOnOurPartOfField(field):
-                """if ball on our part of field"""
-                status += "if ball on our part of field"
-                openForPass(field, idxThisR, actions)
-            else:
-                """if ball not on our part of field"""
-                status += "if ball not on our part of field"
-                actions[idxThisR] = Actions.GoToPoint(
-                    thisRPos, (field.allies[idxOtherAttacker].get_pos() - thisR.get_pos()).arg()
-                )
+        elif getStatusOfPassLogic(staticVariables, field, actions, idxThisR, idxOtherAttacker) is not None:
+            pass
             """ ↑ ↑ ↑ logic for pass  ↑ ↑ ↑ """ 
             
             """ ↓ ↓ ↓ genegal logic  ↓ ↓ ↓""" 
@@ -506,5 +525,5 @@ def attacker(
                     actions[idxThisR] = Actions.GoToPoint(pointGo, (thisRPos - nearestEnemyR.get_pos()).arg()).compose(DribblerActions.SetDribblerSpeed(15))
 
         """ ↑ ↑ ↑ genegal logic ↑ ↑ ↑ """ 
-    
+    print("statusAttacker" + str(idxThisR), status)
     field.strategy_image.send_telemetry("statusAttacker" + str(idxThisR), status)

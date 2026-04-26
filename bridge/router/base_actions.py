@@ -15,7 +15,7 @@ from bridge.strategy.strategy import GameStates
 
 # Actions: ActionDomain -> ActionValues
 timer_to_stop : float = 0
-old_speed_for_turn : float = const.SPEED_TURN
+old_speed_for_turn : float = const.START_VEL_TURN
 
 class Actions:
     """Class with all user-available actions (except kicks)"""
@@ -230,21 +230,20 @@ class Actions:
             if domain.field.is_ball_in(domain.robot):
                 speed_a = 4.4
                 delta_angle = abs(self.target_angle - domain.robot.get_angle())
-                speed: float = min(450, old_speed_for_turn + speed_a, delta_angle * 300 + 250)
-                angle_speed : float = 0.7 * speed / 450
+                speed: float = min(const.VEL_TURN_MAX, old_speed_for_turn + speed_a, delta_angle * 300 + 250)
+                angle_speed : float = const.ANGLE_VEL_MAX * speed / const.VEL_TURN_MAX
                 old_speed_for_turn = speed
-                print(speed, "speed")
+
+                current_action.vel = aux.Point(int(speed), 0)
                 if aux.wind_down_angle(self.target_angle - domain.robot.get_angle()) < 0:
-                    current_action.vel = aux.Point(int(speed), -0)
                     current_action.angle = -angle_speed
                 else:
-                    current_action.vel = aux.Point(int(speed), 0)
                     current_action.angle = angle_speed
                 current_action.beep = 1
                 current_action.dribbler_speed = 14
                 print(domain.robot.get_anglevel(), "angles")
             else:
-                old_speed_for_turn = const.SPEED_TURN
+                old_speed_for_turn = const.START_VEL_TURN
 
                 
 
@@ -422,8 +421,8 @@ class KickActions:
                 DumbActions.ControlVoltageAction(self.voltage, self.pass_pos)
             ]
             if(not domain.field.is_ball_in(domain.robot)) :
-                old_speed_for_turn = const.SPEED_TURN
-                print("old")
+                old_speed_for_turn = const.START_VEL_TURN
+                
             if (not domain.field.is_ball_in(domain.robot)
                 or abs(aux.wind_down_angle(target_angle - domain.robot.get_angle())) > const.KICK_ALIGN_ANGLE + 0.2):
                 timer_to_stop = time()

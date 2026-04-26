@@ -357,6 +357,23 @@ class Field:
             "SR",
         )
         return inter is not None and self.is_ball_moves()
+    
+    def check_cath_ball(self, pas_point: aux.Point) -> bool:
+        """
+        Проверяем летит ли мяч в сторону робота
+        """
+        ball_pos: aux.Point = self.ball.get_pos()
+        pos_cath = aux.closest_point_on_line(self.ball_start_point, ball_pos, pas_point, "R")
+        dist_to_target = aux.dist(ball_pos, pas_point)
+
+        if(
+            (pos_cath is None
+            or aux.dist(pos_cath, pas_point) > const.DIST_CATCH_BALL
+            or dist_to_target > const.DIST_TO_PASS
+            or self.ball.get_vel().mag() < dist_to_target * 0.3 + 200)
+        ):
+            return False
+        return True
 
 
 def find_nearest_robot(point: aux.Point, team: list[rbt.Robot], avoid: Optional[list[int]] = None) -> rbt.Robot:

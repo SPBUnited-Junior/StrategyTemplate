@@ -346,7 +346,7 @@ class Strategy:
 
         flag = False
         for rbt in field.active_allies(False):
-            if (self.check_cath_ball(field, rbt.get_pos())):
+            if (field.check_cath_ball(rbt.get_pos())):
                 flag = True
 
         if (flag and field.is_ball_not_in_robot()):
@@ -421,25 +421,6 @@ class Strategy:
         Defer.process()
         Attacker.process()
         #actions[6] = KickActions.Turn_Kick(field.enemy_goal.center, 0)
-
-
-        
-    def check_cath_ball(self, field : fld.Field, pas_point: aux.Point) -> bool:
-        """
-        Проверяем летит ли мяч в сторону робота
-        """
-        ball_pos: aux.Point = field.ball.get_pos()
-        pos_cath = aux.closest_point_on_line(field.ball_start_point, ball_pos, pas_point, "R")
-        field.strategy_image.draw_circle(field.ball_start_point, (255, 0, 255), 30)
-
-        if(
-            (pos_cath is None
-            or aux.dist(pos_cath, pas_point) > const.DIST_CATCH_BALL
-            or aux.dist(ball_pos, pas_point) > const.DIST_TO_PASS
-            or field.ball.get_vel().mag() < const.VEL_TO_PASS)
-        ):
-            return False
-        return True
 
     #### Вспомогательные функции ####
     

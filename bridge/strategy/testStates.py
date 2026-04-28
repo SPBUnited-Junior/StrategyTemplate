@@ -4,12 +4,15 @@ from bridge.router.base_actions import Action, Actions, KickActions, DribblerAct
 from bridge import const
 from math import pi
 
+import bridge.strategy.myConst as myConst
 from bridge.strategy.ClassWithMyStaticVariables import ClassWithMyStaticVariables  # type: ignore
 from bridge.strategy.myLogicFunc import (
     isBallOnOurPartOfField,
     gettingPass,
     GK, 
-    getStatusOfPassLogic
+    getStatusOfPassLogic,
+    block2EnemyRs,
+    blockEnemyR
 )
 from bridge.strategy.myFunc import (
     doPassNearAllly,
@@ -19,7 +22,10 @@ from bridge.strategy.myFunc import (
 )
 
 def simpleTest(staticVariables: ClassWithMyStaticVariables, field: fld.Field, actions: list[Optional[Action]])-> None:
-    actions[6] = Actions.GoToPoint(aux.Point(), 0)
+    # actions[7] = Actions.GoToPoint(aux.Point(), 0)
+    # print(1)
+    # blockEnemyR(field, actions, 6, field.enemies[1].get_pos())
+    block2EnemyRs(staticVariables, field, actions, myConst.idFirstAttacker, myConst.idSecondAttacker)
     # doPassNearAllly(field, actions)
     # findPointForScore(field, draw=True)
     # actions[staticVariables.idFirstAttacker] = Actions.Kick(field.enemy_goal.center)

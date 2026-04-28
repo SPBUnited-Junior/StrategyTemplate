@@ -11,7 +11,6 @@ class myIsBallInClass():
 
     def updateTimerWeHoldBall(self, field: fld.Field) -> None:
         if self.TimerWeHoldBall is None:
-            # if any(field.is_ball_in(r) for r in field.active_allies(True)):
             for r in field.active_allies(True):
                 if field.is_ball_in(r):
                     self.TimerWeHoldBall = time()
@@ -20,5 +19,5 @@ class myIsBallInClass():
             self.TimerWeHoldBall = None
 
     def myIsBallIn(self, robot: rbt.Robot) -> bool:
-        return self.TimerWeHoldBall is not None and self.TimerWeHoldBall > myConst.timerForHoldBall and self.rWhichHoldBall is not None and self.rWhichHoldBall.r_id == robot.r_id
+        return self.TimerWeHoldBall is not None and self.TimerWeHoldBall > myConst.timerForHoldBallForMyIsBallIn and self.rWhichHoldBall is not None and self.rWhichHoldBall.r_id == robot.r_id
     

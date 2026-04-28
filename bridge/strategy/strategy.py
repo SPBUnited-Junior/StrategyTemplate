@@ -56,6 +56,7 @@ class Strategy:
         for _ in range(const.TEAM_ROBOTS_MAX_COUNT):
             actions.append(None)
 
+        print(field.game_state)#for real
         match field.game_state:
             case GameStates.RUN: # GOOD
                 self.run(field, actions)

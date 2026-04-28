@@ -457,7 +457,7 @@ class DumbActions:
                 DumbActions.timerForIsBallIn = time() + 10**10
                 DumbActions.oldIs_ball_in = False
             #print(time() - DumbActions.timerForAlignned > 0.1)
-            return isBallIn and is_aligned and time() - DumbActions.timerForIsBallIn > self.timerForRotate and time() - DumbActions.timerForAlignned > self.timerForRotate
+            return isBallIn and is_aligned and time() - DumbActions.timerForIsBallIn > myConst.timerForHoldBallForMyIsBallIn and time() - DumbActions.timerForAlignned > self.timerForRotate
 
         def behavior(self, domain: ActionDomain, current_action: ActionValues) -> None:
             # DumbActions.timerForAlignned = time()+10**10

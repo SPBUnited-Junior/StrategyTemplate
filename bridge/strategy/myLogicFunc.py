@@ -20,6 +20,25 @@ from bridge.strategy.myFunc import (
     isBallOnOurPartOfField
 )
 
+def blockEnemyR(field: fld.Field, actions: list[Optional[Action]], idxThisR: int, posEnemyRForBlock: aux.Point)->None:
+    pointGo = aux.point_on_line(field.ball.get_pos(), posEnemyRForBlock, myConst.distToBlockEnemyPass)
+    actions[idxThisR] = Actions.GoToPoint(pointGo, (field.allies[idxThisR].get_pos() - posEnemyRForBlock).arg()).compose(DribblerActions.SetDribblerSpeed(15))
+
+def block2EnemyRs(staticVariables: ClassWithMyStaticVariables, field: fld.Field, actions: list[Optional[Action]], idxThisR: int, idxOtherAttacker: int)->None:
+    enemies = field.active_enemies(False)
+    thisAttackerRPos = field.allies[idxThisR].get_pos()
+    otherAttackerRPos = field.allies[idxOtherAttacker].get_pos()
+    nearest2ThisREnemy = fld.find_nearest_robot(thisAttackerRPos, enemies)
+    nearest2OtherREnemy = fld.find_nearest_robot(otherAttackerRPos, enemies)
+    if nearest2ThisREnemy.r_id != nearest2OtherREnemy:
+        print(1)
+        blockEnemyR(field, actions, idxThisR, nearest2ThisREnemy.get_pos())
+        blockEnemyR(field, actions, idxOtherAttacker, nearest2OtherREnemy.get_pos())
+    else:
+        print(2)
+        blockEnemyR(field, actions, idFirstAttacker, enemies[0].get_pos())
+        blockEnemyR(field, actions, idSecondAttacker, enemies[1].get_pos())
+
 def updates(staticVariables: ClassWithMyStaticVariables, field: fld.Field, actions: list[Optional[Action]], showTimerPass: bool, showIdsPass: bool)->None:
     """update variables for succesfull launch of programm"""
     staticVariables.myIsBallInClass.updateTimerWeHoldBall(field)
@@ -42,7 +61,7 @@ def buildWallInFrontOfBall(field: fld.Field, actions: list[Optional[Action]])->N
         angle = angleBetweenRsInWall
     else:
         """if ball of our part of field, build wall without space"""
-        nowDistBetweenRsInWall = 110
+        nowDistBetweenRsInWall = 200
         angle = math.asin((nowDistBetweenRsInWall/2)/((nowDistBetweenRsInWall/2)**2+(const.KEEP_BALL_DIST+50)**2)**0.5)
 
     vectFromBallToCenter = field.ally_goal.center-ballPos
@@ -50,15 +69,14 @@ def buildWallInFrontOfBall(field: fld.Field, actions: list[Optional[Action]])->N
     if field.allies[idFirstAttacker].is_used() and field.allies[idSecondAttacker].is_used():
         point1 = ballPos+aux.rotate(vectFromBallToCenter.unity()*(const.KEEP_BALL_DIST+50), angle)
         point2 = field.ball.get_pos()+aux.rotate(vectFromBallToCenter.unity()*(const.KEEP_BALL_DIST+50), -angle)
-        idNearestRToPoint1 = fld.find_nearest_robot(point1, field.active_allies(False)).r_id#TODO bad
-        idOtherR = (idNearestRToPoint1!=idFirstAttacker)*idFirstAttacker+(idNearestRToPoint1!=idSecondAttacker)*idSecondAttacker
-        actions[idNearestRToPoint1] = Actions.GoToPoint(point1, angleFromOurGoalToEnemysGoal)#TODO fix angle
-        actions[idOtherR] = Actions.GoToPoint(point2, angleFromOurGoalToEnemysGoal)#TODO fix angle
-    elif field.allies[idFirstAttacker].is_used():#TODO check
-        actions[idFirstAttacker] = Actions.GoToPoint(field.ball.get_pos()+(vectFromBallToCenter.unity()*(const.KEEP_BALL_DIST+50)), angleFromOurGoalToEnemysGoal)#TODO fix angle
+        idNearestRToPoint1 = fld.find_nearest_robot(point1, field.active_allies(False)).r_id
+        idOtherR = (idNearestRToPoint1!=idFirstAttacker)*idFirstAttacker+(idNearestRToPoint1!=idSecondAttacker)*idSecondAttacker#TODO bad
+        actions[idNearestRToPoint1] = Actions.GoToPoint(point1, angleFromOurGoalToEnemysGoal)
+        actions[idOtherR] = Actions.GoToPoint(point2, angleFromOurGoalToEnemysGoal)
+    elif field.allies[idFirstAttacker].is_used():
+        actions[idFirstAttacker] = Actions.GoToPoint(field.ball.get_pos()+(vectFromBallToCenter.unity()*(const.KEEP_BALL_DIST+50)), angleFromOurGoalToEnemysGoal)
     else:
-        actions[idSecondAttacker] = Actions.GoToPoint(field.ball.get_pos()+(vectFromBallToCenter.unity()*(const.KEEP_BALL_DIST+50)), angleFromOurGoalToEnemysGoal)#TODO fix angle
-
+        actions[idSecondAttacker] = Actions.GoToPoint(field.ball.get_pos()+(vectFromBallToCenter.unity()*(const.KEEP_BALL_DIST+50)), angleFromOurGoalToEnemysGoal)
 
 def updatePointAndAngleFromWhatBallKicked(staticVariables: ClassWithMyStaticVariables, field: fld.Field) -> None:
     list = field.active_enemies(True)+field.active_allies(True)
@@ -94,8 +112,8 @@ def updateTimerAndIdWeTryDoPass(staticVariables: ClassWithMyStaticVariables, fie
             if r.r_id != staticVariables.idDoPass:
                 idOtherR = r.r_id
         if idOtherR is not None and staticVariables.idDoPass is not None:
-            if time()-staticVariables.TimeWeTryDoPass > staticVariables.constForTimerWeTryDoPass*2:
-                actions[staticVariables.idDoPass] = Actions.DelayedSlowKick(nearest2BallEnemy(field).get_pos())#TODO check and add some logic to avoid self-goal
+            if time()-staticVariables.TimeWeTryDoPass > staticVariables.constForTimerWeTryDoPass*2 and staticVariables.idDoPass != const.GK:
+                actions[staticVariables.idDoPass] = Actions.DelayedSlowKick(nearest2BallEnemy(field).get_pos())
             else:
                 actions[staticVariables.idDoPass] = Actions.DelayedSlowKick(field.allies[idOtherR].get_pos(), is_upper=True)
             if isBallKickedToR(field, idOtherR, staticVariables.idDoPass):
@@ -220,10 +238,9 @@ def getStatusOfPassLogic(staticVariables: ClassWithMyStaticVariables, field: fld
             )
     return status
 
-# TODO do comments
 def GK(
     field: fld.Field, actions: list[Optional[Action]], oldGKState: GKStates, pointFromBallKicked: Optional[aux.Point] = None, angleWithWhatBallKicked: Optional[float] = None, draw: bool = False
-) -> GKStates:  # TODO change string variable on enum class
+) -> GKStates:  
     GKState: GKStates
 
     a = aux.dist(field.allies[const.GK].get_pos(), field.ball.get_pos())
@@ -305,7 +322,6 @@ def GK(
             field.strategy_image.draw_circle(pointForGK, color=(0, 0, 255), size_in_mms=50)
             # print(pointForGK)
             actions[const.GK] = Actions.GoToPointIgnore(pointForGK, (ballPos - GKPos).arg()).compose(DribblerActions.SetDribblerSpeed(15))
-            # field.allies[const.GK].set_dribbler_speed(15)  # TODO check in real we need it?
         else:
             """err"""
             print("ERROR IN GK")
@@ -326,16 +342,9 @@ def attackerAloneOnField(staticVariables: ClassWithMyStaticVariables, field: fld
         """if ball on our part of field"""
         if not staticVariables.myIsBallInClass.myIsBallIn(thisR):
             mostLikelyPointForScore = aux.closest_point_on_line(field.ally_goal.up, field.ally_goal.down, ballPos)
-            pointForR = aux.closest_point_on_line(ballPos, mostLikelyPointForScore, thisR.get_pos())
-            if not aux.is_point_on_line(thisR.get_pos(), ballPos, mostLikelyPointForScore, "S"):
-                """if this r not block maybe score, block"""
-                actions[idxThisR] = Actions.GoToPoint(pointForR, (ballPos - thisR.get_pos()).arg()).compose(DribblerActions.SetDribblerSpeed(15))
-            else:
-                """if this r block maybe score, try grab ball"""
-                actions[idxThisR] = Actions.BallGrab((nearestEnemyR.get_pos() - ballPos).arg())
+            actions[idxThisR] = Actions.BallGrab((ballPos-mostLikelyPointForScore).arg())
         else:
             """try replace ball from our part of field"""
-            # TODO need test in real
             actions[idxThisR] = Actions.DelayedSlowKick(field.enemy_goal.center, is_upper=True)
     else:
         """if ball on other part of field"""
@@ -380,11 +389,8 @@ def attacker(
             status = "No 1 r"
             attackerAloneOnField(staticVariables, field, actions, idxThisR, idxOtherAttacker)
 
-            """ ↓ ↓ ↓ logic for pass  ↓ ↓ ↓""" 
-
         elif getStatusOfPassLogic(staticVariables, field, actions, idxThisR, idxOtherAttacker) is not None:
             pass
-            """ ↑ ↑ ↑ logic for pass  ↑ ↑ ↑ """ 
             
             """ ↓ ↓ ↓ genegal logic  ↓ ↓ ↓""" 
 
@@ -410,16 +416,9 @@ def attacker(
                         staticVariables.idDoPass = idxThisR
                         # staticVariables.TimeWeTryDoPass = time()
                 else:
-                    if staticVariables.idGettingPass == None:
-                        """if this r is nearest to ball, but dont grab him, grab ball"""
-                        status += "if this r is nearest to ball, but dont grab him, grab ball"
-                        actions[idxThisR] = Actions.BallGrab((-field.ball.get_pos() + field.enemy_goal.center).arg())
-                    else:
-                        """do do pass and wait for result""" #TODO check: we enter there?
-                        status += "do do pass and wait for result"
-                        actions[idxThisR] = Actions.GoToPoint(
-                            thisRPos, (field.allies[idxOtherAttacker].get_pos() - thisR.get_pos()).arg()
-                        )
+                    """if this r is nearest to ball, but dont grab him, grab ball"""
+                    status += "if this r is nearest to ball, but dont grab him, grab ball"
+                    actions[idxThisR] = Actions.BallGrab((-field.ball.get_pos() + field.enemy_goal.center).arg())
             elif nearestRToBall == field.allies[idxOtherAttacker]:
                 """if other attacker have ball"""
                 status = "if other attacker have ball"
@@ -458,16 +457,34 @@ def attacker(
                 dist2BallFromThisR = aux.dist(ballPos, thisR.get_pos())
                 dist2BallFromOtherR = aux.dist(ballPos, otherAttackerR.get_pos())
                 enemyRsPos = field.active_enemies(False)
-                if dist2BallFromOtherR < dist2BallFromThisR:
-                    """if not this ally r nearest to ball"""
-                    status += "if not this ally r nearest to ball and nearest r to ball is enemy GK"
-                    enemyRPos = enemyRsPos[0]
-                    pointGo = aux.point_on_line(ballPos, enemyRPos.get_pos(), 300)
-                    actions[idxThisR] = Actions.GoToPoint(pointGo, (thisRPos - enemyRPos.get_pos()).arg()).compose(DribblerActions.SetDribblerSpeed(15))
-                else:
-                    """if this ally r nearest to ball"""
-                    status += "if this ally r nearest to ball"
+                if len(enemies) == 2:
+                    if dist2BallFromOtherR < dist2BallFromThisR:
+                        """if not this ally r nearest to ball"""
+                        status += "if not this ally r nearest to ball and nearest r to ball is enemy GK"
+                        enemyRPos = enemyRsPos[0].get_pos()
+                        blockEnemyR(field, actions, idxThisR, enemyRPos)
+                    else:
+                        """if this ally r nearest to ball"""
+                        status += "if this ally r nearest to ball"
                     actions[idxThisR] = Actions.BallGrab((ballPos - field.enemy_goal.center).arg())
+                elif len(enemies) == 3:
+                    """block 2 enemy's attackers"""
+                elif len(enemies) == 1:
+                    """if enemies have only GK"""
+                    status += "enemies have only GK"
+                    if aux.is_point_inside_poly(ballPos, field.enemy_goal.hull):
+                        """wait when enemy GK kick off ball from hull"""
+                        status += "wait when enemy GK kick off ball from hull"
+                        actions[idxThisR] = Actions.GoToPoint(aux.Point(0, const.FIELD_DX*(idxThisR==idFirstAttacker)), getAngleFromOurGoalToEnemysGoal(field))
+                    else:
+                        """attack"""
+                        status += "attack"
+                        if dist2BallFromOtherR < dist2BallFromThisR:
+                            """if not this ally r nearest to ball"""
+                            openForPass(field, idxThisR, actions)
+                        else:
+                            """if this ally r nearest to ball"""
+                            actions[idxThisR] = Actions.BallGrab((ballPos - field.enemy_goal.center).arg())
             elif isBallOnOurPartOfField(field):
                 """if ball on our part of field"""
                 status = "if ball on our part of field"
@@ -501,9 +518,8 @@ def attacker(
                     status += "if nearest attacker for ball other, block maybe pass"
                     if len(enemies) > 1:
                         enemyRsPos = fld.find_nearest_robots(ballPos, field.active_enemies(True))
-                        enemyRPos = enemyRsPos[1]
-                        pointGo = aux.point_on_line(ballPos, enemyRPos.get_pos(), 400)
-                        actions[idxThisR] = Actions.GoToPoint(pointGo, (thisRPos - enemyRPos.get_pos()).arg()).compose(DribblerActions.SetDribblerSpeed(15))
+                        enemyRPos = enemyRsPos[1].get_pos()
+                        blockEnemyR(field, actions, idxThisR, enemyRPos)
                     else:
                         openForPass(field, idxThisR, actions)
             else:
@@ -515,14 +531,13 @@ def attacker(
                 if dist2BallFromThisR < dist2BallFromOtherR:
                     """if this attacker nearest to ball, take ball"""
                     status += "if this attacker nearest to ball, take ball"
-                    # actions[idxThisR] = Actions.BallGrab((nearestEnemyR.get_pos()-ballPos).arg())#GOOD TODO choose
-                    actions[idxThisR] = Actions.BallGrab((-field.ball.get_pos() + field.enemy_goal.center).arg())  # work
+                    vectFromBallToEnemyGoalCenter = -field.ball.get_pos() + field.enemy_goal.center
+                    actions[idxThisR] = Actions.BallGrab((vectFromBallToEnemyGoalCenter).arg())
                 else:
                     """if nearest attacker for ball other, block maybe pass"""
                     status += "if nearest attacker for ball other, block maybe pass"
                     # TODO resolve problem with choose enemy, which we will block
-                    pointGo = aux.point_on_line(ballPos, nearestEnemyR.get_pos(), 300)
-                    actions[idxThisR] = Actions.GoToPoint(pointGo, (thisRPos - nearestEnemyR.get_pos()).arg()).compose(DribblerActions.SetDribblerSpeed(15))
+                    blockEnemyR(field, actions, idxThisR, nearestEnemyR.get_pos())
 
         """ ↑ ↑ ↑ genegal logic ↑ ↑ ↑ """ 
     print("statusAttacker" + str(idxThisR), status)

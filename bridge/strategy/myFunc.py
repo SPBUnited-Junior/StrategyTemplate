@@ -367,7 +367,6 @@ def doPassNearAllly(field: fld.Field, actions: list[Optional[Action]], idFrom: i
                 #     distToPointForPassFromBall = (pointToOpenForPass-field.ball.get_pos()).mag()
                 #     if (distToPointForPassFromRWhichOpen/rToPass.get_vel().mag()) < (distToPointForPassFromBall/const.MAX_SPEED_BALL)*1.5:
                 #         """if this r will arrive at point earlyer that ball"""
-                #         """TODO maybe we do openForPass several times for one run - bad"""
                 #         field.strategy_image.draw_circle(pointToOpenForPass, color=(255, 255, 0), size_in_mms=1000)
                 #         actions[idFrom] = Actions.DelayedSlowKick(pointToOpenForPass, is_pass=True)  # type:ignore
     if actions[idFrom] is None:
@@ -384,7 +383,7 @@ def doPassNearAllly(field: fld.Field, actions: list[Optional[Action]], idFrom: i
 
 def findPointForScore(
     field: fld.Field, pointFrom: None | aux.Point = None, draw: bool = True, OtherK: float | None = None, reverseGoal: bool = False, reverse: bool = False
-) -> aux.Point | None:  # TODO do comments
+) -> aux.Point | None:
     if pointFrom == None:
         pointFrom = field.ball.get_pos()
     if field.game_state == GameStates.PENALTY:

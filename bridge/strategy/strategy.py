@@ -416,11 +416,15 @@ class Strategy:
         #                     Block.push(rbt)
             
         
-        Block.process()
-        Pass.process()
-        Defer.process()
-        Attacker.process()
-        #actions[6] = KickActions.Turn_Kick(field.enemy_goal.center, 0)
+        # Block.process()
+        # Pass.process()
+        # Defer.process()
+        # Attacker.process()
+        actions[2] = KickActions.Turn_Kick(field.enemy_goal.center, 3)
+        # field.strategy_image.draw_circle(self.ball, (0, 0, 0), 7)
+        #actions[2] = KickActions.Straight(field.enemy_goal.center, 12)
+        print(field.ball.get_vel().mag())
+
 
     #### Вспомогательные функции ####
     

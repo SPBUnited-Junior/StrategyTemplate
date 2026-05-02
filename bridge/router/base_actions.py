@@ -228,9 +228,9 @@ class Actions:
         def behavior(self, domain: ActionDomain, current_action: ActionValues) -> None:
             global old_speed_for_turn
             if domain.field.is_ball_in(domain.robot):
-                speed_a = 4.4
+                speed_a = 4.5
                 delta_angle = abs(self.target_angle - domain.robot.get_angle())
-                speed: float = min(const.VEL_TURN_MAX, old_speed_for_turn + speed_a, delta_angle * 300 + 250)
+                speed: float = min(const.VEL_TURN_MAX, old_speed_for_turn + speed_a, delta_angle * 600)
                 angle_speed : float = const.ANGLE_VEL_MAX * speed / const.VEL_TURN_MAX
                 old_speed_for_turn = speed
 
@@ -240,7 +240,7 @@ class Actions:
                 else:
                     current_action.angle = angle_speed
                 current_action.beep = 1
-                current_action.dribbler_speed = 14
+                current_action.dribbler_speed = 15
                 print(domain.robot.get_anglevel(), "angles")
             else:
                 old_speed_for_turn = const.START_VEL_TURN
@@ -299,12 +299,12 @@ class Actions:
 
         def behavior(self, domain: ActionDomain, current_action: ActionValues) -> None:
                 global old_speed_for_turn
-                speed = max(old_speed_for_turn - 3, 0)
+                speed = max(old_speed_for_turn - 2, 0)
                 old_speed_for_turn = speed
                 current_action.angle = self.target_angle
                 current_action.beep = 0
-                current_action.vel = aux.rotate(aux.Point(speed, 0), domain.robot.get_angle())
-                current_action.dribbler_speed = 14
+                current_action.vel = aux.rotate(aux.Point(speed + 100, 0), domain.robot.get_angle())
+                current_action.dribbler_speed = 15
                 print(speed, "forward")
 
 
@@ -518,8 +518,8 @@ def get_pass_voltage(length: float) -> int:
     if const.IS_SIMULATOR_USED:
         # TODO fix control decoder
         return int(aux.minmax(0.0011 * length + 1.2, 7, const.VOLTAGE_SHOOT))
-    print(int(aux.minmax(0.003 * length + 1.7, 5, const.VOLTAGE_SHOOT)))
-    return int(aux.minmax(0.003 * length + 1.7, 5, const.VOLTAGE_SHOOT))
+    print(int(aux.minmax(0.006 * length + 3.7, 7, const.VOLTAGE_SHOOT)))
+    return int(aux.minmax(0.006 * length + 3.7, 7, const.VOLTAGE_SHOOT))
 
 
 def get_grab_speed(

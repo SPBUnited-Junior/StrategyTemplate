@@ -230,9 +230,9 @@ class Actions:
             global old_speed_for_turn
             global flag_ball_in_turn
             if domain.field.is_ball_in_turn(domain.robot) and flag_ball_in_turn:
-                speed_a = 3.8
+                speed_a = 5.8
                 delta_angle = abs(aux.wind_down_angle(self.target_angle - domain.robot.get_angle()))
-                speed: float = min(const.VEL_TURN_MAX, old_speed_for_turn + speed_a, delta_angle * 500 + 100)
+                speed: float = min(const.VEL_TURN_MAX, old_speed_for_turn + speed_a, delta_angle * 600)
                 angle_speed : float = const.ANGLE_VEL_MAX * speed / const.VEL_TURN_MAX
                 old_speed_for_turn = speed
                 print("Turn", delta_angle, speed, angle_speed)
@@ -306,7 +306,7 @@ class Actions:
                 old_speed_for_turn = speed
                 current_action.angle = self.target_angle
                 current_action.beep = 0
-                current_action.vel = aux.rotate(aux.Point(300, 0), domain.robot.get_angle())
+                current_action.vel = aux.rotate(aux.Point(150, 0), domain.robot.get_angle())
                 current_action.dribbler_speed = 15
                 print(speed, "forward")
 
@@ -418,7 +418,7 @@ class KickActions:
             kick_angle = aux.angle_to_point(domain.field.ball.get_pos(), self.target_pos)
             target_angle = (self.target_pos - domain.field.ball.get_pos()).arg()
             time_to_kick = 0.5 + 0.3 * self.flag_kick_pas
-            diff =  abs(aux.wind_down_angle((target_angle - domain.field.ball.get_angle())))
+            diff =  abs(aux.wind_down_angle((target_angle - domain.robot.get_angle())))
 
             actions = [
                 Actions.BallGrab(self.start_angle),
@@ -438,15 +438,16 @@ class KickActions:
                 timer_to_stop = time()
 
             if (domain.field.is_ball_in_turn(domain.robot) and flag_ball_in_turn
+                and diff <= const.KICK_ALIGN_ANGLE + 0.2):
+                print("Correct")
+                actions.append(Actions.Correct(target_angle))
+
+            if (domain.field.is_ball_in_turn(domain.robot) and flag_ball_in_turn
                 and diff <= const.KICK_ALIGN_ANGLE + 0.1
                 and time() - timer_to_stop > time_to_kick):
                 actions.append(DumbActions.ShootAction(self.target_pos, self.is_upper))
 
-            if (domain.field.is_ball_in_turn(domain.robot) and flag_ball_in_turn
-                and diff <= const.KICK_ALIGN_ANGLE + 0.1):
-                print("Correct")
-                actions.append(Actions.Correct(target_angle))
-
+            print(domain.field.ball.get_pos(), "ball")
             if domain.field.is_ball_in_turn(domain.robot) and flag_ball_in_turn:
                 print(time() - timer_to_stop, abs(aux.wind_down_angle(target_angle - domain.robot.get_angle())), "this")
             else:

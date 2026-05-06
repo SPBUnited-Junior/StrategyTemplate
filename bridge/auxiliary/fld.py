@@ -253,9 +253,9 @@ class Field:
         """
         Определить, находится ли мяч внутри дрибблера
         """
-        return (robo.get_pos() - self.ball.get_pos()).mag() < const.BALL_GRABBED_DIST_TURN + 60 and abs(
+        return (robo.get_pos() - self.ball.get_pos()).mag() < const.BALL_GRABBED_DIST_TURN + 0 and abs(
             aux.wind_down_angle((self.ball.get_pos() - robo.get_pos()).arg() - robo.get_angle())
-        ) < const.BALL_GRABBED_ANGLE + 0.7
+        ) < const.BALL_GRABBED_ANGLE + 0.1
 
     def is_ball_in(self, robo: rbt.Robot) -> bool:
         """

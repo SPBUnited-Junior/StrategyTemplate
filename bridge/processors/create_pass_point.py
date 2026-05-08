@@ -125,7 +125,7 @@ class ExplorePasses(BaseProcessor):
         for rbt in field.active_enemies(False):
             rbt_catch_point = aux.closest_point_on_line(ball, point, rbt.get_pos(), "S")
             rbt_dist_to_point = (rbt.get_pos() - rbt_catch_point).mag()
-            if (rbt_dist_to_point * 3.2 < aux.dist(ball, rbt_catch_point)): return 0 
+            if (rbt_dist_to_point * 1.5 < aux.dist(ball, rbt_catch_point)): return 0 
 
         """
         коэффицент чем ближе наш робот тем больше коэффицент 
@@ -145,7 +145,7 @@ class ExplorePasses(BaseProcessor):
         сумма весов
         """
         weight: float = kick_to_goal_weight + pass_weight
-        return weight
+        return weights
     
     def point_in_goal(
         self,

@@ -59,9 +59,9 @@ class Role:
             ball_pos = self.field.ball.get_pos()
             angle_nearest_robot = (ball_pos - self.attacker.get_pos()).arg()
             optimal_point: aux.Point = self.field.pass_points[0]
-            for rbt in self.field.active_allies(False):
-                if (self.attacker == rbt): continue
-                optimal_point = rbt.get_pos()
+            # for rbt in self.field.active_allies(False):
+            #     if (self.attacker == rbt): continue
+            #     optimal_point = rbt.get_pos()
             voltage = get_pass_voltage(aux.dist(ball_pos, optimal_point))
             point_kick_goal : Optional[aux.Point] = check_goal_point(self.field, ball_pos)[0]
             if kick_status[self.attacker.r_id] == Robot_Status.Goal_Turn_Kick  and self.field.is_ball_in_ally_robot():

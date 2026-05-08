@@ -367,7 +367,7 @@ class Strategy:
 
         # flag = False
         # for rbt in field.active_allies(False):
-        #     if (self.check_cath_ball(field, rbt.get_pos())):
+        #     if (field.check_cath_ball(rbt.get_pos())):
         #         flag = True
 
         # if (flag and field.is_ball_not_in_robot()):
@@ -384,10 +384,9 @@ class Strategy:
         #             Pass.push(rbt)
         #     else:
         #         for rbt in field.active_allies(False):
-        #             if ((self.ball.x < 0) == (field.enemy_goal.center.x < 0)):
-        #                 if (rbt != robot):
-        #                     print("push pass")
-        #                     Pass.push(rbt)
+        #             if (rbt != robot):
+        #                 print("push pass")
+        #                 Pass.push(rbt)
 
         #         Attacker.push(robot)
 
@@ -420,7 +419,7 @@ class Strategy:
         Pass.process()
         Defer.process()
         Attacker.process()
-        #actions[2] = KickActions.Turn_Kick(field.enemy_goal.center, 3)
+        #actions[3] = KickActions.Turn_Kick(field.enemy_goal.center, 2)
         # field.strategy_image.draw_circle(self.ball, (0, 0, 0), 7)
         #actions[2] = KickActions.Straight(field.enemy_goal.center, 12)
         print(field.ball.get_vel().mag())

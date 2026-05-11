@@ -230,7 +230,7 @@ class Actions:
             global old_speed_for_turn
             global flag_ball_in_turn
             if domain.field.is_ball_in_turn(domain.robot) and flag_ball_in_turn:
-                speed_a = 7.8
+                speed_a = 4.8
                 delta_angle = abs(aux.wind_down_angle(self.target_angle - domain.robot.get_angle()))
                 speed: float = min(const.VEL_TURN_MAX, old_speed_for_turn + speed_a, delta_angle * 800)
                 angle_speed : float = const.ANGLE_VEL_MAX * speed / const.VEL_TURN_MAX
@@ -533,8 +533,8 @@ def get_pass_voltage(length: float) -> int:
     if const.IS_SIMULATOR_USED:
         # TODO fix control decoder
         return int(aux.minmax(0.0011 * length + 1.2, 7, const.VOLTAGE_SHOOT))
-    print(int(aux.minmax(0.001 * length + 2.7, 6, const.VOLTAGE_SHOOT)))
-    return int(aux.minmax(0.001 * length + 2.7, 6, const.VOLTAGE_SHOOT))
+    print(int(aux.minmax(0.004 * length + 2.7, 6, const.VOLTAGE_SHOOT)))
+    return int(aux.minmax(0.004 * length + 2.7, 6, const.VOLTAGE_SHOOT))
 
 
 def get_grab_speed(

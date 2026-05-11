@@ -151,7 +151,6 @@ class Role:
     class Goalkeper:
     
         def __init__(self, 
-<<<<<<< HEAD
                 field: fld.Field,
                 actions: list[Optional[Action]],
             ) -> None:
@@ -164,22 +163,6 @@ class Role:
             self.sweep_distance = 100  # Расстояние от центра вверх/вниз
             self.sweep_speed = 500     # Скорость движения
             self.last_sweep_change = 0.0
-=======
-                      field: fld.Field,
-                      actions: list[Optional[Action]],
-                  ) -> None:
-                  
-                  self.actions: list[Optional[Action]] = actions
-                  self.field: fld.Field = field
-                  self.goalkeeper: rbt.Robot = field.allies[const.GK]
-                  
-                  # Параметры движения вратаря (только по Y, строго по центру)
-                  self.sweep_distance = 100  # Расстояние от центра вверх/вниз
-                  self.sweep_speed = 500     # Скорость движения
-                  self.last_sweep_change = 0.0
-                  
-                  self.process()
->>>>>>> 62e8c385ae44303507451d02431227ab49ac42b1
         
         def process(self) -> None:
             current_time = time()
@@ -207,7 +190,6 @@ class Role:
                 goal_position = aux.closest_point_on_line(self.field.ball_start_point, ball, robot_position_goalkeeper, "R")
             else:
                 goal_position = self.field.ally_goal.center
-<<<<<<< HEAD
     
             position_goal = (aux.is_point_inside_poly(goal_position, self.field.ally_goal.hull) and self.field.ball.get_vel().mag() > 50)
 
@@ -256,8 +238,6 @@ class Role:
                 kick_status[const.GK] = Robot_Status.Kick_in_goal_hull
                 self.actions[const.GK] = KickActions.Straight(goal_position_gates, voltage_kik, False, True)
     
-=======
->>>>>>> 62e8c385ae44303507451d02431227ab49ac42b1
     
             position_goal = (aux.is_point_inside_poly(goal_position, self.field.ally_goal.hull) and self.field.ball.get_vel().mag() > 100)
     
@@ -311,8 +291,7 @@ class Role:
             
             if self.field.is_ball_in(self.field.allies[const.GK]):
                 self.actions[const.GK] = KickActions.Straight(goal_position_gates, voltage_kik, False, True)
-    
-            return Action
+
     class Block_Enemy_Pass(Basic_Role):
 
         def push(self, robot: rbt.Robot) -> None:

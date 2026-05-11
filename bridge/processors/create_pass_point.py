@@ -6,6 +6,7 @@ import typing
 from time import time
 
 import attr
+import math
 
 # from scipy.optimize import minimize
 from strategy_bridge.bus import DataBus, DataReader, DataWriter
@@ -66,8 +67,8 @@ class ExplorePasses(BaseProcessor):
         """
         maxim = 0.0
         points: list[tuple[float, aux.Point]] = []
-        for x in range(-const.FIELD_DX + 200, const.FIELD_DX - 200, 200):
-            for y in range(-const.FIELD_DY + 200, const.FIELD_DY - 100, 200):
+        for x in range(-const.FIELD_DX + 200, const.FIELD_DX - 200, 100):
+            for y in range(-const.FIELD_DY + 200, const.FIELD_DY - 100, 100):
                 if abs(x) > 2250:
                     continue
                 if abs(y) > 1500:
@@ -79,8 +80,8 @@ class ExplorePasses(BaseProcessor):
 
                 minim: float = 10000
                 quality = self.quality_point(field, cand)
-                red = int(max(0, 255 / 5000 * (5000 - quality)))
-                green = int(min(255, 255 / 5000 * quality))
+                red = int(205 * (1 - quality))
+                green = int(2 * 255 * quality)
                 self.image.draw_circle(cand, (red, green, 0))
                 points.append((quality, cand))
         points.sort(key=lambda x: x[0])
@@ -109,43 +110,80 @@ class ExplorePasses(BaseProcessor):
         kick_goal_point = check_goal_point(field, field.ball.get_pos())[0]
         ball = field.ball.get_pos()
 
-        if self.point_in_goal(field, point): 
-            #print(point)
+        if self.point_in_goal(field, point):
             return 0
         if self.block_kick_goal(field, point, kick_goal_point):
-            #print(point)
             return 0
         if self.nearest_to_ball(field, point):
-            #print(point)
             return 0
         
+        nearest_robot = fld.find_nearest_robot(ball, field.active_allies(False))
+        cath_dist = aux.dist(nearest_robot.get_pos(), ball) - const.BALL_R
+
+        target_angle = (point - nearest_robot.get_pos()).arg()
+        diff_angle = aux.wind_down_angle(target_angle - nearest_robot.get_angle())
+
+        catch_time = cath_dist / const.MAX_SPEED + 0.3 * diff_angle / const.ANGLE_VEL_MAX
+
+
         """
-        коэффицент возможности блокировки пасса вражеским роботом 
+        вероятность возможности блокировки пасса вражеским роботом 
         """
+        risk_intercept: float = 1
         for rbt in field.active_enemies(False):
             rbt_catch_point = aux.closest_point_on_line(ball, point, rbt.get_pos(), "S")
             rbt_dist_to_point = (rbt.get_pos() - rbt_catch_point).mag()
-            if (rbt_dist_to_point * 1.5 < aux.dist(ball, rbt_catch_point)): return 0 
+
+            dist_flight_ball = aux.dist(ball, rbt_catch_point)
+            enemy_t = rbt_dist_to_point / const.MAX_SPEED
+            ball_t = dist_flight_ball / 3400
+
+            delta_t = ball_t - enemy_t
+            x = min(max(-20, (8 * delta_t)), 20)
+            risk_intercept = min(risk_intercept, 1 / (1 + math.e ** x))
 
         """
         коэффицент чем ближе наш робот тем больше коэффицент 
         """
-        nearest_robot = fld.find_nearest_robot(ball, field.active_allies(False))
-        pass_weight: float = 0
+        reception: float = 0
+        dist_flight_ball = aux.dist(ball, point)
+        ball_t = dist_flight_ball / 1500
         for rbt in field.active_allies(False):
             if (rbt == nearest_robot): continue
             dist_to_point = aux.dist(rbt.get_pos(), point)
-            pass_weight = max(pass_weight, 1.5 * (2000 - dist_to_point), 0)
+            rbt_t = dist_to_point / const.MAX_SPEED
+
+            delta_t = rbt_t - ball_t - catch_time
+            x = min(max(-20, (8 * delta_t)), 20)
+            reception = max(reception, 1 / (1 + math.e ** x))
         """
         коэффициент возможностьи ударить в ворота
         """
-        kick_to_goal_weight: float = check_goal_point(field, point, False)[1] * 5
+        P_goal: float = 0
+        list_goal_point = check_goal_point(field, point, False)
+        size = list_goal_point[1]
+        goal_point = list_goal_point[0]
+        if goal_point is not None:
+            down: aux.Point = aux.Point(goal_point.x, goal_point.y - size / 2)
+            up: aux.Point = aux.Point(goal_point.x, goal_point.y + size / 2)
+
+            field.strategy_image.draw_line(ball, down, (255, 0, 0), 10)
+            field.strategy_image.draw_line(ball, up, (255, 0, 0), 10)
+
+            open_angle = abs(aux.wind_down_angle(aux.get_angle_between_points(down, ball, up)))
+            max_angle = abs(aux.wind_down_angle(aux.get_angle_between_points(field.enemy_goal.center_down, ball, field.enemy_goal.center_up)))
+            goal_thread_raw = open_angle / max_angle
+            x = min(max(-50, (-7 * (goal_thread_raw - 0.2))), 50)
+            P_goal = 1 / (1 + math.e ** x)
+
+
+        forward_bonus = 1 - (abs(point.x - field.enemy_goal.center.x)) / 4500
 
         """
         сумма весов
         """
-        weight: float = kick_to_goal_weight + pass_weight
-        return weight
+        print(point, ": reception", reception, ", risk_intercept", risk_intercept, ", P_goal", P_goal, "forward_bonus: ", forward_bonus)
+        return reception * risk_intercept * P_goal * forward_bonus
     
     def point_in_goal(
         self,

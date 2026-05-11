@@ -239,6 +239,7 @@ class Role:
                 self.actions[const.GK] = KickActions.Straight(goal_position_gates, voltage_kik, False, True)
     
     
+            return Action
     class Block_Enemy_Pass(Basic_Role):
 
         def push(self, robot: rbt.Robot) -> None:

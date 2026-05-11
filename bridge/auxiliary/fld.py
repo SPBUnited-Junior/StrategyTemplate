@@ -378,7 +378,7 @@ class Field:
             (pos_cath is None
             or aux.dist(pos_cath, pas_point) > const.DIST_CATCH_BALL
             or dist_to_target > const.DIST_TO_PASS
-            or self.ball.get_vel().mag() < dist_to_target * 0.3 + 200)
+            or self.ball.get_vel().mag() < dist_to_target * 0.2 + 50)
         ):
             return False
         return True

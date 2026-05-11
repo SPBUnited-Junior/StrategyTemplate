@@ -91,15 +91,15 @@ class Strategy:
 
         # Индексы роботов
 
-        self.goalkeeper_idx = 0
-        self.idx1 = 6
-        self.idx2 = 7
+        self.goalkeeper_idx = 2
+        self.idx1 = 5
+        self.idx2 = 4
         
         # Индексы роботов соперника
 
-        self.goalkeeper_idx_enemy = 2
-        self.idx_enemy1 = 3
-        self.idx_enemy2 = 5
+        self.goalkeeper_idx_enemy = 1
+        self.idx_enemy1 = 2
+        self.idx_enemy2 = 4
 
         self.enemies : list[aux.Point] = [] # массив позиций вражеских роботов
 
@@ -415,13 +415,13 @@ class Strategy:
         #                     Block.push(rbt)
             
         
-        Block.process()
-        Pass.process()
-        Defer.process()
-        Attacker.process()
-        #actions[3] = KickActions.Turn_Kick(field.enemy_goal.center, 2)
+        # Block.process()
+        # Pass.process()
+        # Defer.process()
+        # Attacker.process()
+        actions[4] = KickActions.Turn_Kick(field.enemy_goal.center, 3, 10)
         # field.strategy_image.draw_circle(self.ball, (0, 0, 0), 7)
-        #actions[2] = KickActions.Straight(field.enemy_goal.center, 12)
+        #actions[2] = KickActions.Straight(field.enemy_goal.center, 15)
         print(field.ball.get_vel().mag())
 
 

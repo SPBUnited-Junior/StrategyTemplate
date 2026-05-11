@@ -135,7 +135,7 @@ class ExplorePasses(BaseProcessor):
         for rbt in field.active_allies(False):
             if (rbt == nearest_robot): continue
             dist_to_point = aux.dist(rbt.get_pos(), point)
-            pass_weight = max(pass_weight, abs(3000 - dist_to_point))
+            pass_weight = max(pass_weight, 1.5 * (2000 - dist_to_point), 0)
         """
         коэффициент возможностьи ударить в ворота
         """
@@ -145,7 +145,7 @@ class ExplorePasses(BaseProcessor):
         сумма весов
         """
         weight: float = kick_to_goal_weight + pass_weight
-        return weights
+        return weight
     
     def point_in_goal(
         self,

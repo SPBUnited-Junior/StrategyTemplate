@@ -50,8 +50,8 @@ class Role:
             self.attacker = robot
 
         def process(self) -> None:
-            print("attacker Role: ", self.attacker)
-            print(kick_status)
+            # print("attacker Role: ", self.attacker)
+            # print(kick_status)
             if self.attacker is None: return
             if (len(self.field.pass_points) == 0): return
         
@@ -144,8 +144,8 @@ class Role:
 
                         kick_status[self.attacker.r_id] = Robot_Status.Pass_Turn_Kick
                         self.actions[self.attacker.r_id] = KickActions.Turn_Kick(optimal_point, angle_nearest_robot, voltage)
-
-            print(kick_status[self.attacker.r_id])
+            self.field.strategy_image.draw_circle(optimal_point, (255, 0, 0), 100)
+            #print(kick_status[self.attacker.r_id])
 
 
     class Goalkeper:
@@ -326,7 +326,7 @@ class Role:
 
 
         def process(self) -> None:
-            print("Block pass Role: ", *self.ally_robots)
+            #print("Block pass Role: ", *self.ally_robots)
             self.build_list()
             if (len(self.enemy_robots) == len(self.ally_robots)):
                 self.block_robot()
@@ -371,7 +371,7 @@ class Role:
 
         def process(self) -> None:
             if (len(self.ally_robots) == 0): return
-            print("Defer Role: ", *self.ally_robots)
+            #print("Defer Role: ", *self.ally_robots)
 
             ball_pos = self.field.ball.get_pos()
             for rbt in self.ally_robots:
@@ -398,7 +398,7 @@ class Role:
         
         def process(self) -> None:
             if (len(self.field.pass_points) == 0): return
-            print("Pass Role: ", *self.ally_robots)
+            #print("Pass Role: ", *self.ally_robots)
             ball_pos = self.field.ball.get_pos()
             idx : int = 0
             is_catch : bool = False

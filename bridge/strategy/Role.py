@@ -151,6 +151,7 @@ class Role:
     class Goalkeper:
     
         def __init__(self, 
+<<<<<<< HEAD
                 field: fld.Field,
                 actions: list[Optional[Action]],
             ) -> None:
@@ -163,6 +164,22 @@ class Role:
             self.sweep_distance = 100  # Расстояние от центра вверх/вниз
             self.sweep_speed = 500     # Скорость движения
             self.last_sweep_change = 0.0
+=======
+                      field: fld.Field,
+                      actions: list[Optional[Action]],
+                  ) -> None:
+                  
+                  self.actions: list[Optional[Action]] = actions
+                  self.field: fld.Field = field
+                  self.goalkeeper: rbt.Robot = field.allies[const.GK]
+                  
+                  # Параметры движения вратаря (только по Y, строго по центру)
+                  self.sweep_distance = 100  # Расстояние от центра вверх/вниз
+                  self.sweep_speed = 500     # Скорость движения
+                  self.last_sweep_change = 0.0
+                  
+                  self.process()
+>>>>>>> 62e8c385ae44303507451d02431227ab49ac42b1
         
         def process(self) -> None:
             current_time = time()
@@ -190,6 +207,7 @@ class Role:
                 goal_position = aux.closest_point_on_line(self.field.ball_start_point, ball, robot_position_goalkeeper, "R")
             else:
                 goal_position = self.field.ally_goal.center
+<<<<<<< HEAD
     
             position_goal = (aux.is_point_inside_poly(goal_position, self.field.ally_goal.hull) and self.field.ball.get_vel().mag() > 50)
 
@@ -238,7 +256,63 @@ class Role:
                 kick_status[const.GK] = Robot_Status.Kick_in_goal_hull
                 self.actions[const.GK] = KickActions.Straight(goal_position_gates, voltage_kik, False, True)
     
+=======
+>>>>>>> 62e8c385ae44303507451d02431227ab49ac42b1
     
+            position_goal = (aux.is_point_inside_poly(goal_position, self.field.ally_goal.hull) and self.field.ball.get_vel().mag() > 100)
+    
+            # Логика движения вверх-вниз по ЦЕНТРУ ворот (автоматическое переключение направления)
+            if position_goal == False:
+                # Центр ворот
+                center_x = self.field.ally_goal.center.x
+                center_y = self.field.ally_goal.center.y
+                
+                # Используем синусоидальное движение для автоматической смены направления
+                # Вычисляем позицию на основе времени
+                elapsed = current_time - self.last_sweep_change
+                # Движение от -sweep_distance до +sweep_distance и обратно
+                t = (elapsed * self.sweep_speed / self.sweep_distance) % 4
+                if t < 2:
+                    # Движение вверх
+                    offset = -self.sweep_distance + (t / 2) * (2 * self.sweep_distance)
+                else:
+                    # Движение вниз
+                    offset = self.sweep_distance - ((t - 2) / 2) * (2 * self.sweep_distance)
+                
+                # Целевая позиция
+                goal_position = aux.Point(center_x, center_y + offset)
+                
+                # Угол движения к мячу
+                angle_goalkeeper = (ball - robot_position_goalkeeper).arg()
+                
+                # Движение к целевой точке
+                self.actions[const.GK] = Actions.GoToPoint(goal_position, angle_goalkeeper)
+                
+                # Визуализация для отладки
+                self.field.strategy_image.draw_circle(goal_position, (255, 0, 0), 5)
+                # Рисуем вертикальную линию по центру ворот
+                self.field.strategy_image.draw_line(
+                    aux.Point(center_x, center_y - self.sweep_distance),
+                    aux.Point(center_x, center_y + self.sweep_distance),
+                    (0, 255, 0),
+                    3
+                )
+                # Отмечаем центр ворот
+                self.field.strategy_image.draw_circle(aux.Point(center_x, center_y), (255, 255, 0), 5)
+                
+            else:
+                # Обычное движение к позиции
+                angle_goalkeeper = (ball - robot_position_goalkeeper).arg()
+                self.actions[const.GK] = Actions.GoToPoint(goal_position, angle_goal_ball)
+            
+            # Удары по мячу
+            if self.field.is_ball_stop_near_goal():
+                self.actions[const.GK] = KickActions.Straight(goal_position_gates, voltage_kik, False, True)
+            
+            if self.field.is_ball_in(self.field.allies[const.GK]):
+                self.actions[const.GK] = KickActions.Straight(goal_position_gates, voltage_kik, False, True)
+    
+            return Action
     class Block_Enemy_Pass(Basic_Role):
 
         def push(self, robot: rbt.Robot) -> None:

@@ -67,21 +67,21 @@ class ExplorePasses(BaseProcessor):
         """
         maxim = 0.0
         points: list[tuple[float, aux.Point]] = []
-        for x in range(-const.FIELD_DX + 200, const.FIELD_DX - 200, 100):
-            for y in range(-const.FIELD_DY + 200, const.FIELD_DY - 100, 100):
+        for x in range(-const.FIELD_DX + 200, const.FIELD_DX - 200, 50):
+            for y in range(-const.FIELD_DY + 200, const.FIELD_DY - 100, 50):
                 if abs(x) > 2250:
                     continue
                 if abs(y) > 1500:
                     continue 
                 cand = aux.Point(x, y)
-                if ((const.GOAL_DX - const.GOAL_PEN_DX) - abs(cand.x) < 500) and (abs(cand.y) - abs(const.GOAL_PEN_DY / 2) < 500):
-                    cond = 0
-                    continue
+                # if ((const.GOAL_DX - const.GOAL_PEN_DX) - abs(cand.x) < 500) and (abs(cand.y) - abs(const.GOAL_PEN_DY / 2) < 500):
+                #     cond = 0
+                #     continue
 
                 minim: float = 10000
                 quality = self.quality_point(field, cand)
-                red = int(205 * (1 - quality))
-                green = int(2 * 255 * quality)
+                red = int(255 * (1 - quality))
+                green = int(255 * quality)
                 self.image.draw_circle(cand, (red, green, 0))
                 points.append((quality, cand))
         points.sort(key=lambda x: x[0])
@@ -123,7 +123,7 @@ class ExplorePasses(BaseProcessor):
         target_angle = (point - nearest_robot.get_pos()).arg()
         diff_angle = aux.wind_down_angle(target_angle - nearest_robot.get_angle())
 
-        catch_time = cath_dist / const.MAX_SPEED + 0.3 * diff_angle / const.ANGLE_VEL_MAX
+        catch_time = cath_dist / const.MAX_SPEED + 0.2 * diff_angle / const.ANGLE_VEL_MAX
 
 
         """
@@ -149,7 +149,7 @@ class ExplorePasses(BaseProcessor):
         dist_flight_ball = aux.dist(ball, point)
         ball_t = dist_flight_ball / 1500
         for rbt in field.active_allies(False):
-            if (rbt == nearest_robot): continue
+            if (rbt.r_id == nearest_robot.r_id): continue
             dist_to_point = aux.dist(rbt.get_pos(), point)
             rbt_t = dist_to_point / const.MAX_SPEED
 
@@ -173,16 +173,15 @@ class ExplorePasses(BaseProcessor):
             open_angle = abs(aux.wind_down_angle(aux.get_angle_between_points(down, ball, up)))
             max_angle = abs(aux.wind_down_angle(aux.get_angle_between_points(field.enemy_goal.center_down, ball, field.enemy_goal.center_up)))
             goal_thread_raw = open_angle / max_angle
-            x = min(max(-50, (-7 * (goal_thread_raw - 0.2))), 50)
+            x = min(max(-50, (-8 * (goal_thread_raw - 0.2))), 50)
             P_goal = 1 / (1 + math.e ** x)
 
 
-        forward_bonus = 1 - (abs(point.x - field.enemy_goal.center.x)) / 4500
+        forward_bonus = 1 # - (abs(point.x - field.enemy_goal.center.x)) / 4500
 
         """
         сумма весов
         """
-        print(point, ": reception", reception, ", risk_intercept", risk_intercept, ", P_goal", P_goal, "forward_bonus: ", forward_bonus)
         return reception * risk_intercept * P_goal * forward_bonus
     
     def point_in_goal(

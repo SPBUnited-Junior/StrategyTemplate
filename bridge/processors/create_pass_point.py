@@ -150,10 +150,9 @@ class ExplorePasses(BaseProcessor):
         ball_t = dist_flight_ball / 2000
         for rbt in field.active_allies(False):
             if (rbt.r_id == nearest_robot.r_id): continue
-            print(rbt)
             dist_to_point = aux.dist(rbt.get_pos(), point)
             rbt_t = dist_to_point / const.MAX_SPEED
-
+ 
             delta_t = rbt_t - ball_t - catch_time
             x = min(max(-20, (12 * delta_t)), 20)
             reception = max(reception, 1 / (1 + math.e ** x))
@@ -168,11 +167,8 @@ class ExplorePasses(BaseProcessor):
             down: aux.Point = aux.Point(goal_point.x, goal_point.y - size / 2)
             up: aux.Point = aux.Point(goal_point.x, goal_point.y + size / 2)
 
-            field.strategy_image.draw_line(ball, down, (255, 0, 0), 10)
-            field.strategy_image.draw_line(ball, up, (255, 0, 0), 10)
-
-            open_angle = abs(aux.wind_down_angle(aux.get_angle_between_points(down, ball, up)))
-            max_angle = 0.6 #abs(aux.wind_down_angle(aux.get_angle_between_points(field.enemy_goal.center_down, ball, field.enemy_goal.center_up)))
+            open_angle = abs(aux.wind_down_angle(aux.get_angle_between_points(down, point, up)))
+            max_angle = 0.9 #abs(aux.wind_down_angle(aux.get_angle_between_points(field.enemy_goal.center_down, ball, field.enemy_goal.center_up)))
             goal_thread_raw = open_angle / max_angle
             x = min(max(-50, (-8 * (goal_thread_raw - 0.2))), 50)
             P_goal = 1 / (1 + math.e ** x)

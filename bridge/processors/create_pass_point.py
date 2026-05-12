@@ -121,7 +121,7 @@ class ExplorePasses(BaseProcessor):
         cath_dist = aux.dist(nearest_robot.get_pos(), ball) - const.BALL_R
 
         target_angle = (point - nearest_robot.get_pos()).arg()
-        diff_angle = aux.wind_down_angle(target_angle - nearest_robot.get_angle())
+        diff_angle = abs(aux.wind_down_angle(target_angle - nearest_robot.get_angle()))
 
         catch_time = cath_dist / const.MAX_SPEED + 0.2 * diff_angle / const.ANGLE_VEL_MAX
 
@@ -135,11 +135,11 @@ class ExplorePasses(BaseProcessor):
             rbt_dist_to_point = (rbt.get_pos() - rbt_catch_point).mag()
 
             dist_flight_ball = aux.dist(ball, rbt_catch_point)
-            enemy_t = rbt_dist_to_point / const.MAX_SPEED
-            ball_t = dist_flight_ball / 3400
+            enemy_t = rbt_dist_to_point / 1000
+            ball_t = dist_flight_ball / 2800
 
             delta_t = ball_t - enemy_t
-            x = min(max(-20, (8 * delta_t)), 20)
+            x = min(max(-20, (12 * delta_t)), 20)
             risk_intercept = min(risk_intercept, 1 / (1 + math.e ** x))
 
         """
@@ -147,14 +147,15 @@ class ExplorePasses(BaseProcessor):
         """
         reception: float = 0
         dist_flight_ball = aux.dist(ball, point)
-        ball_t = dist_flight_ball / 1500
+        ball_t = dist_flight_ball / 2000
         for rbt in field.active_allies(False):
             if (rbt.r_id == nearest_robot.r_id): continue
+            print(rbt)
             dist_to_point = aux.dist(rbt.get_pos(), point)
             rbt_t = dist_to_point / const.MAX_SPEED
 
             delta_t = rbt_t - ball_t - catch_time
-            x = min(max(-20, (8 * delta_t)), 20)
+            x = min(max(-20, (12 * delta_t)), 20)
             reception = max(reception, 1 / (1 + math.e ** x))
         """
         коэффициент возможностьи ударить в ворота
@@ -171,7 +172,7 @@ class ExplorePasses(BaseProcessor):
             field.strategy_image.draw_line(ball, up, (255, 0, 0), 10)
 
             open_angle = abs(aux.wind_down_angle(aux.get_angle_between_points(down, ball, up)))
-            max_angle = abs(aux.wind_down_angle(aux.get_angle_between_points(field.enemy_goal.center_down, ball, field.enemy_goal.center_up)))
+            max_angle = 0.6 #abs(aux.wind_down_angle(aux.get_angle_between_points(field.enemy_goal.center_down, ball, field.enemy_goal.center_up)))
             goal_thread_raw = open_angle / max_angle
             x = min(max(-50, (-8 * (goal_thread_raw - 0.2))), 50)
             P_goal = 1 / (1 + math.e ** x)

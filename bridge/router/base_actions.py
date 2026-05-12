@@ -564,7 +564,7 @@ def get_pass_voltage(length: float) -> int:
     """Calc voltage for pass by length"""
     if const.IS_SIMULATOR_USED:
         # TODO fix control decoder
-        return int(aux.minmax(0.003 * length + 1.8, 4, const.VOLTAGE_SHOOT))
+        return int(aux.minmax(0.01 * length + 1.8, 4, const.VOLTAGE_SHOOT))
     r = int(aux.minmax(1 * length/myConst.minDistForOpeningForPass + 2, 5, const.VOLTAGE_SHOOT))
     print("pass_voltage =", r)
     return r

@@ -19,8 +19,8 @@ distToBlockEnemyPass = 300
 
 minDistForOpeningForPass = 700
 
-idFirstAttacker: int = 6
-idSecondAttacker: int = 7
+idFirstAttacker: int = 2
+idSecondAttacker: int = 4
 
 timerForRotate = 0.5/2#sec
 timerForHoldBallForMyIsBallIn = 1.5#3#sec
@@ -45,7 +45,7 @@ dForCatchBall = 10
 distBetweenRsInWall = 250
 angleBetweenRsInWall = asin((distBetweenRsInWall/2)/((distBetweenRsInWall/2)**2+(const.KEEP_BALL_DIST+50)**2)**0.5)
 
-whatWeDoAtThisRun: whatWeDoStates = whatWeDoStates.SimpleTest
+whatWeDoAtThisRun: whatWeDoStates = whatWeDoStates.Play
 
 # useDebug = get_from_env("DEBUG_MODE", bool)
 # if not const.IS_SIMULATOR_USED and not useDebug:

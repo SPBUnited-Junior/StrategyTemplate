@@ -22,10 +22,10 @@ from bridge.strategy.myFunc import (
 )
 
 def simpleTest(staticVariables: ClassWithMyStaticVariables, field: fld.Field, actions: list[Optional[Action]])-> None:
-    # actions[7] = Actions.GoToPoint(aux.Point(), 0)
+    actions[2] = Actions.GoToPoint(aux.Point(), 0)
     # print(1)
     # blockEnemyR(field, actions, 6, field.enemies[1].get_pos())
-    block2EnemyRs(staticVariables, field, actions, myConst.idFirstAttacker, myConst.idSecondAttacker)
+    block2EnemyRs(staticVariables, field, actions, myConst.idFirstAttacker, myConst.idSecondAttacker, reverse=True)
     # doPassNearAllly(field, actions)
     # findPointForScore(field, draw=True)
     # actions[staticVariables.idFirstAttacker] = Actions.Kick(field.enemy_goal.center)

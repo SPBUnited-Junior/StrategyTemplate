@@ -20,24 +20,25 @@ from bridge.strategy.myFunc import (
     isBallOnOurPartOfField
 )
 
-def blockEnemyR(field: fld.Field, actions: list[Optional[Action]], idxThisR: int, posEnemyRForBlock: aux.Point)->None:
-    pointGo = aux.point_on_line(field.ball.get_pos(), posEnemyRForBlock, myConst.distToBlockEnemyPass)
+def blockEnemyR(field: fld.Field, actions: list[Optional[Action]], idxThisR: int, posEnemyRForBlock: aux.Point, reverse: bool = False)->None:
+    if not reverse:
+        pointGo = aux.point_on_line(field.ball.get_pos(), posEnemyRForBlock, myConst.distToBlockEnemyPass)
+    else:
+        pointGo = aux.point_on_line(posEnemyRForBlock, field.ball.get_pos(), myConst.distToBlockEnemyPass)
     actions[idxThisR] = Actions.GoToPoint(pointGo, (field.allies[idxThisR].get_pos() - posEnemyRForBlock).arg()).compose(DribblerActions.SetDribblerSpeed(15))
 
-def block2EnemyRs(staticVariables: ClassWithMyStaticVariables, field: fld.Field, actions: list[Optional[Action]], idxThisR: int, idxOtherAttacker: int)->None:
+def block2EnemyRs(staticVariables: ClassWithMyStaticVariables, field: fld.Field, actions: list[Optional[Action]], idxThisR: int, idxOtherAttacker: int, reverse: bool = True)->None:
     enemies = field.active_enemies(False)
     thisAttackerRPos = field.allies[idxThisR].get_pos()
     otherAttackerRPos = field.allies[idxOtherAttacker].get_pos()
     nearest2ThisREnemy = fld.find_nearest_robot(thisAttackerRPos, enemies)
     nearest2OtherREnemy = fld.find_nearest_robot(otherAttackerRPos, enemies)
-    if nearest2ThisREnemy.r_id != nearest2OtherREnemy:
-        print(1)
-        blockEnemyR(field, actions, idxThisR, nearest2ThisREnemy.get_pos())
-        blockEnemyR(field, actions, idxOtherAttacker, nearest2OtherREnemy.get_pos())
+    if nearest2ThisREnemy.r_id != nearest2OtherREnemy.r_id:
+        blockEnemyR(field, actions, idxThisR, nearest2ThisREnemy.get_pos(), reverse)
+        blockEnemyR(field, actions, idxOtherAttacker, nearest2OtherREnemy.get_pos(), reverse)
     else:
-        print(2)
-        blockEnemyR(field, actions, idFirstAttacker, enemies[0].get_pos())
-        blockEnemyR(field, actions, idSecondAttacker, enemies[1].get_pos())
+        blockEnemyR(field, actions, idFirstAttacker, enemies[0].get_pos(), reverse)
+        blockEnemyR(field, actions, idSecondAttacker, enemies[1].get_pos(), reverse)
 
 def updates(staticVariables: ClassWithMyStaticVariables, field: fld.Field, actions: list[Optional[Action]], showTimerPass: bool, showIdsPass: bool)->None:
     """update variables for succesfull launch of programm"""
@@ -451,7 +452,7 @@ def attacker(
                         """if not this r nearest to ally GK"""
                         status += "if not this r nearest to ally GK"
                         """!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! NOT FINISHED !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"""
-            elif nearestRToBall == field.enemies[const.GK]:
+            elif nearestRToBall == field.enemies[const.ENEMY_GK]:
                 """if nearest r to ball is enemy GK"""
                 status = "if nearest r to ball is enemy GK"
                 dist2BallFromThisR = aux.dist(ballPos, thisR.get_pos())
@@ -469,6 +470,8 @@ def attacker(
                     actions[idxThisR] = Actions.BallGrab((ballPos - field.enemy_goal.center).arg())
                 elif len(enemies) == 3:
                     """block 2 enemy's attackers"""
+                    status += "block 2 enemy's attackers"
+                    block2EnemyRs(staticVariables, field, actions, idxThisR, idxOtherAttacker)
                 elif len(enemies) == 1:
                     """if enemies have only GK"""
                     status += "enemies have only GK"

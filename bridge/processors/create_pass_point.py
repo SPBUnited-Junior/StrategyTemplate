@@ -82,7 +82,7 @@ class ExplorePasses(BaseProcessor):
                 quality = self.quality_point(field, cand)
                 red = int(255 * (1 - quality))
                 green = int(255 * quality)
-                self.image.draw_circle(cand, (red, green, 0))
+                self.image.draw_circle(cand, (red, green, 0), 35)
                 points.append((quality, cand))
         points.sort(key=lambda x: x[0])
         points.reverse()
@@ -168,9 +168,9 @@ class ExplorePasses(BaseProcessor):
             up: aux.Point = aux.Point(goal_point.x, goal_point.y + size / 2)
 
             open_angle = abs(aux.wind_down_angle(aux.get_angle_between_points(down, point, up)))
-            max_angle = 0.9 #abs(aux.wind_down_angle(aux.get_angle_between_points(field.enemy_goal.center_down, ball, field.enemy_goal.center_up)))
+            max_angle = 1 #abs(aux.wind_down_angle(aux.get_angle_between_points(field.enemy_goal.center_down, ball, field.enemy_goal.center_up)))
             goal_thread_raw = open_angle / max_angle
-            x = min(max(-50, (-8 * (goal_thread_raw - 0.2))), 50)
+            x = min(max(-50, (-14 * (goal_thread_raw - 0.2))), 50)
             P_goal = 1 / (1 + math.e ** x)
 
 

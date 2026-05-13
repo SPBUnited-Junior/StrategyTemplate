@@ -341,29 +341,10 @@ class Strategy:
         enemy_nearest_robot = fld.find_nearest_robot(self.ball, field.active_enemies(False))
         ally_dist = aux.dist(ally_nearest_robot.get_pos(), self.ball)
         enemy_dist = aux.dist(enemy_nearest_robot.get_pos(), self.ball)
+        dist_between_enemy_robots = 0
+        for rbt in 
 
         robot = ally_nearest_robot
-
-        flag = False
-        for rbt in field.active_allies(False):
-            if (field.check_cath_ball(rbt.get_pos())):
-                flag = True
-
-        if (flag and field.is_ball_not_in_robot()):
-            for rbt in field.active_allies(False):
-                Pass.push(rbt)
-        else:
-
-            if (robot.r_id == const.GK):
-                for rbt in field.active_allies(False):
-                    Pass.push(rbt)
-            else:
-                for rbt in field.active_allies(False):
-
-                    if (rbt != robot):
-                        Pass.push(rbt)
-
-                Attacker.push(robot)
 
         # flag = False
         # for rbt in field.active_allies(False):
@@ -373,54 +354,48 @@ class Strategy:
         # if (flag and field.is_ball_not_in_robot()):
         #     for rbt in field.active_allies(False):
         #         Pass.push(rbt)
+        # else:
 
-
-        # elif (ally_dist <= enemy_dist or ally_dist < 200):
-        #     robot = ally_nearest_robot
-        #     if (robot is None):
-        #         raise ValueError("field.is_ball_in_ally_robot() and field.in_robot_with_ball() is None")
         #     if (robot.r_id == const.GK):
         #         for rbt in field.active_allies(False):
         #             Pass.push(rbt)
         #     else:
         #         for rbt in field.active_allies(False):
+
         #             if (rbt != robot):
-        #                 print("push pass")
         #                 Pass.push(rbt)
 
         #         Attacker.push(robot)
 
-        # else:
-        #     robot = ally_nearest_robot
-        #     if (robot is None):
-        #         raise ValueError("field.is_ball_in_ally_robot() and field.in_robot_with_ball() is None")
-        #     if (robot.r_id == const.GK):
-        #         for rbt in field.active_allies(False):
-        #             Block.push(rbt)
-        #     else:
+        flag = False
+        for rbt in field.active_allies(False):
+            if (field.check_cath_ball(rbt.get_pos())):
+                flag = True
 
-        #         if ((self.ball.x < 0) == (field.enemy_goal.center.x < 0)):
-        #             Attacker.push(robot)
-        #         else:
-        #             Defer.push(robot)
+        if (flag and field.is_ball_not_in_robot()):
+            for rbt in field.active_allies(False):
+                Pass.push(rbt)
 
-        #         for rbt in field.active_allies(False):
-        #             if (rbt == robot):
-        #                 continue
-        #             if ((self.ball.x < 0) == (field.enemy_goal.center.x < 0)):
-        #                 if (rbt != robot):
-        #                     Block.push(rbt)
-        #             else:
-        #                 if (rbt != robot):
-        #                     Block.push(rbt)
+        else:
+            if (aux.dist(field.ally_goal.center, field.ball.get_pos()) < 1200):
+                Defer.push(ally_nearest_robot)
+                for rbt in field.active_allies(False):
+                    if rbt == ally_nearest_robot: continue
+                    Block.push(rbt)
+            elif (enemy_dist - ally_dist < 100):
+                Attacker.push(ally_nearest_robot)   
+                for rbt in field.active_allies(False):
+                    if rbt == ally_nearest_robot: continue
+                    Pass.push(rbt)
             
+            elif():
+
         
-        # Block.process()
-        # Pass.process()
-        # Defer.process()
-        # Attacker.process()
-        #actions[5] = KickActions.Turn_Kick(field.enemy_goal.center, 3, 12)
-        # field.strategy_image.draw_circle(self.ball, (0, 0, 0), 7)
+        Block.process()
+        Pass.process()
+        Defer.process()
+        Attacker.process()
+        field.strategy_image.draw_circle(self.ball, (0, 0, 0), 7)
         #actions[2] = KickActions.Straight(field.enemy_goal.center, 15)
         print(field.ball.get_vel().mag())
 

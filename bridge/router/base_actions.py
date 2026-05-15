@@ -17,6 +17,10 @@ from bridge.strategy.strategy import GameStates
 timer_to_stop : float = 0
 old_speed_for_turn : float = const.START_VEL_TURN
 flag_ball_in_turn : bool = False
+old_speed_a_for_turn : float = 0
+timer : float = time()
+old_actions_angle: float = 0
+old_speed_for_turn_stop : float = 0
 
 class Actions:
     """Class with all user-available actions (except kicks)"""
@@ -208,13 +212,56 @@ class Actions:
             current_action.vel = transl_vel
             current_action.angle = self.target_angle
 
-            current_action.dribbler_speed = 15
+            current_action.dribbler_speed = 10
 
         def use_behavior_of(self, domain: ActionDomain, current_action: ActionValues) -> list["Action"]:
             ball_pos = domain.field.ball.get_pos()
             align_pos = ball_pos - aux.rotate(aux.RIGHT, self.target_angle) * const.GRAB_ALIGN_DIST
             ignore_ball = len(aux.line_circle_intersect(domain.robot.get_pos(), align_pos, ball_pos, const.ROBOT_R, "S")) < 2
             return [Actions.GoToPoint(align_pos, self.target_angle, True, ignore_ball)]
+
+    class Turn2(Action):
+        """""" 
+        def __init__(self, target_angle: float, start_angle: float) -> None:
+            self.target_angle = target_angle
+            self.start_angle = start_angle
+
+        def is_defined(self, domain: ActionDomain) -> bool:
+            return (domain.field.is_ball_in_turn(domain.robot) and flag_ball_in_turn
+                and abs(aux.wind_down_angle(domain.robot.get_angle() - self.target_angle)) >= const.KICK_ALIGN_ANGLE + 0.1)
+
+        def behavior(self, domain: ActionDomain, current_action: ActionValues) -> None:
+            global old_speed_a_for_turn
+            global flag_ball_in_turn
+            global timer
+            global old_actions_angle
+            if domain.field.is_ball_in_turn(domain.robot) and flag_ball_in_turn:
+                MAX_ANGLE_SPEED = 1.3
+
+                delta_t = time() - timer
+                timer = time()
+
+                delta_angle = abs(aux.wind_down_angle(self.target_angle - domain.robot.get_angle()))
+                if (delta_angle < 0.3):
+                    if aux.wind_down_angle(self.target_angle - domain.robot.get_angle()) >= 0:
+                        speed_a = max(old_speed_a_for_turn + 0.003, 0) 
+                    else:
+                        speed_a = min(old_speed_a_for_turn - 0.003, 0)
+                else:
+                    if aux.wind_down_angle(self.target_angle - domain.robot.get_angle()) < 0:
+                        speed_a = min(old_speed_a_for_turn - 0.003, 0.2) 
+                    else:
+                        speed_a = max(old_speed_a_for_turn + 0.003, -0.2)
+                current_action.beep = 1
+                current_action.dribbler_speed = 12
+                current_action.angle = max(min(old_actions_angle + speed_a, MAX_ANGLE_SPEED), -MAX_ANGLE_SPEED)
+                old_actions_angle = max(min(old_actions_angle + speed_a, MAX_ANGLE_SPEED), -MAX_ANGLE_SPEED)
+
+                speed = const.MAX_SPEED / 1.3 * abs(old_actions_angle)
+                current_action.vel = aux.Point(int(speed), 0)
+                print(speed, "angles")
+            else:
+                old_speed_a_for_turn = const.START_VEL_TURN
 
     class Turn(Action):
         """""" 
@@ -232,7 +279,7 @@ class Actions:
             if domain.field.is_ball_in_turn(domain.robot) and flag_ball_in_turn:
                 speed_a = 4.8
                 delta_angle = abs(aux.wind_down_angle(self.target_angle - domain.robot.get_angle()))
-                speed: float = min(const.VEL_TURN_MAX, old_speed_for_turn + speed_a, delta_angle * 800)
+                speed: float = min(const.VEL_TURN_MAX, old_speed_for_turn + speed_a, delta_angle * 600)
                 angle_speed : float = const.ANGLE_VEL_MAX * speed / const.VEL_TURN_MAX
                 old_speed_for_turn = speed
                 print("Turn", delta_angle, speed, angle_speed)
@@ -243,8 +290,8 @@ class Actions:
                 else:
                     current_action.angle = angle_speed
                 current_action.beep = 1
-                current_action.dribbler_speed = 15
-                print(domain.robot.get_anglevel(), "angles")
+                current_action.dribbler_speed = 10
+                print(speed, "angles")
             else:
                 old_speed_for_turn = const.START_VEL_TURN
 
@@ -264,7 +311,7 @@ class Actions:
             self.dribbler_speed = dribbler_speed    
 
         def behavior(self, domain: ActionDomain, current_action: ActionValues) -> None:
-            current_action.vel = aux.Point(0, 0)    
+            current_action.vel = aux.Point(100, 0)    
             current_action.angle = self.angular_speed   
             current_action.dribbler_speed = self.dribbler_speed 
             current_action.beep = 1
@@ -301,9 +348,9 @@ class Actions:
             self.target_angle = target_angle
 
         def behavior(self, domain: ActionDomain, current_action: ActionValues) -> None:
-                global old_speed_for_turn
-                speed = max(old_speed_for_turn - 2, 0)
-                old_speed_for_turn = speed
+                global old_speed_for_turn_stop
+                speed = max(old_speed_for_turn_stop - 3, 0)
+                old_speed_for_turn_stop = speed
                 current_action.angle = self.target_angle
                 current_action.beep = 0
                 current_action.vel = aux.rotate(aux.Point(150, 0), domain.robot.get_angle())
@@ -355,6 +402,7 @@ class Actions:
 
 
 class KickActions:
+
     """Class with available types of ball kicks"""
 
     class Kick(Action):
@@ -395,6 +443,68 @@ class KickActions:
 
             return actions
         
+    class Turn_Kick2(Kick):
+        def __init__(
+            self,
+            target_pos: aux.Point,
+            start_angle: float,
+            voltage: int = const.VOLTAGE_SHOOT,
+            flag_kick_pas: bool = False, 
+            is_pass: bool = False,
+            is_upper: bool = False,
+        ) -> None:
+            self.start_angle = start_angle
+            self.flag_kick_pas = flag_kick_pas
+
+            super().__init__(target_pos, voltage, is_pass, is_upper) 
+
+        """Grab the ball, rotates to the desired angle and kick it straight"""
+        def use_behavior_of(self, domain: ActionDomain, current_action: ActionValues) -> list["Action"]:
+            global old_speed_a_for_turn
+            global timer_to_stop
+            global flag_ball_in_turn
+            global old_speed_for_turn_stop
+            kick_angle = aux.angle_to_point(domain.field.ball.get_pos(), self.target_pos)
+            target_angle = (self.target_pos - domain.field.ball.get_pos()).arg()
+            time_to_kick = 0.5 + 0.3 * self.flag_kick_pas
+            diff =  abs(aux.wind_down_angle((target_angle - domain.robot.get_angle())))
+
+            actions = [
+                Actions.BallGrab(self.start_angle),
+                Actions.Turn2(kick_angle, self.start_angle),
+                DumbActions.ControlVoltageAction(self.voltage, self.pass_pos)
+            ]
+            if(domain.field.is_ball_in(domain.robot)) :
+                flag_ball_in_turn = True
+
+            if (not domain.field.is_ball_in_turn(domain.robot)):
+                flag_ball_in_turn = False
+                old_speed_a_for_turn = 0
+                old_speed_for_turn_stop = 600
+
+                
+            if (not domain.field.is_ball_in_turn(domain.robot) and flag_ball_in_turn
+                or diff > const.KICK_ALIGN_ANGLE + 0.1):
+                timer_to_stop = time()
+
+            # if (domain.field.is_ball_in_turn(domain.robot) and flag_ball_in_turn
+            #     and diff <= const.KICK_ALIGN_ANGLE + 0.15):
+            #     print("Correct")
+            #     actions.append(Actions.Correct(target_angle))
+
+            if (domain.field.is_ball_in_turn(domain.robot) and flag_ball_in_turn
+                and diff <= const.KICK_ALIGN_ANGLE + 0.1
+                and time() - timer_to_stop > time_to_kick):
+                actions.append(DumbActions.ShootAction(self.target_pos, self.is_upper))
+
+            print(domain.field.ball.get_pos(), "ball")
+            if domain.field.is_ball_in_turn(domain.robot) and flag_ball_in_turn:
+                print(time() - timer_to_stop, abs(aux.wind_down_angle(target_angle - domain.robot.get_angle())), "this")
+            else:
+                print(domain.field.is_ball_in_turn(domain.robot))
+                print((domain.robot.get_pos() - domain.field.ball.get_pos()).mag(), abs(aux.wind_down_angle((domain.field.ball.get_pos() - domain.robot.get_pos()).arg() - domain.robot.get_angle())))
+            return actions
+        
     class Turn_Kick(Kick):
         def __init__(
             self,
@@ -415,9 +525,10 @@ class KickActions:
             global old_speed_for_turn
             global timer_to_stop
             global flag_ball_in_turn
+            global old_speed_for_turn_stop
             kick_angle = aux.angle_to_point(domain.field.ball.get_pos(), self.target_pos)
             target_angle = (self.target_pos - domain.field.ball.get_pos()).arg()
-            time_to_kick = 0.6 + 0.3 * self.flag_kick_pas
+            time_to_kick = 0.4 + 0.3 * self.flag_kick_pas
             diff =  abs(aux.wind_down_angle((target_angle - domain.robot.get_angle())))
 
             actions = [
@@ -431,6 +542,7 @@ class KickActions:
             if (not domain.field.is_ball_in_turn(domain.robot)):
                 flag_ball_in_turn = False
                 old_speed_for_turn = const.START_VEL_TURN
+                old_speed_for_turn_stop = 200
 
                 
             if (not domain.field.is_ball_in_turn(domain.robot) and flag_ball_in_turn
@@ -438,7 +550,7 @@ class KickActions:
                 timer_to_stop = time()
 
             if (domain.field.is_ball_in_turn(domain.robot) and flag_ball_in_turn
-                and diff <= const.KICK_ALIGN_ANGLE + 0.2):
+                and diff <= const.KICK_ALIGN_ANGLE + 0.15):
                 print("Correct")
                 actions.append(Actions.Correct(target_angle))
 
@@ -532,9 +644,9 @@ def get_pass_voltage(length: float) -> int:
     """Calc voltage for pass by length"""
     if const.IS_SIMULATOR_USED:
         # TODO fix control decoder
-        return int(aux.minmax(0.0011 * length + 1.2, 7, const.VOLTAGE_SHOOT))
-    print(int(aux.minmax(0.004 * length + 2.7, 6, const.VOLTAGE_SHOOT)))
-    return int(aux.minmax(0.004 * length + 2.7, 6, const.VOLTAGE_SHOOT))
+        return int(aux.minmax(0.0011 * length + 1.2, 5, const.VOLTAGE_SHOOT))
+    print(int(aux.minmax(0.003 * length + 2.0, 6, const.VOLTAGE_SHOOT)))
+    return int(aux.minmax(0.003 * length + 2.0, 6, const.VOLTAGE_SHOOT))
 
 
 def get_grab_speed(

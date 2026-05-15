@@ -67,8 +67,8 @@ class ExplorePasses(BaseProcessor):
         """
         maxim = 0.0
         points: list[tuple[float, aux.Point]] = []
-        for x in range(-const.FIELD_DX + 200, const.FIELD_DX - 200, 50):
-            for y in range(-const.FIELD_DY + 200, const.FIELD_DY - 100, 50):
+        for x in range(-const.FIELD_DX + 200, const.FIELD_DX - 200, 200):
+            for y in range(-const.FIELD_DY + 200, const.FIELD_DY - 100, 200):
                 if abs(x) > 2250:
                     continue
                 if abs(y) > 1500:

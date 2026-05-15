@@ -61,7 +61,7 @@ ENEMY_GK: int = get_from_env("ENEMY_GK", int)
 
 
 SELF_PLAY = False
-DEBUG_HALF = 0  # 1 = +x, -1 = -x, 0 = not debug
+DEBUG_HALF = -1  # 1 = +x, -1 = -x, 0 = not debug
 
 
 ROBOTS_MAX_COUNT: int = 32
@@ -192,7 +192,7 @@ KICK_ALIGN_OFFSET = 40
 GRAB_AREA = GRAB_ALIGN_DIST
 # GRAB_DIST = 45  # 30 is good
 GRAB_DIST = 50
-GRAB_MULT = 6  # speed = dist * mult
+GRAB_MULT = 5  # speed = dist * mult
 GRAB_OFFSET_ANGLE = 0.25
 
 #check_catch_ball
@@ -219,13 +219,13 @@ MIN_DIST_TO_GOAL = 400
 
 #turn Kick
 START_VEL_TURN = 50
-MAX_SPPED_A = 1.3
-VEL_TURN_MAX = 1000
-ANGLE_VEL_MAX = 0.9
+MAX_SPPED_A = 1.4
+VEL_TURN_MAX = 700
+ANGLE_VEL_MAX = 0.7
 BALL_GRABBED_DIST_TURN = 130
 
 # VOLTAGES
-VOLTAGE_SHOOT = 11
+VOLTAGE_SHOOT = 10
 VOLTAGE_UP = 13
 VOLTAGE_ZERO = 8
 

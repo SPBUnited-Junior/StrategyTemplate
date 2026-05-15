@@ -16,5 +16,3 @@ class Robot_Status(Enum):
     Kick_in_goal_hull = 5
     
 kick_status: list[Enum] = [Robot_Status.Not_Kick] * 15
-
-

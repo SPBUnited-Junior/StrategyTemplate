@@ -61,7 +61,7 @@ ENEMY_GK: int = get_from_env("ENEMY_GK", int)
 
 
 SELF_PLAY = False
-DEBUG_HALF = -1  # 1 = +x, -1 = -x, 0 = not debug
+DEBUG_HALF = 0  # 1 = +x, -1 = -x, 0 = not debug
 
 
 ROBOTS_MAX_COUNT: int = 32
@@ -220,8 +220,8 @@ MIN_DIST_TO_GOAL = 400
 #turn Kick
 START_VEL_TURN = 0
 MAX_SPPED_A = 1.4
-VEL_TURN_MAX = 230
-ANGLE_VEL_MAX = 0.3
+VEL_TURN_MAX = 700
+ANGLE_VEL_MAX = 0.9
 BALL_GRABBED_DIST_TURN = 130
 
 # VOLTAGES

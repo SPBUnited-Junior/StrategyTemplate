@@ -102,7 +102,7 @@ class Role:
                 """
                 Если робот захватил мяч и бьет пасс с Turn
                 """
-                self.actions[self.attacker.r_id] = KickActions.Turn_Kick(optimal_point, angle_nearest_robot, voltage)
+                self.actions[self.attacker.r_id] = KickActions.Turn_Kick(optimal_point, angle_nearest_robot, voltage, True)
 
             else:
                 """
@@ -148,150 +148,187 @@ class Role:
             #print(kick_status[self.attacker.r_id])
 
 
-    class Goalkeper:
-    
-        def __init__(self, 
-                field: fld.Field,
-                actions: list[Optional[Action]],
-            ) -> None:
-            
-            self.actions: list[Optional[Action]] = actions
-            self.field: fld.Field = field
-            self.goalkeeper: rbt.Robot = field.allies[const.GK]
-            
-            # Параметры движения вратаря (только по Y, строго по центру)
-            self.sweep_distance = 100  # Расстояние от центра вверх/вниз
-            self.sweep_speed = 500     # Скорость движения
-            self.last_sweep_change = 0.0
-        
-        def process(self) -> None:
-            current_time = time()
+    class Goalkeper(Basic_Role):
+
+        def __init__(
+            self,
+            field: fld.Field,
+            actions: list[Optional[Action]],
+        ) -> None:
+            super().__init__(field, actions)
+            self.gk_id: int = field.gk_id
+            self.goalkeeper: rbt.Robot = field.allies[self.gk_id]
+            self.points_on_arc: list[aux.Point] = []
+            self.current_point_idx: int = 0
+            self.direction: int = 1
+            self.defend_mode: bool = True
+            self.center: aux.Point = aux.Point(0, 0)
+            self.radius: float = 0
+            self.start_angle: float = 0
+            self.end_angle: float = 0
+            self.arc_points()
+
+        def arc_points(self, num_points: int = 30) -> None:
+            g = self.field.ally_goal
+
+            self.center = (g.up + g.down) / 2
+
+            self.radius = aux.dist(self.center, g.frw)
+
+            field_direction = g.eye_forw
+
+            center_angle = field_direction.arg()
+
+            self.start_angle = center_angle - math.pi / 2
+            self.end_angle = center_angle + math.pi / 2
+
+            self.points_on_arc = []
+            for i in range(num_points + 1):
+                t = i / num_points
+                angle = self.start_angle + (self.end_angle - self.start_angle) * t
+
+                x = self.center.x + self.radius * math.cos(angle)
+                y = self.center.y + self.radius * math.sin(angle)
+
+                self.points_on_arc.append(aux.Point(x, y))
+        def defend_position(self, ball_pos: aux.Point) -> aux.Point:
+            goal_center = self.field.ally_goal.center
+
+            ball_dir = ball_pos - goal_center
+            if ball_dir.mag() < 0.1:
+                ball_dir = aux.Point(1, 0)
+            else:
+                ball_dir = ball_dir.unity()
+
+            target_angle = ball_dir.arg()
+            target_angle = aux.wind_down_angle(target_angle)
+
+            best_point = None
+            min_angle_diff = float('inf')
+
+            for point in self.points_on_arc:
+                point_angle = (point - self.center).arg()
+                point_angle = aux.wind_down_angle(point_angle)
+
+                diff = abs(aux.wind_down_angle(point_angle - target_angle))
+                if diff < min_angle_diff:
+                    min_angle_diff = diff
+                    best_point = point
+
+            if best_point is None:
+                best_point = self.points_on_arc[len(self.points_on_arc) // 2]
+
+            self.field.strategy_image.draw_line(goal_center, ball_pos, (255, 255, 0), 2)
+            self.field.strategy_image.draw_line(goal_center, best_point, (0, 255, 255), 2)
+            self.field.strategy_image.draw_circle(best_point, (255, 0, 0), 20)
+
+            return best_point
+
+        def patrol_position(self) -> aux.Point:
+            if not self.points_on_arc:
+                return self.field.ally_goal.center
+
+            target_pos = self.points_on_arc[self.current_point_idx]
+
             robot_pos = self.goalkeeper.get_pos()
-            voltage_kik = 5
-            robot_position_goalkeeper = self.goalkeeper.get_pos()
-            robot_position_goalkeeper_enemy = self.field.enemies[const.ENEMY_GK].get_pos()
-            ball = aux.Point(self.field.ball.get_pos().x, self.field.ball.get_pos().y)
-    
-            g_up_xy_goal = self.field.enemy_goal.up - self.field.enemy_goal.eye_up * 40
-            g_down_xy_goal = self.field.enemy_goal.down + self.field.enemy_goal.eye_up * 40
-    
-            up_goal = (g_up_xy_goal - robot_position_goalkeeper_enemy).mag()
-            down_goal = (robot_position_goalkeeper_enemy + g_down_xy_goal).mag()
-    
-            if up_goal > down_goal:
-                goal_position_gates = g_up_xy_goal
-            else:
-                goal_position_gates = g_down_xy_goal
-            
-            angle_goal_ball = (goal_position_gates - robot_position_goalkeeper).arg()
-    
-            # Определяем позицию для вратаря
-            if self.field.ball_start_point is not None:
-                goal_position = aux.closest_point_on_line(self.field.ball_start_point, ball, robot_position_goalkeeper, "R")
-            else:
-                goal_position = self.field.ally_goal.center
-    
-            position_goal = (aux.is_point_inside_poly(goal_position, self.field.ally_goal.hull) and self.field.ball.get_vel().mag() > 50)
+            if aux.dist(robot_pos, target_pos) < 50:
+                self.current_point_idx += self.direction
 
-            if position_goal == False:
-                # Центр ворот
-                center_x = self.field.ally_goal.center.x
-                center_y = self.field.ally_goal.center.y
-                elapsed = current_time - self.last_sweep_change
-                t = (elapsed * self.sweep_speed / self.sweep_distance) % 4
-                if t < 2:
-                    # Движение вверх
-                    offset = -self.sweep_distance + (t / 2) * (2 * self.sweep_distance)
-                else:
-                    # Движение вниз
-                    offset = self.sweep_distance - ((t - 2) / 2) * (2 * self.sweep_distance)
-                
-                # Целевая позиция
-                goal_position = aux.Point(center_x, center_y + offset)
-                angle_goalkeeper = (ball - robot_position_goalkeeper).arg()
-                
-                self.actions[const.GK] = Actions.GoToPoint(goal_position, angle_goalkeeper)
-                kick_status[const.GK] = Robot_Status.Not_Kick
-                
-                self.field.strategy_image.draw_circle(goal_position, (255, 0, 0), 5)
-                self.field.strategy_image.draw_line(
-                    aux.Point(center_x, center_y - self.sweep_distance),
-                    aux.Point(center_x, center_y + self.sweep_distance),
-                    (0, 255, 0),
-                    3
-                )
-                # Отмечаем центр ворот
-                self.field.strategy_image.draw_circle(aux.Point(center_x, center_y), (255, 255, 0), 5)
-                
-            else:
-                # Обычное движение к позиции
-                angle_goalkeeper = (ball - robot_position_goalkeeper).arg()
-                kick_status[const.GK] = Robot_Status.Not_Kick
-                self.actions[const.GK] = Actions.GoToPoint(goal_position, angle_goal_ball)
-            
-            # Удары по мячу
-            if self.field.is_ball_stop_near_goal():
-                kick_status[const.GK] = Robot_Status.Kick_in_goal_hull
-                self.actions[const.GK] = KickActions.Straight(goal_position_gates, voltage_kik, False, True)
-            
-            if self.field.is_ball_in(self.field.allies[const.GK]):
-                kick_status[const.GK] = Robot_Status.Kick_in_goal_hull
-                self.actions[const.GK] = KickActions.Straight(goal_position_gates, voltage_kik, False, True)
-    
-    
-            position_goal = (aux.is_point_inside_poly(goal_position, self.field.ally_goal.hull) and self.field.ball.get_vel().mag() > 100)
-    
-            # Логика движения вверх-вниз по ЦЕНТРУ ворот (автоматическое переключение направления)
-            if position_goal == False:
-                # Центр ворот
-                center_x = self.field.ally_goal.center.x
-                center_y = self.field.ally_goal.center.y
-                
-                # Используем синусоидальное движение для автоматической смены направления
-                # Вычисляем позицию на основе времени
-                elapsed = current_time - self.last_sweep_change
-                # Движение от -sweep_distance до +sweep_distance и обратно
-                t = (elapsed * self.sweep_speed / self.sweep_distance) % 4
-                if t < 2:
-                    # Движение вверх
-                    offset = -self.sweep_distance + (t / 2) * (2 * self.sweep_distance)
-                else:
-                    # Движение вниз
-                    offset = self.sweep_distance - ((t - 2) / 2) * (2 * self.sweep_distance)
-                
-                # Целевая позиция
-                goal_position = aux.Point(center_x, center_y + offset)
-                
-                # Угол движения к мячу
-                angle_goalkeeper = (ball - robot_position_goalkeeper).arg()
-                
-                # Движение к целевой точке
-                self.actions[const.GK] = Actions.GoToPoint(goal_position, angle_goalkeeper)
-                
-                # Визуализация для отладки
-                self.field.strategy_image.draw_circle(goal_position, (255, 0, 0), 5)
-                # Рисуем вертикальную линию по центру ворот
-                self.field.strategy_image.draw_line(
-                    aux.Point(center_x, center_y - self.sweep_distance),
-                    aux.Point(center_x, center_y + self.sweep_distance),
-                    (0, 255, 0),
-                    3
-                )
-                # Отмечаем центр ворот
-                self.field.strategy_image.draw_circle(aux.Point(center_x, center_y), (255, 255, 0), 5)
-                
-            else:
-                # Обычное движение к позиции
-                angle_goalkeeper = (ball - robot_position_goalkeeper).arg()
-                self.actions[const.GK] = Actions.GoToPoint(goal_position, angle_goal_ball)
-            
-            # Удары по мячу
-            if self.field.is_ball_stop_near_goal():
-                self.actions[const.GK] = KickActions.Straight(goal_position_gates, voltage_kik, False, True)
-            
-            if self.field.is_ball_in(self.field.allies[const.GK]):
-                self.actions[const.GK] = KickActions.Straight(goal_position_gates, voltage_kik, False, True)
+                if self.current_point_idx >= len(self.points_on_arc):
+                    self.current_point_idx = len(self.points_on_arc) - 2
+                    self.direction = -1
+                elif self.current_point_idx < 0:
+                    self.current_point_idx = 1
+                    self.direction = 1
 
+            return target_pos
+
+        def process(self) -> None:
+            if not self.points_on_arc:
+                self.arc_points()
+                return
+
+            ball_pos = self.field.ball.get_pos()
+            ball_vel = self.field.ball.get_vel()
+            ball_speed = ball_vel.mag()
+            robot_pos = self.goalkeeper.get_pos()
+
+            dist_to_goal = aux.dist(ball_pos, self.field.ally_goal.center)
+            voltage_kick = 12
+            kick_target = self.field.enemy_goal.center
+
+            ball_in_robot = self.field.is_ball_in_ally_robot()
+            ball_near_goal = aux.is_point_inside_poly(ball_pos, self.field.ally_goal.hull)
+            ball_stopped_near_goal = self.field.is_ball_stop_near_goal()
+
+            if ball_in_robot and ball_near_goal:
+                self.actions[self.gk_id] = KickActions.Straight(kick_target, voltage_kick, False, True)
+                kick_status[self.gk_id] = Robot_Status.Kick_in_goal_hull
+                self.field.strategy_image.draw_circle(robot_pos, (255, 0, 0), 30)
+                return
+
+            if ball_stopped_near_goal:
+                g_up_xy_goal = self.field.enemy_goal.up - self.field.enemy_goal.eye_up * 40
+                g_down_xy_goal = self.field.enemy_goal.down + self.field.enemy_goal.eye_up * 40
+
+                up_goal = aux.dist(g_up_xy_goal, self.field.enemies[self.field.enemy_gk_id].get_pos())
+                down_goal = aux.dist(self.field.enemies[self.field.enemy_gk_id].get_pos(), g_down_xy_goal)
+
+                if up_goal > down_goal:
+                    kick_target = g_up_xy_goal
+                else:
+                    kick_target = g_down_xy_goal
+
+                self.actions[self.gk_id] = KickActions.Straight(kick_target, voltage_kick, False, True)
+                kick_status[self.gk_id] = Robot_Status.Kick_in_goal_hull
+                self.field.strategy_image.draw_circle(robot_pos, (255, 165, 0), 30)
+                return
+
+            if dist_to_goal > 2000 and ball_speed < 100:
+                self.defend_mode = False
+            else:
+                self.defend_mode = True
+
+            if self.defend_mode:
+                target_pos = self.defend_position(ball_pos)
+
+                if ball_speed > 200:
+                    time_to_ball = aux.dist(robot_pos, ball_pos) / max(ball_speed, 0.1)
+                    predicted_ball = ball_pos + ball_vel * min(time_to_ball, 0.5)
+                    target_pos = self.defend_position(predicted_ball)
+                    self.field.strategy_image.draw_circle(predicted_ball, (255, 165, 0), 15)
+            else:
+                target_pos = self.patrol_position()
+
+            angle_to_ball = (ball_pos - robot_pos).arg()
+
+            self.actions[self.gk_id] = Actions.GoToPoint(target_pos, angle_to_ball)
+            kick_status[self.gk_id] = Robot_Status.Not_Kick
+
+            self.field.strategy_image.draw_circle(target_pos, (0, 255, 255), 15)
+            self.zone()
+
+        def zone(self) -> None:
+            if not self.points_on_arc:
+                return
+
+            g = self.field.ally_goal
+            self.field.strategy_image.draw_circle(g.up, (0, 255, 0), 8)
+            self.field.strategy_image.draw_circle(g.down, (0, 255, 0), 8)
+            self.field.strategy_image.draw_circle(g.frw, (255, 0, 0), 8)
+            self.field.strategy_image.draw_circle(g.center, (255, 255, 0), 8)
+            self.field.strategy_image.draw_circle(self.center, (255, 0, 255), 10)
+
+            last_point = None
+            for point in self.points_on_arc:
+                self.field.strategy_image.draw_circle(point, (0, 200, 0), 4)
+                if last_point is not None:
+                    self.field.strategy_image.draw_line(last_point, point, (0, 200, 0), 2)
+                last_point = point
+
+            goal_center = self.field.ally_goal.center
+            for point in self.points_on_arc[::5]:
+                self.field.strategy_image.draw_line(goal_center, point, (100, 100, 100), 1)
     class Block_Enemy_Pass(Basic_Role):
 
         def push(self, robot: rbt.Robot) -> None:

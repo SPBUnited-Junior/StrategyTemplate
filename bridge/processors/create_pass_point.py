@@ -74,9 +74,9 @@ class ExplorePasses(BaseProcessor):
                 if abs(y) > 1500:
                     continue 
                 cand = aux.Point(x, y)
-                # if ((const.GOAL_DX - const.GOAL_PEN_DX) - abs(cand.x) < 500) and (abs(cand.y) - abs(const.GOAL_PEN_DY / 2) < 500):
-                #     cond = 0
-                #     continue
+                if ((const.GOAL_DX - const.GOAL_PEN_DX) - abs(cand.x) < 250) and (abs(cand.y) - abs(const.GOAL_PEN_DY / 2) < 250):
+                    cond = 0
+                    continue
 
                 minim: float = 10000
                 quality = self.quality_point(field, cand)

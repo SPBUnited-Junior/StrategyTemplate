@@ -407,12 +407,12 @@ class Strategy:
         # Block.process()
         # Pass.process()
         # Defer.process()
-        # Attacker.process()
+        #Attacker.process()
         field.strategy_image.draw_circle(self.ball, (0, 0, 0), 7)
         if (check_goal_point(field, self.ball)[0] is None):
-            actions[1] = KickActions.Turn_Kick(field.enemy_goal.center, 0)
+            actions[1] = KickActions.Turn_Kick(field.enemy_goal.center, 3)
         else:
-            actions[1] = KickActions.Turn_Kick(check_goal_point(field, self.ball)[0], 0)
+            actions[1] = KickActions.Turn_Kick(check_goal_point(field, self.ball)[0], 1.1)
         print(field.ball.get_vel().mag())
 
 

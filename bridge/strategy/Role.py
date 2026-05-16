@@ -466,6 +466,8 @@ class Role:
             ball_pos = self.field.ball.get_pos()
             for rbt in self.ally_robots:
                 pos = self._circle_to_two_tangents(80, ball_pos, self.field.ally_goal.down, self.field.ally_goal.up, rbt.get_pos())
+                if (aux.is_point_inside_poly(pos, self.field.ally_goal.hull)):
+                    pos = (self.field.ally_goal.center - ball_pos).unity() * 120
                 kick_status[rbt.r_id] = Robot_Status.Not_Kick
                 self.actions[rbt.r_id] = Actions.GoToPoint(pos, (ball_pos - rbt.get_pos()).arg())
 

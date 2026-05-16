@@ -212,7 +212,7 @@ class Actions:
             current_action.vel = transl_vel
             current_action.angle = self.target_angle
 
-            current_action.dribbler_speed = 15
+            current_action.dribbler_speed = 13
 
         def use_behavior_of(self, domain: ActionDomain, current_action: ActionValues) -> list["Action"]:
             ball_pos = domain.field.ball.get_pos()
@@ -277,7 +277,7 @@ class Actions:
             global old_speed_for_turn
             global flag_ball_in_turn
             if domain.field.is_ball_in_turn(domain.robot) and flag_ball_in_turn:
-                speed_a = 7.8
+                speed_a = 8.8
                 delta_angle = abs(aux.wind_down_angle(self.target_angle - domain.robot.get_angle()))
                 speed: float = min(const.VEL_TURN_MAX, old_speed_for_turn + speed_a, delta_angle * 500 + 150)
                 angle_speed : float = const.ANGLE_VEL_MAX * speed / const.VEL_TURN_MAX
@@ -290,7 +290,7 @@ class Actions:
                 else:
                     current_action.angle = angle_speed
                 current_action.beep = 1
-                current_action.dribbler_speed = 8
+                current_action.dribbler_speed = 9
                 print(speed, "angles")
             else:
                 old_speed_for_turn = const.START_VEL_TURN
@@ -353,7 +353,7 @@ class Actions:
                 old_speed_for_turn_stop = speed
                 current_action.angle = self.target_angle
                 current_action.beep = 0
-                current_action.vel = aux.rotate(aux.Point(150, 0), domain.robot.get_angle())
+                current_action.vel = aux.rotate(aux.Point(60, 0), domain.robot.get_angle())
                 current_action.dribbler_speed = 15
                 print(speed, "forward")
 
@@ -528,7 +528,7 @@ class KickActions:
             global old_speed_for_turn_stop
             kick_angle = aux.angle_to_point(domain.field.ball.get_pos(), self.target_pos)
             target_angle = (self.target_pos - domain.field.ball.get_pos()).arg()
-            time_to_kick = 0.4 + 0.1 * self.flag_kick_pas
+            time_to_kick = 0.4 + 0.2 * self.flag_kick_pas
             diff =  abs(aux.wind_down_angle((target_angle - domain.robot.get_angle())))
 
             actions = [
@@ -645,8 +645,8 @@ def get_pass_voltage(length: float) -> int:
     if const.IS_SIMULATOR_USED:
         # TODO fix control decoder
         return int(aux.minmax(0.0011 * length + 1.2, 5, const.VOLTAGE_SHOOT))
-    print(int(aux.minmax(0.003 * length + 2.0, 6, const.VOLTAGE_SHOOT)))
-    return int(aux.minmax(0.003 * length + 2.0, 6, const.VOLTAGE_SHOOT))
+    print(int(aux.minmax(0.005 * length + 1.2, 6, const.VOLTAGE_SHOOT)))
+    return int(aux.minmax(0.005 * length + 1.2, 6, const.VOLTAGE_SHOOT))
 
 
 def get_grab_speed(

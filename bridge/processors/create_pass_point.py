@@ -6,6 +6,7 @@ import typing
 from time import time
 
 import attr
+import math
 
 # from scipy.optimize import minimize
 from strategy_bridge.bus import DataBus, DataReader, DataWriter
@@ -66,24 +67,23 @@ class ExplorePasses(BaseProcessor):
         """
         maxim = 0.0
         points: list[tuple[float, aux.Point]] = []
-        for x in range(int(ball.x) - 1400, int(ball.x) + 1400, 200):
-            for y in range(int(ball.y) - 1400, int(ball.y) + 1400, 200):
+        for x in range(-const.FIELD_DX + 200, const.FIELD_DX - 200, 200):
+            for y in range(-const.FIELD_DY + 200, const.FIELD_DY - 100, 200):
                 if abs(x) > 2250:
                     continue
                 if abs(y) > 1500:
                     continue 
                 cand = aux.Point(x, y)
-                if ((const.GOAL_DX - const.GOAL_PEN_DX) - abs(cand.x) < 100) and (abs(cand.y) - abs(const.GOAL_PEN_DY / 2) < 100):
+                if ((const.GOAL_DX - const.GOAL_PEN_DX) - abs(cand.x) < 250) and (abs(cand.y) - abs(const.GOAL_PEN_DY / 2) < 250):
                     cond = 0
                     continue
 
                 minim: float = 10000
-                red = int(max(0, 255 / 22500000 * (22500000 - self.quality_point(field, cand))))
-                green = int(min(255, 255 / 22500000 * self.quality_point(field, cand)))
-               # print(self.quality_point(field, cand))
-                #print(quality_point(field, cand, mid))
-                self.image.draw_circle(cand, (red, green, 0))
-                points.append((self.quality_point(field, cand), cand))
+                quality = self.quality_point(field, cand)
+                red = int(255 * (1 - quality))
+                green = int(255 * quality)
+                self.image.draw_circle(cand, (red, green, 0), 35)
+                points.append((quality, cand))
         points.sort(key=lambda x: x[0])
         points.reverse()
         positions: list[aux.Point] = []
@@ -110,33 +110,76 @@ class ExplorePasses(BaseProcessor):
         kick_goal_point = check_goal_point(field, field.ball.get_pos())[0]
         ball = field.ball.get_pos()
 
-        if self.point_in_goal(field, point): 
-            #print(point)
+        if self.point_in_goal(field, point):
             return 0
         if self.block_kick_goal(field, point, kick_goal_point):
-            #print(point)
             return 0
         if self.nearest_to_ball(field, point):
-            #print(point)
             return 0
         
+        nearest_robot = fld.find_nearest_robot(ball, field.active_allies(False))
+        cath_dist = aux.dist(nearest_robot.get_pos(), ball) - const.BALL_R
+
+        target_angle = (point - nearest_robot.get_pos()).arg()
+        diff_angle = abs(aux.wind_down_angle(target_angle - nearest_robot.get_angle()))
+
+        catch_time = cath_dist / const.MAX_SPEED + 0.2 * diff_angle / const.ANGLE_VEL_MAX
+
+
         """
-        коэффицент возможности блокировки пасса вражеским роботом 
+        вероятность возможности блокировки пасса вражеским роботом 
         """
-        block_weight: float = 3000
+        risk_intercept: float = 1
         for rbt in field.active_enemies(False):
-            dist_to_point = (rbt.get_pos() - aux.closest_point_on_line(ball, point, rbt.get_pos(), "S")).mag()
-            block_weight = min(block_weight, dist_to_point * 3)
+            rbt_catch_point = aux.closest_point_on_line(ball, point, rbt.get_pos(), "S")
+            rbt_dist_to_point = (rbt.get_pos() - rbt_catch_point).mag()
+
+            dist_flight_ball = aux.dist(ball, rbt_catch_point)
+            enemy_t = rbt_dist_to_point / 1000
+            ball_t = dist_flight_ball / 2800
+
+            delta_t = ball_t - enemy_t
+            x = min(max(-20, (12 * delta_t)), 20)
+            risk_intercept = min(risk_intercept, 1 / (1 + math.e ** x))
+
+        """
+        коэффицент чем ближе наш робот тем больше коэффицент 
+        """
+        reception: float = 0
+        dist_flight_ball = aux.dist(ball, point)
+        ball_t = dist_flight_ball / 2000
+        for rbt in field.active_allies(False):
+            if (rbt.r_id == nearest_robot.r_id): continue
+            dist_to_point = aux.dist(rbt.get_pos(), point)
+            rbt_t = dist_to_point / const.MAX_SPEED
+ 
+            delta_t = rbt_t - ball_t - catch_time
+            x = min(max(-20, (12 * delta_t)), 20)
+            reception = max(reception, 1 / (1 + math.e ** x))
         """
         коэффициент возможностьи ударить в ворота
         """
-        kick_to_goal_weight: float = check_goal_point(field, point)[1] * 11
+        P_goal: float = 0
+        list_goal_point = check_goal_point(field, point, False)
+        size = list_goal_point[1]
+        goal_point = list_goal_point[0]
+        if goal_point is not None:
+            down: aux.Point = aux.Point(goal_point.x, goal_point.y - size / 2)
+            up: aux.Point = aux.Point(goal_point.x, goal_point.y + size / 2)
+
+            open_angle = abs(aux.wind_down_angle(aux.get_angle_between_points(down, point, up)))
+            max_angle = 1 #abs(aux.wind_down_angle(aux.get_angle_between_points(field.enemy_goal.center_down, ball, field.enemy_goal.center_up)))
+            goal_thread_raw = open_angle / max_angle
+            x = min(max(-50, (-14 * (goal_thread_raw - 0.2))), 50)
+            P_goal = 1 / (1 + math.e ** x)
+
+
+        forward_bonus = 1 # - (abs(point.x - field.enemy_goal.center.x)) / 4500
 
         """
         сумма весов
         """
-        weight: float = block_weight * kick_to_goal_weight
-        return weight
+        return reception * risk_intercept * P_goal * forward_bonus
     
     def point_in_goal(
         self,
@@ -148,8 +191,8 @@ class ExplorePasses(BaseProcessor):
         """
         ball = field.ball.get_pos()
 
-        if aux.is_point_inside_poly(ball, field.ally_goal.hull): return True
-        if aux.is_point_inside_poly(ball, field.enemy_goal.hull): return True
+        if aux.is_point_inside_poly(point, field.ally_goal.hull): return True
+        if aux.is_point_inside_poly(point, field.enemy_goal.hull): return True
         return False
 
     def block_kick_goal(

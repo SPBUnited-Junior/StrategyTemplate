@@ -248,6 +248,14 @@ class Field:
         return (robo.get_pos() - self.ball.get_pos()).mag() < const.BALL_GRABBED_DIST and abs(
             aux.wind_down_angle((self.ball.get_pos() - robo.get_pos()).arg() - robo.get_angle())
         ) < const.BALL_GRABBED_ANGLE
+    
+    def is_ball_in_turn(self, robo: rbt.Robot) -> bool:
+        """
+        Определить, находится ли мяч внутри дрибблера
+        """
+        return (robo.get_pos() - self.ball.get_pos()).mag() < const.BALL_GRABBED_DIST_TURN + 0 and abs(
+            aux.wind_down_angle((self.ball.get_pos() - robo.get_pos()).arg() - robo.get_angle())
+        ) < const.BALL_GRABBED_ANGLE + 0.1
 
     def is_ball_in(self, robo: rbt.Robot) -> bool:
         """
@@ -357,6 +365,23 @@ class Field:
             "SR",
         )
         return inter is not None and self.is_ball_moves()
+    
+    def check_cath_ball(self, pas_point: aux.Point) -> bool:
+        """
+        Проверяем летит ли мяч в сторону робота
+        """
+        ball_pos: aux.Point = self.ball.get_pos()
+        pos_cath = aux.closest_point_on_line(self.ball_start_point, ball_pos, pas_point, "R")
+        dist_to_target = aux.dist(ball_pos, pas_point)
+
+        if(
+            (pos_cath is None
+            or aux.dist(pos_cath, pas_point) > const.DIST_CATCH_BALL
+            or dist_to_target > const.DIST_TO_PASS
+            or self.ball.get_vel().mag() < dist_to_target * 0.2 + 50)
+        ):
+            return False
+        return True
 
 
 def find_nearest_robot(point: aux.Point, team: list[rbt.Robot], avoid: Optional[list[int]] = None) -> rbt.Robot:

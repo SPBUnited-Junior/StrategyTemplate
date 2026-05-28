@@ -301,13 +301,13 @@ class Strategy:
             self.flag = False
             pos_attacker1 =  self.ball + (field.ally_goal.center - self.ball).unity() * self.dist_to_ball
             angle_attacker1 = (self.ball - robot_position1).arg()
-            pos_attacker2 = aux.Point(0, 0)
+            Pass.push(field.allies[self.idx2])
             angle_attacker2 = (self.ball - robot_position2).arg()
 
             if aux.dist(pos_attacker1, self.ball) < 500:
                 pos_attacker1 = self.ball + (field.ally_goal.center - self.ball).unity() * self.dist_to_ball
 
-            if aux.dist(pos_attacker2, self.ball) < 500:
+            if aux.dist(field.allies[self.idx2].get_pos(), self.ball) < 500:
                 pos_attacker2 = (robot_position2 - self.ball).unity() * 500
 
             if abs(field.enemy_goal.center.x - pos_attacker1.x) < 800:

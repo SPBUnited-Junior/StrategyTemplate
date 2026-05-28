@@ -756,6 +756,10 @@ def is_point_on_line(point: Point, line_start: Point, line_end: Point, is_inf: s
     """
     return point == closest_point_on_line(line_start, line_end, point, is_inf)
 
+def point_nearest_to_goal_hull(point: Point) -> bool:
+    return (((const.GOAL_DX - const.GOAL_PEN_DX) - abs(point.x) < const.MIN_DIST_TO_GOAL) and 
+        (abs(point.y) - abs(const.GOAL_PEN_DY / 2) < const.MIN_DIST_TO_GOAL))
+
 
 def offset_polygon(peaks: list[Point], distance: float) -> list[Point]:
     """

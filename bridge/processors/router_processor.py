@@ -214,8 +214,8 @@ def command_from_values(field: fld.Field, robot: rbt.Robot, values: ActionValues
         dribbler_setting=values.dribbler_speed,
         forward_vel=robot.speed_x,
         left_vel=-robot.speed_y,
-        angular_vel=robot.speed_r if robot.beep else None,
-        angle=robot.delta_angle if not robot.beep else None,
+        angular_vel=aux.minmax(robot.speed_r, 127) if robot.beep else None,
+        angle=aux.minmax(robot.delta_angle, 127) if not robot.beep else None,
     )
 
 

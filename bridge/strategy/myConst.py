@@ -19,8 +19,8 @@ distToBlockEnemyPass = 300
 
 minDistForOpeningForPass = 700
 
-idFirstAttacker: int = 2
-idSecondAttacker: int = 4
+idFirstAttacker: int = 3
+idSecondAttacker: int = 5
 
 timerForRotate = 0.5/2#sec
 timerForHoldBallForMyIsBallIn = 1.5#3#sec
@@ -31,7 +31,7 @@ if const.IS_SIMULATOR_USED:
     velRotateWithBall *= 5
 
 maxDistForScore = 1500
-minDistForScorePenalty = 2000
+minDistForScorePenalty = 1250
 maxDistToChangeModeForScroreBallInPenalty = 350
 
 distToBallForGoOutGK = 600
@@ -45,14 +45,14 @@ dForCatchBall = 10
 distBetweenRsInWall = 250
 angleBetweenRsInWall = asin((distBetweenRsInWall/2)/((distBetweenRsInWall/2)**2+(const.KEEP_BALL_DIST+50)**2)**0.5)
 
-whatWeDoAtThisRun: whatWeDoStates = whatWeDoStates.Play
+whatWeDoAtThisRun: whatWeDoStates = whatWeDoStates.SimpleTest
 
 # useDebug = get_from_env("DEBUG_MODE", bool)
 # if not const.IS_SIMULATOR_USED and not useDebug:
 #     whatWeDoAtThisRun = whatWeDoStates.Play#DONT TOUCH!!!!!!!!
 
 lowerEdgeForMinAngleErr = 0.25
-upperEdgeForMinAngleErr = 2.5
+upperEdgeForMinAngleErr = 2.5*2
 koeffForCalculatingMinAngleErr = (upperEdgeForMinAngleErr-lowerEdgeForMinAngleErr)/(((const.FIELD_DX)**2+(const.FIELD_DY)**2)**0.5-minDistForOpeningForPass)
 
 def calculateMinAngleErrForRotate(distToPointForPass: float)->float:

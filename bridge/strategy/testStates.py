@@ -22,10 +22,16 @@ from bridge.strategy.myFunc import (
 )
 
 def simpleTest(staticVariables: ClassWithMyStaticVariables, field: fld.Field, actions: list[Optional[Action]])-> None:
-    actions[2] = Actions.GoToPoint(aux.Point(), 0)
+    point_for_score: Optional[aux.Point] = findPointForScore(field, field.ball.get_pos(), reverse=True, draw=True)
+    if point_for_score is not None:
+        actions[myConst.idSecondAttacker] = Actions.DelayedSlowKick(point_for_score, timerForHoldBallForMyIsBallIn=myConst.timerForHoldBallForMyIsBallIn/4)
+    else:
+        print("NO")
+    # actions[myConst.idSecondAttacker] = Actions.DelayedSlowKick(field.allies[myConst.idSecondAttacker].get_pos()+field.ally_goal.eye_forw*400, is_upper=True)
+    # actions[2] = Actions.GoToPoint(aux.Point(), 0)
     # print(1)
     # blockEnemyR(field, actions, 6, field.enemies[1].get_pos())
-    block2EnemyRs(staticVariables, field, actions, myConst.idFirstAttacker, myConst.idSecondAttacker, reverse=True)
+    # block2EnemyRs(staticVariables, field, actions, myConst.idFirstAttacker, myConst.idSecondAttacker, reverse=True)
     # doPassNearAllly(field, actions)
     # findPointForScore(field, draw=True)
     # actions[staticVariables.idFirstAttacker] = Actions.Kick(field.enemy_goal.center)

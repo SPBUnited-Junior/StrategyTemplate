@@ -252,10 +252,11 @@ class Actions:
             voltage: int = const.VOLTAGE_SHOOT,
             is_pass: bool = False,
             is_upper: bool = False,
-            timer_for_rotate: float = myConst.timerForRotate
+            timer_for_rotate: float = myConst.timerForRotate,
+            timerForHoldBallForMyIsBallIn: float = myConst.timerForHoldBallForMyIsBallIn
 
         ) -> None:
-            self.kick_args = (target_pos, voltage, is_pass, is_upper, timer_for_rotate)
+            self.kick_args = (target_pos, timer_for_rotate, timerForHoldBallForMyIsBallIn, voltage, is_pass, is_upper)
 
         def use_behavior_of(self, domain: ActionDomain, current_action: ActionValues) -> list["Action"]:
             #print(self.kick_args)
@@ -348,15 +349,18 @@ class KickActions:
         def __init__(
             self,
             target_pos: aux.Point,
+            timer_for_rotate: float = myConst.timerForRotate,
+            timerForHoldBallForMyIsBallIn: float = myConst.timerForHoldBallForMyIsBallIn,
             voltage: int = const.VOLTAGE_SHOOT,
             is_pass: bool = False,
-            is_upper: bool = False,
-            timer_for_rotate: float = myConst.timerForRotate
+            is_upper: bool = False
+            
         ) -> None:
             self.target_pos = target_pos
             self.voltage = voltage  # ignore if is_pass
             self.is_upper = is_upper
             self.timer_for_rotate = timer_for_rotate
+            self.timerForHoldBallForMyIsBallIn = timerForHoldBallForMyIsBallIn
 
             if self.voltage > const.VOLTAGE_SHOOT:
                 self.voltage = const.VOLTAGE_SHOOT
@@ -374,7 +378,7 @@ class KickActions:
             actions = [
                 Actions.BallGrab(kick_angle),
                 DumbActions.slowRotateWithBall(target_angle=kick_angle, distToAim=distToAim),
-                DumbActions.delayedShootAction(self.target_pos, self.is_upper, timerForRotate=self.timer_for_rotate),
+                DumbActions.delayedShootAction(self.target_pos, self.timer_for_rotate, self.timerForHoldBallForMyIsBallIn, self.is_upper),
                 DumbActions.ControlVoltageAction(self.voltage, self.pass_pos),
             ]
 
@@ -435,11 +439,12 @@ class DumbActions:
     class delayedShootAction(Action):
         """Shoot the target when kick is aligned"""
 
-        def __init__(self, target_pos: aux.Point, is_upper: bool = False, angle_bounds: Optional[float] = None, timerForRotate: float = myConst.timerForRotate) -> None:
+        def __init__(self, target_pos: aux.Point, timerForRotate: float = myConst.timerForRotate, timerForHoldBallForMyIsBallIn: float = myConst.timerForHoldBallForMyIsBallIn,  is_upper: bool = False, angle_bounds: Optional[float] = None) -> None:
             self.target_pos = target_pos
             self.autokick = 2 if is_upper else 1
             self.angle_bounds = angle_bounds
             self.timerForRotate = timerForRotate
+            self.timerForHoldBallForMyIsBallIn = timerForHoldBallForMyIsBallIn
 
         def is_defined(self, domain: ActionDomain) -> bool:
             kick_angle = aux.angle_to_point(domain.robot.get_pos(), self.target_pos)
@@ -457,7 +462,7 @@ class DumbActions:
                 DumbActions.timerForIsBallIn = time() + 10**10
                 DumbActions.oldIs_ball_in = False
             #print(time() - DumbActions.timerForAlignned > 0.1)
-            return isBallIn and is_aligned and time() - DumbActions.timerForIsBallIn > myConst.timerForHoldBallForMyIsBallIn and time() - DumbActions.timerForAlignned > self.timerForRotate
+            return isBallIn and is_aligned and time() - DumbActions.timerForIsBallIn > self.timerForHoldBallForMyIsBallIn and time() - DumbActions.timerForAlignned > self.timerForRotate
 
         def behavior(self, domain: ActionDomain, current_action: ActionValues) -> None:
             # DumbActions.timerForAlignned = time()+10**10

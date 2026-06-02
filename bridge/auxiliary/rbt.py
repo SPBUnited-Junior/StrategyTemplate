@@ -69,6 +69,8 @@ class Robot(entity.Entity):
             # gains_full = [5, 0.035, 0.05, const.MAX_SPEED]  # some faster
             gains_full = [2.5, 0.07, 0.05, const.MAX_SPEED]
         else:
+            # gains_full = [K*0.6, K*0.6/8, K*0.6*2, const.MAX_SPEED]
+            # gains_full = [5, 0, 0, const.MAX_SPEED]
             gains_full = [2.5, 0.07, 0.05, const.MAX_SPEED]
         gains_soft = gains_full
         a_gains_full = [15, 0.5, 0, const.MAX_SPEED_R]

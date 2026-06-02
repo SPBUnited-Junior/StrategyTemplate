@@ -30,12 +30,12 @@ def PREPARE_PENALTY(field: fld.Field, actions: list[Optional[Action]], we_active
         if we_active:
             actions[const.GK] = Actions.GoToPoint(field.ally_goal.frw, 0)
             if field.allies[idSecondAttacker].is_used():
-                actions[idSecondAttacker] = Actions.GoToPoint(aux.Point(200 * field.polarity), (field.ball.get_pos() - field.allies[idSecondAttacker].get_pos()).arg())
-                actions[idFirstAttacker] = Actions.GoToPoint(aux.Point(const.FIELD_DX / 2 * field.polarity, const.FIELD_DY / 2), 0)
+                actions[idSecondAttacker] = Actions.GoToPoint(aux.Point(200 * field.polarity), field.ally_goal.eye_forw.arg())
+                actions[idFirstAttacker] = Actions.GoToPoint(aux.Point(const.FIELD_DX / 2 * field.polarity, const.FIELD_DY / 2), field.ally_goal.eye_forw.arg())
             elif field.allies[idFirstAttacker].is_used():
-                actions[idFirstAttacker] = Actions.GoToPoint(aux.Point(200 * field.polarity), (field.ball.get_pos() - field.allies[idSecondAttacker].get_pos()).arg())
+                actions[idFirstAttacker] = Actions.GoToPoint(aux.Point(200 * field.polarity), field.ally_goal.eye_forw.arg())
             else:
-                actions[const.GK] = Actions.GoToPoint(aux.Point(200 * field.polarity), (field.ball.get_pos() - field.allies[const.GK].get_pos()).arg())
+                actions[const.GK] = Actions.GoToPoint(aux.Point(200 * field.polarity), field.ally_goal.eye_forw.arg())
         else:
             actions[idFirstAttacker] = Actions.GoToPoint(point_first, 0)
             actions[idSecondAttacker] = Actions.GoToPoint(point_second, 0)
@@ -50,43 +50,30 @@ def PENALTY(field: fld.Field, actions: list[Optional[Action]], we_active: bool, 
     point_second = aux.Point(const.FIELD_DX / 2 * -field.polarity, -const.FIELD_DY / 2)
     if we_active:
         actions[gkId] = Actions.GoToPoint(field.ally_goal.frw, 0)
-        nearestGoalPoint = aux.closest_point_on_line(field.enemy_goal.center_up, field.enemy_goal.center_down, ballPos)
+        nearestGoalPoint = aux.closest_point_on_line(field.enemy_goal.up, field.enemy_goal.down, ballPos)
+        print(aux.dist(field.ball.get_pos(), nearestGoalPoint))
         point_for_score: Optional[aux.Point] = findPointForScore(field, ballPos, reverse=True, draw=True)
-        if aux.dist(ballPos, nearestGoalPoint) > minDistForScorePenalty:
-            field.strategy_image.draw_line(ballPos, field.enemy_goal.center)
-            if field.allies[idSecondAttacker].is_used():
-                # actions[idSecondAttacker] = Actions.Kick(voltage=2, target_pos=ballPos+nearestGoalPoint)
-                actions[idSecondAttacker] = Actions.DelayedSlowKick(voltage=2, target_pos=nearestGoalPoint, timerForHoldBallForMyIsBallIn=0)
-                # actions[idSecondAttacker] = Actions.DelayedSlowKick(voltage=2, target_pos=ballPos+field.ally_goal.eye_forw*200, timerForHoldBallForMyIsBallIn=0)
-                # actions[idSecondAttacker] = Actions.DelayedSlowKick(voltage=2, target_pos=ballPos+nearestGoalPoint, timerForHoldBallForMyIsBallIn=timerForHoldBallForMyIsBallIn/4)
-            elif field.allies[idFirstAttacker].is_used():
-                actions[idFirstAttacker] = Actions.DelayedSlowKick(voltage=2, target_pos=nearestGoalPoint, timerForHoldBallForMyIsBallIn=0)
-            else:
-                actions[const.GK] = Actions.DelayedSlowKick(voltage=2, target_pos=nearestGoalPoint, timerForHoldBallForMyIsBallIn=0)
-        elif point_for_score is not None:
-            if field.allies[idSecondAttacker].is_used():
-                actions[idSecondAttacker] = Actions.DelayedSlowKick(point_for_score, timerForHoldBallForMyIsBallIn=0)
-            elif field.allies[idFirstAttacker].is_used():
-                actions[idFirstAttacker] = Actions.DelayedSlowKick(point_for_score, timerForHoldBallForMyIsBallIn=0)
-            else:
-                actions[const.GK] = Actions.DelayedSlowKick(point_for_score, timerForHoldBallForMyIsBallIn=0)
+        ids = [idFirstAttacker, idSecondAttacker, const.GK]
+        activeId = None
+        for id in ids:
+            if field.allies[id].is_used():
+                activeId = id
+        if activeId is not None:
 
-        else:
-            new_point_for_score: Optional[aux.Point] = findPointForScore(field, ballPos, OtherK=1)
-            if new_point_for_score is not None:
-                if field.allies[idSecondAttacker].is_used():
-                    actions[idSecondAttacker] = Actions.DelayedSlowKick(new_point_for_score, timerForHoldBallForMyIsBallIn=0)
-                elif field.allies[idFirstAttacker].is_used():
-                    actions[idFirstAttacker] = Actions.DelayedSlowKick(new_point_for_score, timerForHoldBallForMyIsBallIn=0)
-                else:
-                    actions[const.GK] = Actions.DelayedSlowKick(new_point_for_score, timerForHoldBallForMyIsBallIn=0)
+            if aux.dist(ballPos, nearestGoalPoint) > minDistForScorePenalty:
+                print("first")
+                actions[activeId] = Actions.DelayedSlowKick(nearestGoalPoint, voltage=2, timerForHoldBallForMyIsBallIn=0.4)
+            elif point_for_score is not None:
+                print("second")
+                # field.strategy_image.draw_circle(point_for_score)
+                actions[activeId] = Actions.DelayedSlowKick(point_for_score, timerForHoldBallForMyIsBallIn=0)
             else:
-                if field.allies[idSecondAttacker].is_used():
-                    actions[idSecondAttacker] = Actions.DelayedSlowKick(field.enemy_goal.center, timerForHoldBallForMyIsBallIn=0)
-                elif field.allies[idFirstAttacker].is_used():
-                    actions[idFirstAttacker] = Actions.DelayedSlowKick(field.enemy_goal.center, timerForHoldBallForMyIsBallIn=0)
+                print("third")
+                new_point_for_score: Optional[aux.Point] = findPointForScore(field, ballPos, OtherK=1)
+                if new_point_for_score is not None:
+                    actions[activeId] = Actions.DelayedSlowKick(new_point_for_score, timerForHoldBallForMyIsBallIn=0)
                 else:
-                    actions[const.GK] = Actions.DelayedSlowKick(field.enemy_goal.center, timerForHoldBallForMyIsBallIn=0)
+                    actions[activeId] = Actions.DelayedSlowKick(field.enemy_goal.center, timerForHoldBallForMyIsBallIn=0)
     else:
         GKNewState = GK(field, actions, GKLastState, pointFromBallKicked, angleFromBallKicked)
         actions[idFirstAttacker] = Actions.GoToPoint(point_first, 0)

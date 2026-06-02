@@ -390,7 +390,8 @@ def findPointForScore(
         """for penalty we need be more accurate"""
         qPoint = 24
         OtherK = 1.1
-        if aux.dist(field.ball.get_pos(), field.enemies[const.ENEMY_GK].get_pos()) < myConst.maxDistToChangeModeForScroreBallInPenalty:
+        nearestGoalPoint = aux.closest_point_on_line(field.enemy_goal.up, field.enemy_goal.down, field.ball.get_pos())
+        if aux.dist(field.ball.get_pos(), nearestGoalPoint) < myConst.maxDistToChangeModeForScroreBallInPenalty:
             """if we so close we try to score goal in closest score point"""
             reverse = False
     else:

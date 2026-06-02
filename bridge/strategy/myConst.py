@@ -23,7 +23,7 @@ idFirstAttacker: int = 3
 idSecondAttacker: int = 5
 
 timerForRotate = 0.5/2#sec
-timerForHoldBallForMyIsBallIn = 1.5#3#sec
+timerForHoldBallForMyIsBallIn = 1.5/1.5#3#sec
 constForTimerWeTryDoPass = 3#sec
 
 velRotateWithBall = 0.4#rad/sec
@@ -32,11 +32,12 @@ if const.IS_SIMULATOR_USED:
 
 maxDistForScore = 1500
 minDistForScorePenalty = 1250
-maxDistToChangeModeForScroreBallInPenalty = 350
+maxDistToChangeModeForScroreBallInPenalty = 700
 
-distToBallForGoOutGK = 600
+distToBallForGoOutGK = 1000
+distToBallForGoOutGKForPenalty = 1500
 velBallForGoOutGK = 400
-distToStopForGoOutGK = 200
+distToStopForGoOutGK = 100
 
 spaceFromEdgedForFindingPointsForScore = 100
 

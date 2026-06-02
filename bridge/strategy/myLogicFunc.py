@@ -5,6 +5,7 @@ import math  # type: ignore
 from bridge.auxiliary import aux, fld, rbt  # type: ignore
 from bridge.strategy.myConst import angleBetweenRsInWall, idFirstAttacker, idSecondAttacker
 from bridge import const
+from bridge.const import State as GameStates
 from bridge.router.base_actions import Action, Actions, KickActions, DribblerActions  # type: ignore
 import bridge.strategy.myConst as myConst
 
@@ -254,6 +255,10 @@ def GK(
     allies = field.active_allies(True).copy()
     allR = enenmies + allies
 
+    if field.game_state is GameStates.PENALTY:
+        distToGoOut = myConst.distToBallForGoOutGKForPenalty
+    else:
+        distToGoOut = myConst.distToBallForGoOutGK
     if draw and pointFromBallKicked is not None and angleWithWhatBallKicked is not None:
         secondPointForLine = pointFromBallKicked+aux.rotate(aux.RIGHT, angleWithWhatBallKicked)
         field.strategy_image.draw_line(pointFromBallKicked, secondPointForLine, (0, 0, 255), 120)
@@ -267,9 +272,11 @@ def GK(
     if nearestRToBall == field.allies[const.GK] and oldGKState != GKStates.Intersept and not aux.is_point_inside_poly(ballPos, field.ally_goal.hull):
         # field.strategy_image.send_telemetry("GK State", "Pass")
         GKState = GKStates.Pass
-        print(doPassNearAllly(field, actions))
+        idRToPass = doPassNearAllly(field, actions)
+        if idRToPass is None:
+            actions[const.GK] = Actions.DelayedSlowKick(field.enemy_goal.center)
     elif (field.ball.get_vel().mag() < myConst.velBallForGoOutGK and 
-        aux.dist(aux.nearest_point_on_poly(ballPos, field.ally_goal.hull), ballPos) < myConst.distToBallForGoOutGK and 
+        aux.dist(aux.closest_point_on_line(field.ally_goal.up, field.ally_goal.down, ballPos), ballPos) < distToGoOut and 
         not aux.is_point_inside_poly(ballPos, field.ally_goal.hull)):
         """if ball dangerously close to goal GK need to go out"""
         GKState = GKStates.GoOut

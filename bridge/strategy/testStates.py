@@ -3,6 +3,7 @@ from typing import Optional
 from bridge.router.base_actions import Action, Actions, KickActions, DribblerActions  # type: ignore
 from bridge import const
 from math import pi
+from time import time
 
 import bridge.strategy.myConst as myConst
 from bridge.strategy.ClassWithMyStaticVariables import ClassWithMyStaticVariables  # type: ignore
@@ -23,24 +24,27 @@ from bridge.strategy.myFunc import (
 
 def simpleTest(staticVariables: ClassWithMyStaticVariables, field: fld.Field, actions: list[Optional[Action]])-> None:
     point_for_score: Optional[aux.Point] = findPointForScore(field, field.ball.get_pos(), reverse=True, draw=True)
-    if point_for_score is not None:
-        actions[myConst.idSecondAttacker] = Actions.DelayedSlowKick(point_for_score, timerForHoldBallForMyIsBallIn=myConst.timerForHoldBallForMyIsBallIn/4)
-    else:
-        print("NO")
-    # actions[myConst.idSecondAttacker] = Actions.DelayedSlowKick(field.allies[myConst.idSecondAttacker].get_pos()+field.ally_goal.eye_forw*400, is_upper=True)
-    # actions[2] = Actions.GoToPoint(aux.Point(), 0)
-    # print(1)
-    # blockEnemyR(field, actions, 6, field.enemies[1].get_pos())
-    # block2EnemyRs(staticVariables, field, actions, myConst.idFirstAttacker, myConst.idSecondAttacker, reverse=True)
-    # doPassNearAllly(field, actions)
-    # findPointForScore(field, draw=True)
-    # actions[staticVariables.idFirstAttacker] = Actions.Kick(field.enemy_goal.center)
-    # if field.ball.get_pos().y > 6000:
-    #     print("!!!!!!!!!!!!!!!!!!!!!!!!")
-    # else:
-    #     if staticVariables.maxVelBall < field.ball.get_vel().mag() and field.ball.get_vel().mag()<10000:
-    #         staticVariables.maxVelBall = field.ball.get_vel().mag()
-    #         print("staticVariables.maxVelBall =", staticVariables.maxVelBall)
+    # field.strategy_image.draw_circle(point_for_score)
+    # field.strategy_image.draw_circle(field.ally_goal.center_up)
+    # field.strategy_image.draw_circle(field.ally_goal.center_down)
+    # field.strategy_image.draw_circle(field.ally_goal.center_up, size_in_mms=myConst.distToBallForGoOutGK)
+    # field.strategy_image.draw_circle(field.ally_goal.center_down, size_in_mms=myConst.distToBallForGoOutGK)
+    # field.strategy_image.draw_line(aux.Point(field.ally_goal.center_up.x+myConst.distToBallForGoOutGK, field.ally_goal.center_up.y), aux.Point(field.ally_goal.center_down.x+myConst.distToBallForGoOutGK, field.ally_goal.center_down.y))
+    # constt = 4
+    # if staticVariables.PointFromBallKicked is None:
+    #     staticVariables.PointFromBallKicked = aux.Point(-1000)
+    # if staticVariables.TimerWeHoldBall == None:
+    #      staticVariables.TimerWeHoldBall = time()
+    # if time() - staticVariables.TimerWeHoldBall > constt: 
+    #     staticVariables.TimerWeHoldBall = time()
+    #     if staticVariables.PointFromBallKicked.x == 1000:
+    #         staticVariables.PointFromBallKicked = aux.Point(-1000)
+    #     else:
+    #         staticVariables.PointFromBallKicked = aux.Point(1000)
+    # point = staticVariables.PointFromBallKicked
+    # actions[5] = Actions.GoToPoint(aux.Point(point.x, point.y-400), 0)
+    # actions[const.GK] = Actions.GoToPoint(aux.Point(point.x, point.y+400), 0)
+
 
 def testPass(staticVariables: ClassWithMyStaticVariables, field: fld.Field, actions: list[Optional[Action]])-> None:
     actions[const.GK] = Actions.GoToPoint(aux.Point(const.FIELD_DX, const.FIELD_DY), 0)
@@ -82,7 +86,7 @@ def testPass(staticVariables: ClassWithMyStaticVariables, field: fld.Field, acti
 def testGK(staticVariables: ClassWithMyStaticVariables, field: fld.Field, actions: list[Optional[Action]])->None:
     if field.ally_color == const.COLOR:
         staticVariables.GKLastState = GK(field, actions, staticVariables.GKLastState, staticVariables.PointFromBallKicked, staticVariables.AngleWithWhatBallKicked)
-        # print(staticVariables.GKLastState)
+        print(staticVariables.GKLastState)
     else:
         if field.allies[staticVariables.idFirstAttacker].is_used() or field.allies[staticVariables.idSecondAttacker].is_used():
             if field.allies[staticVariables.idFirstAttacker].is_used():

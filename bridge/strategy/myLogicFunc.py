@@ -245,6 +245,7 @@ def GK(
 ) -> GKStates:  
     GKState: GKStates
 
+    print(oldGKState)
     a = aux.dist(field.allies[const.GK].get_pos(), field.ball.get_pos())
     field.strategy_image.send_telemetry("dist", str(a))
 
@@ -269,24 +270,7 @@ def GK(
     # field.strategy_image.draw_circle(nearestRToBall.get_pos(), color=(0, 255, 0), size_in_mms=50)
     enemyRGrabBall = field.is_ball_in(nearestEnemyRToBall)
 
-    if nearestRToBall == field.allies[const.GK] and oldGKState != GKStates.Intersept and not aux.is_point_inside_poly(ballPos, field.ally_goal.hull):
-        # field.strategy_image.send_telemetry("GK State", "Pass")
-        GKState = GKStates.Pass
-        idRToPass = doPassNearAllly(field, actions)
-        if idRToPass is None:
-            actions[const.GK] = Actions.DelayedSlowKick(field.enemy_goal.center)
-    elif (field.ball.get_vel().mag() < myConst.velBallForGoOutGK and 
-        aux.dist(aux.closest_point_on_line(field.ally_goal.up, field.ally_goal.down, ballPos), ballPos) < distToGoOut and 
-        not aux.is_point_inside_poly(ballPos, field.ally_goal.hull)):
-        """if ball dangerously close to goal GK need to go out"""
-        GKState = GKStates.GoOut
-        pointForScore = findPointForScore(field, reverseGoal=True)
-        if pointForScore is not None:
-            vectFromBallToDefend = (pointForScore-ballPos)
-        else:
-            vectFromBallToDefend = (GKPos-ballPos)
-        actions[const.GK] = Actions.GoToPointIgnore((vectFromBallToDefend.unity()*myConst.distToStopForGoOutGK)+ballPos, aux.rotate(vectFromBallToDefend, math.pi).arg()).compose(DribblerActions.SetDribblerSpeed(15))
-    elif field.is_ball_moves_to_goal() and not enemyRGrabBall:
+    if field.is_ball_moves_to_goal() and not enemyRGrabBall:
         if not aux.is_point_on_line(GKPos, oldBallPos, ballPos, "R"):
             interseptBallPoint = aux.closest_point_on_line(oldBallPos, ballPos, GKPos, "R")
             field.strategy_image.draw_circle(interseptBallPoint, color=(255, 0, 0), size_in_mms=50)
@@ -307,17 +291,41 @@ def GK(
             """grab intersepted ball and pass nearly ally"""
             # actions[const.GK] = Actions.BallGrab((ballPos-GKPos).arg)
             doPassNearAllly(field, actions)
-    # elif field.is_ball_in(field.allies[const.GK]):
-    #     """"""
-    #     doPassNearAllly(field, actions)
     elif aux.is_point_inside_poly(ballPos, field.ally_goal.hull):
         GKState = GKStates.KnockOutBall
         # field.strategy_image.send_telemetry("GK State", "Knock out ball")
         """knock out the ball from hull"""
-        if len(field.active_allies(False)) != 0:
-            doPassNearAllly(field, actions)
+        print(min(aux.dist(field.ally_goal.up, ballPos), aux.dist(field.ally_goal.down, ballPos)), "dist")
+        if min(aux.dist(field.ally_goal.up, ballPos), aux.dist(field.ally_goal.down, ballPos)) < const.ROBOT_R*2:
+            if not field.is_ball_in(field.allies[const.GK]):
+                actions[const.GK] = Actions.BallGrab(aux.wind_down_angle(field.ally_goal.eye_forw.arg()-math.pi))
+            else:
+                actions[const.GK] = Actions.DelayedSlowKick(field.enemy_goal.center, is_upper=True)
         else:
-            actions[const.GK] = Actions.DelayedSlowKick(field.enemy_goal.center, is_upper=True)
+            if len(field.active_allies(False)) != 0:
+                doPassNearAllly(field, actions)
+            else:
+                actions[const.GK] = Actions.DelayedSlowKick(field.enemy_goal.center, is_upper=True)
+    elif nearestRToBall == field.allies[const.GK] and oldGKState != GKStates.Intersept and not aux.is_point_inside_poly(ballPos, field.ally_goal.hull):
+        # field.strategy_image.send_telemetry("GK State", "Pass")
+        GKState = GKStates.Pass
+        idRToPass = doPassNearAllly(field, actions)
+        if idRToPass is None:
+            actions[const.GK] = Actions.DelayedSlowKick(field.enemy_goal.center)
+    elif (field.ball.get_vel().mag() < myConst.velBallForGoOutGK and 
+        aux.dist(aux.closest_point_on_line(field.ally_goal.up, field.ally_goal.down, ballPos), ballPos) < distToGoOut and 
+        not aux.is_point_inside_poly(ballPos, field.ally_goal.hull)):
+        """if ball dangerously close to goal GK need to go out"""
+        GKState = GKStates.GoOut
+        pointForScore = findPointForScore(field, reverseGoal=True)
+        if pointForScore is not None:
+            vectFromBallToDefend = (pointForScore-ballPos)
+        else:
+            vectFromBallToDefend = (GKPos-ballPos)
+        actions[const.GK] = Actions.GoToPointIgnore((vectFromBallToDefend.unity()*myConst.distToStopForGoOutGK)+ballPos, aux.rotate(vectFromBallToDefend, math.pi).arg()).compose(DribblerActions.SetDribblerSpeed(15))
+    # elif field.is_ball_in(field.allies[const.GK]):
+    #     """"""
+    #     doPassNearAllly(field, actions)
     else:
         GKState = GKStates.BlockMaybeKick
         # field.strategy_image.send_telemetry("GK State", "Block maybe kick")

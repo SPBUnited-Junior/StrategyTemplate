@@ -522,22 +522,14 @@ class DumbActions:
         """slow rotate with ball untill we look at aim"""
         def __init__(self, target_angle: float, distToAim: float, angle_bounds: float = math.pi / 18) -> None:
             self.target_angle = target_angle
-            # print(angle_bounds*180/math.pi)
             minDeltaAngle = myConst.calculateMinAngleErrForRotate(distToAim)
-            # minDeltaAngle = distToAim/(((const.FIELD_DX*2)**2+(const.FIELD_DY*2)**2)**0.5)*3
-            # print(minDeltaAngle)
 
             maxAngle = angle_bounds*180/math.pi-minDeltaAngle
-            # print(maxAngle)
             difference = (distToAim)/(((const.FIELD_DX*2)**2+(const.FIELD_DY*2)**2)**0.5)*maxAngle*1.4
-            # print(((const.FIELD_DX*2)**2+(const.FIELD_DY*2)**2)**0.5, distToAim)
-            # print("difference", difference*180/math.pi)
             if difference > maxAngle:
                 """if we overreact at angle"""
                 difference = maxAngle
             self.angle_bounds = angle_bounds-difference/180*math.pi#accuracy of rotate
-            # print(self.angle_bounds*180/math.pi, maxAngle)
-            # self.angle_bounds = minDeltaAngle/180*math.pi
             self.rotateVel = myConst.velRotateWithBall#rad/sec
 
         def is_defined(self, domain: ActionDomain) -> bool:

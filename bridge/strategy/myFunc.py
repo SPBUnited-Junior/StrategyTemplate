@@ -386,8 +386,11 @@ def findPointForScore(
 ) -> aux.Point | None:
     if pointFrom == None:
         pointFrom = field.ball.get_pos()
+    spaceForFindingPoints = myConst.spaceFromEdgedForFindingPointsForScore
     if field.game_state == GameStates.PENALTY:
         """for penalty we need be more accurate"""
+        if not reverseGoal:
+            spaceForFindingPoints = myConst.spaceFromEdgedForFindingPointsForScorePenalty
         qPoint = 24
         OtherK = 1.1
         nearestGoalPoint = aux.closest_point_on_line(field.enemy_goal.up, field.enemy_goal.down, field.ball.get_pos())
@@ -398,7 +401,6 @@ def findPointForScore(
         qPoint = 8
     qPoint += 2
     ballPos = field.ball.get_pos()
-    spaceForFindingPoints = myConst.spaceFromEdgedForFindingPointsForScore
     if not reverseGoal:
         """if we want calculate for enemy goal"""
         d = const.GOAL_DY - spaceForFindingPoints*2

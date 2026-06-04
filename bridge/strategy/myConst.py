@@ -40,6 +40,8 @@ velBallForGoOutGK = 400
 distToStopForGoOutGK = 100
 
 spaceFromEdgedForFindingPointsForScore = 100
+spaceFromEdgedForFindingPointsForScorePenalty = 175
+
 
 dForCatchBall = 10
 

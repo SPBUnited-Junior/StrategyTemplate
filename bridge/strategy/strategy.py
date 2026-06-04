@@ -72,13 +72,19 @@ class Strategy:
 
             case GameStates.PENALTY:
                 updatePointAndAngleFromWhatBallKicked(self.staticVariables, field)
-                self.staticVariables.GKLastState = states.PENALTY(field, actions, self.staticVariables.we_active, self.staticVariables.idFirstAttacker, self.staticVariables.idSecondAttacker, self.staticVariables.GKLastState, self.staticVariables.PointFromBallKicked, self.staticVariables.AngleWithWhatBallKicked)  # one r(our or not) kick ball from center of field, GK other team defend goal
+                place = states.PENALTY(field, actions, self.staticVariables.we_active, self.staticVariables.idFirstAttacker, self.staticVariables.idSecondAttacker, self.staticVariables.GKLastState, self.staticVariables.PointFromBallKicked, self.staticVariables.AngleWithWhatBallKicked)  # one r(our or not) kick ball from center of field, GK other team defend goal
+                if self.staticVariables.we_active and place is not None:
+                    self.staticVariables.GKLastState = place
 
             case GameStates.PREPARE_KICKOFF:
-                self.staticVariables.GKLastState = states.PREPARE_KICKOFF(field, actions, self.staticVariables.we_active, self.staticVariables.idFirstAttacker, self.staticVariables.idSecondAttacker, self.staticVariables.GKLastState)  # our Rs on our part of field
+                place = states.PREPARE_KICKOFF(field, actions, self.staticVariables.we_active, self.staticVariables.idFirstAttacker, self.staticVariables.idSecondAttacker, self.staticVariables.GKLastState)  # our Rs on our part of field
+                if self.staticVariables.we_active and place is not None:
+                    self.staticVariables.GKLastState = place
                 
             case GameStates.KICKOFF:
-                self.staticVariables.GKLastState = states.KICKOFF(field, actions, self.staticVariables.we_active, self.staticVariables.idFirstAttacker, self.staticVariables.idSecondAttacker, self.staticVariables.GKLastState)  # our Rs on our part of field
+                place = states.KICKOFF(field, actions, self.staticVariables.we_active, self.staticVariables.idFirstAttacker, self.staticVariables.idSecondAttacker, self.staticVariables.GKLastState)  # our Rs on our part of field
+                if self.staticVariables.we_active and place is not None:
+                    self.staticVariables.GKLastState = place
 
             case GameStates.FREE_KICK:
                 self.run(field, actions)
@@ -86,7 +92,9 @@ class Strategy:
             case GameStates.STOP:
                 # The router will automatically prevent robots from getting too close to the ball
                 # self.staticVariables.run(field, actions)
-                self.staticVariables.GKLastState = states.STOP(field, actions, self.staticVariables.GKLastState)
+                place = states.STOP(field, actions, self.staticVariables.GKLastState)
+                if self.staticVariables.we_active and place is not None:
+                    self.staticVariables.GKLastState = place
 
         return actions
  

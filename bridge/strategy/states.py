@@ -42,16 +42,21 @@ def PREPARE_PENALTY(field: fld.Field, actions: list[Optional[Action]], we_active
             actions[const.GK] = Actions.GoToPoint(field.ally_goal.center, 0)
 
 
-def PENALTY(field: fld.Field, actions: list[Optional[Action]], we_active: bool, idFirstAttacker: int, idSecondAttacker: int, GKLastState: GKStates, pointFromBallKicked: Optional[aux.Point], angleFromBallKicked: float) -> GKStates:
-    GKNewState: GKStates = GKStates.BlockMaybeKick
+def PENALTY(field: fld.Field, actions: list[Optional[Action]], we_active: bool, idFirstAttacker: int, idSecondAttacker: int, GKLastState: GKStates, pointFromBallKicked: Optional[aux.Point], angleFromBallKicked: float) -> Optional[GKStates]:
+    GKNewState: Optional[GKStates] = None
     gkId = field.gk_id
     ballPos = field.ball.get_pos()
     point_first = aux.Point(const.FIELD_DX / 2 * -field.polarity, const.FIELD_DY / 2)
     point_second = aux.Point(const.FIELD_DX / 2 * -field.polarity, -const.FIELD_DY / 2)
+    if field.ally_color != const.COLOR:
+        we_active = True
+    else:
+        we_active = False
+    print(field.ally_color, we_active)
     if we_active:
         actions[gkId] = Actions.GoToPoint(field.ally_goal.frw, 0)
         nearestGoalPoint = aux.closest_point_on_line(field.enemy_goal.up, field.enemy_goal.down, ballPos)
-        print(aux.dist(field.ball.get_pos(), nearestGoalPoint))
+        # print(aux.dist(field.ball.get_pos(), nearestGoalPoint))
         point_for_score: Optional[aux.Point] = findPointForScore(field, ballPos, reverse=True, draw=True)
         ids = [idFirstAttacker, idSecondAttacker, const.GK]
         activeId = None
@@ -61,28 +66,29 @@ def PENALTY(field: fld.Field, actions: list[Optional[Action]], we_active: bool, 
         if activeId is not None:
 
             if aux.dist(ballPos, nearestGoalPoint) > minDistForScorePenalty:
-                print("first")
+                # print("first")
                 actions[activeId] = Actions.DelayedSlowKick(nearestGoalPoint, voltage=2, timerForHoldBallForMyIsBallIn=0.4)
             elif point_for_score is not None:
-                print("second")
+                # print("second")
                 # field.strategy_image.draw_circle(point_for_score)
                 actions[activeId] = Actions.DelayedSlowKick(point_for_score, timerForHoldBallForMyIsBallIn=0)
             else:
-                print("third")
+                # print("third")
                 new_point_for_score: Optional[aux.Point] = findPointForScore(field, ballPos, OtherK=1)
                 if new_point_for_score is not None:
                     actions[activeId] = Actions.DelayedSlowKick(new_point_for_score, timerForHoldBallForMyIsBallIn=0)
                 else:
                     actions[activeId] = Actions.DelayedSlowKick(field.enemy_goal.center, timerForHoldBallForMyIsBallIn=0)
     else:
+        print(1)
         GKNewState = GK(field, actions, GKLastState, pointFromBallKicked, angleFromBallKicked)
         actions[idFirstAttacker] = Actions.GoToPoint(point_first, 0)
         actions[idSecondAttacker] = Actions.GoToPoint(point_second, 0)
     return GKNewState
 
 
-def PREPARE_KICKOFF(field: fld.Field, actions: list[Optional[Action]], we_active: bool, idFirstAttacker: int, idSecondAttacker: int, GKLastState: GKStates) -> GKStates:
-    GKNewState: GKStates = GKStates.BlockMaybeKick
+def PREPARE_KICKOFF(field: fld.Field, actions: list[Optional[Action]], we_active: bool, idFirstAttacker: int, idSecondAttacker: int, GKLastState: GKStates) -> Optional[GKStates]:
+    GKNewState: Optional[GKStates] = None
     actions[const.GK] = Actions.GoToPoint(field.ally_goal.frw, 0)
     if we_active:
         if field.allies[idFirstAttacker].is_used():
@@ -96,8 +102,8 @@ def PREPARE_KICKOFF(field: fld.Field, actions: list[Optional[Action]], we_active
     return GKNewState
 
 
-def KICKOFF(field: fld.Field, actions: list[Optional[Action]], we_active: bool, idFirstAttacker: int, idSecondAttacker: int, GKLastState: GKStates) -> GKStates:
-    GKNewState: GKStates = GKStates.BlockMaybeKick
+def KICKOFF(field: fld.Field, actions: list[Optional[Action]], we_active: bool, idFirstAttacker: int, idSecondAttacker: int, GKLastState: GKStates) -> Optional[GKStates]:
+    GKNewState: Optional[GKStates] = None
     if we_active:
         if field.allies[idSecondAttacker].is_used() and field.allies[idFirstAttacker].is_used():
             actions[idFirstAttacker] = Actions.DelayedSlowKick(field.allies[idSecondAttacker].get_pos(), is_pass=True)

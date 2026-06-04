@@ -4,7 +4,8 @@ from time import time  # type: ignore
 
 import bridge.strategy.myConst as myConst
 
-class myIsBallInClass():
+
+class myIsBallInClass:
 
     TimerWeHoldBall: Optional[float] = None
     rWhichHoldBall: Optional[rbt.Robot] = None
@@ -19,5 +20,9 @@ class myIsBallInClass():
             self.TimerWeHoldBall = None
 
     def myIsBallIn(self, robot: rbt.Robot) -> bool:
-        return self.TimerWeHoldBall is not None and self.TimerWeHoldBall > myConst.timerForHoldBallForMyIsBallIn and self.rWhichHoldBall is not None and self.rWhichHoldBall.r_id == robot.r_id
-    
+        return (
+            self.TimerWeHoldBall is not None
+            and self.TimerWeHoldBall > myConst.timerForHoldBallForMyIsBallIn
+            and self.rWhichHoldBall is not None
+            and self.rWhichHoldBall.r_id == robot.r_id
+        )

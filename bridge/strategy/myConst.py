@@ -4,6 +4,7 @@ from math import asin
 from environment.setup_environment import get_from_env
 from bridge.auxiliary import aux, fld, rbt  # type: ignore
 
+
 class whatWeDoStates(Enum):
     """Класс с типо запускаемого нами кода"""
 
@@ -15,6 +16,7 @@ class whatWeDoStates(Enum):
     NewIsBallInTest = 5
     TestGK = 6
 
+
 distToBlockEnemyPass = 300
 
 minDistForOpeningForPass = 700
@@ -22,11 +24,11 @@ minDistForOpeningForPass = 700
 idFirstAttacker: int = 3
 idSecondAttacker: int = 5
 
-timerForRotate = 0.5/2#sec
-timerForHoldBallForMyIsBallIn = 1.5/1.5#3#sec
-constForTimerWeTryDoPass = 3#sec
+timerForRotate = 0.5 / 2  # sec
+timerForHoldBallForMyIsBallIn = 1.5 / 1.5  # 3#sec
+constForTimerWeTryDoPass = 3  # sec
 
-velRotateWithBall = 0.4#rad/sec
+velRotateWithBall = 0.4  # rad/sec
 if const.IS_SIMULATOR_USED:
     velRotateWithBall *= 5
 
@@ -46,7 +48,10 @@ spaceFromEdgedForFindingPointsForScorePenalty = 175
 dForCatchBall = 10
 
 distBetweenRsInWall = 250
-angleBetweenRsInWall = asin((distBetweenRsInWall/2)/((distBetweenRsInWall/2)**2+(const.KEEP_BALL_DIST+50)**2)**0.5)
+angleBetweenRsInWall = asin(
+    (distBetweenRsInWall / 2)
+    / ((distBetweenRsInWall / 2) ** 2 + (const.KEEP_BALL_DIST + 50) ** 2) ** 0.5
+)
 
 whatWeDoAtThisRun: whatWeDoStates = whatWeDoStates.SimpleTest
 
@@ -55,10 +60,17 @@ whatWeDoAtThisRun: whatWeDoStates = whatWeDoStates.SimpleTest
 #     whatWeDoAtThisRun = whatWeDoStates.Play#DONT TOUCH!!!!!!!!
 
 lowerEdgeForMinAngleErr = 0.25
-upperEdgeForMinAngleErr = 2.5*2
-koeffForCalculatingMinAngleErr = (upperEdgeForMinAngleErr-lowerEdgeForMinAngleErr)/(((const.FIELD_DX)**2+(const.FIELD_DY)**2)**0.5-minDistForOpeningForPass)
+upperEdgeForMinAngleErr = 2.5 * 2
+koeffForCalculatingMinAngleErr = (upperEdgeForMinAngleErr - lowerEdgeForMinAngleErr) / (
+    ((const.FIELD_DX) ** 2 + (const.FIELD_DY) ** 2) ** 0.5 - minDistForOpeningForPass
+)
 
-def calculateMinAngleErrForRotate(distToPointForPass: float)->float:
-    minAngleErrForRotate = aux.minmax(distToPointForPass*koeffForCalculatingMinAngleErr, lowerEdgeForMinAngleErr, upperEdgeForMinAngleErr)
+
+def calculateMinAngleErrForRotate(distToPointForPass: float) -> float:
+    minAngleErrForRotate = aux.minmax(
+        distToPointForPass * koeffForCalculatingMinAngleErr,
+        lowerEdgeForMinAngleErr,
+        upperEdgeForMinAngleErr,
+    )
     # print("minAngleErrForRotate =", minAngleErrForRotate)
     return minAngleErrForRotate

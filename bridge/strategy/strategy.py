@@ -15,28 +15,32 @@ from bridge.strategy.ClassWithMyStaticVariables import ClassWithMyStaticVariable
 import bridge.strategy.myConst as myConst
 from bridge.strategy.myConst import whatWeDoStates
 from bridge.strategy.myLogicFunc import (
-    updatePointAndAngleFromWhatBallKicked, 
+    updatePointAndAngleFromWhatBallKicked,
     updates,
-    attacker, 
-    GK
+    attacker,
+    GK,
 )
 from bridge.strategy.testStates import (
     testPass,
     simpleTest,
     testGK,
     testRotateWithBall,
-    newIsBallInTest
+    newIsBallInTest,
 )
 
 from typing import Callable
 
-testStates: dict[myConst.whatWeDoStates, Callable[[ClassWithMyStaticVariables, fld.Field, list[Optional[Action]]], None]] = {
+testStates: dict[
+    myConst.whatWeDoStates,
+    Callable[[ClassWithMyStaticVariables, fld.Field, list[Optional[Action]]], None],
+] = {
     myConst.whatWeDoStates.TestPass: testPass,
     myConst.whatWeDoStates.SimpleTest: simpleTest,
     myConst.whatWeDoStates.TestGK: testGK,
     myConst.whatWeDoStates.TestRotateWithBall: testRotateWithBall,
     myConst.whatWeDoStates.NewIsBallInTest: newIsBallInTest,
 }
+
 
 class Strategy:
     """Main class of strategy"""
@@ -56,33 +60,68 @@ class Strategy:
         for _ in range(const.TEAM_ROBOTS_MAX_COUNT):
             actions.append(None)
 
-        print(field.game_state)#for real
+        print(field.game_state)  # for real
         match field.game_state:
-            case GameStates.RUN: # GOOD
+            case GameStates.RUN:  # GOOD
                 self.run(field, actions)
 
             case GameStates.TIMEOUT:
-                states.TIMEOUT(field, actions, self.staticVariables.we_active, self.staticVariables.idFirstAttacker, self.staticVariables.idSecondAttacker)
+                states.TIMEOUT(
+                    field,
+                    actions,
+                    self.staticVariables.we_active,
+                    self.staticVariables.idFirstAttacker,
+                    self.staticVariables.idSecondAttacker,
+                )
 
             case GameStates.HALT:
                 return [Actions.Stop()] * const.TEAM_ROBOTS_MAX_COUNT
-            
+
             case GameStates.PREPARE_PENALTY:
-                states.PREPARE_PENALTY(field, actions, self.staticVariables.we_active, self.staticVariables.idFirstAttacker, self.staticVariables.idSecondAttacker)
+                states.PREPARE_PENALTY(
+                    field,
+                    actions,
+                    self.staticVariables.we_active,
+                    self.staticVariables.idFirstAttacker,
+                    self.staticVariables.idSecondAttacker,
+                )
 
             case GameStates.PENALTY:
                 updatePointAndAngleFromWhatBallKicked(self.staticVariables, field)
-                place = states.PENALTY(field, actions, self.staticVariables.we_active, self.staticVariables.idFirstAttacker, self.staticVariables.idSecondAttacker, self.staticVariables.GKLastState, self.staticVariables.PointFromBallKicked, self.staticVariables.AngleWithWhatBallKicked)  # one r(our or not) kick ball from center of field, GK other team defend goal
+                place = states.PENALTY(
+                    field,
+                    actions,
+                    self.staticVariables.we_active,
+                    self.staticVariables.idFirstAttacker,
+                    self.staticVariables.idSecondAttacker,
+                    self.staticVariables.GKLastState,
+                    self.staticVariables.PointFromBallKicked,
+                    self.staticVariables.AngleWithWhatBallKicked,
+                )  # one r(our or not) kick ball from center of field, GK other team defend goal
                 if self.staticVariables.we_active and place is not None:
                     self.staticVariables.GKLastState = place
 
             case GameStates.PREPARE_KICKOFF:
-                place = states.PREPARE_KICKOFF(field, actions, self.staticVariables.we_active, self.staticVariables.idFirstAttacker, self.staticVariables.idSecondAttacker, self.staticVariables.GKLastState)  # our Rs on our part of field
+                place = states.PREPARE_KICKOFF(
+                    field,
+                    actions,
+                    self.staticVariables.we_active,
+                    self.staticVariables.idFirstAttacker,
+                    self.staticVariables.idSecondAttacker,
+                    self.staticVariables.GKLastState,
+                )  # our Rs on our part of field
                 if self.staticVariables.we_active and place is not None:
                     self.staticVariables.GKLastState = place
-                
+
             case GameStates.KICKOFF:
-                place = states.KICKOFF(field, actions, self.staticVariables.we_active, self.staticVariables.idFirstAttacker, self.staticVariables.idSecondAttacker, self.staticVariables.GKLastState)  # our Rs on our part of field
+                place = states.KICKOFF(
+                    field,
+                    actions,
+                    self.staticVariables.we_active,
+                    self.staticVariables.idFirstAttacker,
+                    self.staticVariables.idSecondAttacker,
+                    self.staticVariables.GKLastState,
+                )  # our Rs on our part of field
                 if self.staticVariables.we_active and place is not None:
                     self.staticVariables.GKLastState = place
 
@@ -97,30 +136,71 @@ class Strategy:
                     self.staticVariables.GKLastState = place
 
         return actions
- 
+
     def run(self, field: fld.Field, actions: list[Optional[Action]]) -> None:
         # TODO fix problem with that robots comes so close to each other,when they try take ball
         if len(field.active_allies(True)) != 0:  # if our Rs on field
             if field.ally_color == const.COLOR:
                 """code for ally"""
-                updates(self.staticVariables, field, actions, showTimerPass=False, showIdsPass=False)
-                if self.staticVariables.whatWeDoAtThisRun == whatWeDoStates.Play or self.staticVariables.whatWeDoAtThisRun == whatWeDoStates.BothPlay:
-                    print(field.game_state)#for real
-                    attacker(self.staticVariables, field, actions, self.staticVariables.idFirstAttacker, self.staticVariables.idSecondAttacker)
-                    attacker(self.staticVariables, field, actions, self.staticVariables.idSecondAttacker, self.staticVariables.idFirstAttacker)
+                updates(
+                    self.staticVariables,
+                    field,
+                    actions,
+                    showTimerPass=False,
+                    showIdsPass=False,
+                )
+                if (
+                    self.staticVariables.whatWeDoAtThisRun == whatWeDoStates.Play
+                    or self.staticVariables.whatWeDoAtThisRun == whatWeDoStates.BothPlay
+                ):
+                    print(field.game_state)  # for real
+                    attacker(
+                        self.staticVariables,
+                        field,
+                        actions,
+                        self.staticVariables.idFirstAttacker,
+                        self.staticVariables.idSecondAttacker,
+                    )
+                    attacker(
+                        self.staticVariables,
+                        field,
+                        actions,
+                        self.staticVariables.idSecondAttacker,
+                        self.staticVariables.idFirstAttacker,
+                    )
                     if field.allies[const.GK].is_used():
-                        self.staticVariables.GKLastState = GK(field, actions, self.staticVariables.GKLastState)
+                        self.staticVariables.GKLastState = GK(
+                            field, actions, self.staticVariables.GKLastState
+                        )
                     # field.strategy_image.draw_circle(field.ally_goal.center, (0, 0, 255), 20)
                 else:
-                    testStates[self.staticVariables.whatWeDoAtThisRun](self.staticVariables, field, actions)
+                    testStates[self.staticVariables.whatWeDoAtThisRun](
+                        self.staticVariables, field, actions
+                    )
             else:
                 """code for yellow"""
                 if self.staticVariables.whatWeDoAtThisRun == whatWeDoStates.BothPlay:
                     if field.allies[const.GK].is_used():
-                        self.staticVariables.GKLastState = GK(field, actions, self.staticVariables.GKLastState)
-                    attacker(self.staticVariables, field, actions, self.staticVariables.idFirstAttacker, self.staticVariables.idSecondAttacker)
-                    attacker(self.staticVariables, field, actions, self.staticVariables.idSecondAttacker, self.staticVariables.idFirstAttacker)
+                        self.staticVariables.GKLastState = GK(
+                            field, actions, self.staticVariables.GKLastState
+                        )
+                    attacker(
+                        self.staticVariables,
+                        field,
+                        actions,
+                        self.staticVariables.idFirstAttacker,
+                        self.staticVariables.idSecondAttacker,
+                    )
+                    attacker(
+                        self.staticVariables,
+                        field,
+                        actions,
+                        self.staticVariables.idSecondAttacker,
+                        self.staticVariables.idFirstAttacker,
+                    )
                 else:
-                    testStates[self.staticVariables.whatWeDoAtThisRun](self.staticVariables, field, actions)
+                    testStates[self.staticVariables.whatWeDoAtThisRun](
+                        self.staticVariables, field, actions
+                    )
         else:
             print("WE HAVENT ROBOTS")

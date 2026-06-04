@@ -6,6 +6,7 @@ import bridge.strategy.myConst as myConst
 from bridge.strategy.myConst import whatWeDoStates
 from bridge.router.myDefaultFunc import myIsBallInClass  # type: ignore
 
+
 class GKStates(Enum):
     """Класс с состояниями вартаря"""
 
@@ -17,8 +18,9 @@ class GKStates(Enum):
     KnockOutBall = 5
     BlockMaybeKick = 6
 
+
 class ClassWithMyStaticVariables:
-    def __init__(self)->None:
+    def __init__(self) -> None:
         self.we_active: bool = False
         self.maxVelBall: float = 0
         self.idGettingPass: Optional[int] = None

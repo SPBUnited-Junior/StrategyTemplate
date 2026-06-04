@@ -10,10 +10,10 @@ from bridge.strategy.ClassWithMyStaticVariables import ClassWithMyStaticVariable
 from bridge.strategy.myLogicFunc import (
     isBallOnOurPartOfField,
     gettingPass,
-    GK, 
+    GK,
     getStatusOfPassLogic,
     block2EnemyRs,
-    blockEnemyR
+    blockEnemyR,
 )
 from bridge.strategy.myFunc import (
     doPassNearAllly,
@@ -22,8 +22,15 @@ from bridge.strategy.myFunc import (
     isBallKickedToR,
 )
 
-def simpleTest(staticVariables: ClassWithMyStaticVariables, field: fld.Field, actions: list[Optional[Action]])-> None:
-    point_for_score: Optional[aux.Point] = findPointForScore(field, field.ball.get_pos(), reverse=True, draw=True)
+
+def simpleTest(
+    staticVariables: ClassWithMyStaticVariables,
+    field: fld.Field,
+    actions: list[Optional[Action]],
+) -> None:
+    point_for_score: Optional[aux.Point] = findPointForScore(
+        field, field.ball.get_pos(), reverse=True, draw=True
+    )
     # field.strategy_image.draw_circle(point_for_score)
     # field.strategy_image.draw_circle(field.ally_goal.center_up)
     # field.strategy_image.draw_circle(field.ally_goal.center_down)
@@ -35,7 +42,7 @@ def simpleTest(staticVariables: ClassWithMyStaticVariables, field: fld.Field, ac
     #     staticVariables.PointFromBallKicked = aux.Point(-1000)
     # if staticVariables.TimerWeHoldBall == None:
     #      staticVariables.TimerWeHoldBall = time()
-    # if time() - staticVariables.TimerWeHoldBall > constt: 
+    # if time() - staticVariables.TimerWeHoldBall > constt:
     #     staticVariables.TimerWeHoldBall = time()
     #     if staticVariables.PointFromBallKicked.x == 1000:
     #         staticVariables.PointFromBallKicked = aux.Point(-1000)
@@ -46,13 +53,20 @@ def simpleTest(staticVariables: ClassWithMyStaticVariables, field: fld.Field, ac
     # actions[const.GK] = Actions.GoToPoint(aux.Point(point.x, point.y+400), 0)
 
 
-def testPass(staticVariables: ClassWithMyStaticVariables, field: fld.Field, actions: list[Optional[Action]])-> None:
+def testPass(
+    staticVariables: ClassWithMyStaticVariables,
+    field: fld.Field,
+    actions: list[Optional[Action]],
+) -> None:
     actions[const.GK] = Actions.GoToPoint(aux.Point(const.FIELD_DX, const.FIELD_DY), 0)
 
     if field.ball.get_pos().y > 5000:
         print("!!!!!!!!!!!!!!!!!!!!!!!!")
     else:
-        if staticVariables.maxVelBall < field.ball.get_vel().mag() and field.ball.get_vel().mag()<10000:
+        if (
+            staticVariables.maxVelBall < field.ball.get_vel().mag()
+            and field.ball.get_vel().mag() < 10000
+        ):
             staticVariables.maxVelBall = field.ball.get_vel().mag()
             # print("staticVariables.maxVelBall =", staticVariables.maxVelBall)
 
@@ -65,16 +79,25 @@ def testPass(staticVariables: ClassWithMyStaticVariables, field: fld.Field, acti
         oldIdDoPass = staticVariables.idDoPass
         oldIdGettingPass = staticVariables.idGettingPass
 
-        if staticVariables.idDoPass is None and staticVariables.idGettingPass is None: #FOR TEST
+        if (
+            staticVariables.idDoPass is None and staticVariables.idGettingPass is None
+        ):  # FOR TEST
             staticVariables.idDoPass = nearestR.r_id
 
         for thisR in field.active_allies(False):
             idxThisR = thisR.r_id
             thisRPos = thisR.get_pos()
-            otherAttackerR = field.allies[(idxThisR==staticVariables.idFirstAttacker)*staticVariables.idSecondAttacker + (idxThisR==staticVariables.idSecondAttacker)*staticVariables.idFirstAttacker]
+            otherAttackerR = field.allies[
+                (idxThisR == staticVariables.idFirstAttacker)
+                * staticVariables.idSecondAttacker
+                + (idxThisR == staticVariables.idSecondAttacker)
+                * staticVariables.idFirstAttacker
+            ]
             idxOtherAttacker = otherAttackerR.r_id
 
-            status = getStatusOfPassLogic(staticVariables, field, actions, idxThisR, idxOtherAttacker)
+            status = getStatusOfPassLogic(
+                staticVariables, field, actions, idxThisR, idxOtherAttacker
+            )
             if status is None:
                 openForPass(field, thisR.r_id, actions)
             else:
@@ -83,12 +106,26 @@ def testPass(staticVariables: ClassWithMyStaticVariables, field: fld.Field, acti
         print(staticVariables.idDoPass, staticVariables.idGettingPass)
         # field.strategy_image.send_telemetry("ids:", "staticVariables.idDoPass" + str(staticVariables.idDoPass) + "staticVariables.idGettingPass:" + str(staticVariables.idGettingPass))
 
-def testGK(staticVariables: ClassWithMyStaticVariables, field: fld.Field, actions: list[Optional[Action]])->None:
+
+def testGK(
+    staticVariables: ClassWithMyStaticVariables,
+    field: fld.Field,
+    actions: list[Optional[Action]],
+) -> None:
     if field.ally_color == const.COLOR:
-        staticVariables.GKLastState = GK(field, actions, staticVariables.GKLastState, staticVariables.PointFromBallKicked, staticVariables.AngleWithWhatBallKicked)
+        staticVariables.GKLastState = GK(
+            field,
+            actions,
+            staticVariables.GKLastState,
+            staticVariables.PointFromBallKicked,
+            staticVariables.AngleWithWhatBallKicked,
+        )
         print(staticVariables.GKLastState)
     else:
-        if field.allies[staticVariables.idFirstAttacker].is_used() or field.allies[staticVariables.idSecondAttacker].is_used():
+        if (
+            field.allies[staticVariables.idFirstAttacker].is_used()
+            or field.allies[staticVariables.idSecondAttacker].is_used()
+        ):
             if field.allies[staticVariables.idFirstAttacker].is_used():
                 activeId = staticVariables.idFirstAttacker
             elif field.allies[staticVariables.idSecondAttacker].is_used():
@@ -101,18 +138,49 @@ def testGK(staticVariables: ClassWithMyStaticVariables, field: fld.Field, action
         else:
             print("HAVENT Rs")
 
-def testRotateWithBall(staticVariables: ClassWithMyStaticVariables, field: fld.Field, actions: list[Optional[Action]])->None:
+
+def testRotateWithBall(
+    staticVariables: ClassWithMyStaticVariables,
+    field: fld.Field,
+    actions: list[Optional[Action]],
+) -> None:
     thisR = field.allies[staticVariables.idFirstAttacker]
-    if staticVariables.maxVelBall < field.ball.get_vel().mag() and field.ball.get_vel().mag()<10000:
+    if (
+        staticVariables.maxVelBall < field.ball.get_vel().mag()
+        and field.ball.get_vel().mag() < 10000
+    ):
         staticVariables.maxVelBall = field.ball.get_vel().mag()
     if field.is_ball_in(thisR):
-        actions[staticVariables.idFirstAttacker] = Actions.DelayedSlowKick(field.enemy_goal.center)
+        actions[staticVariables.idFirstAttacker] = Actions.DelayedSlowKick(
+            field.enemy_goal.center
+        )
     else:
-        actions[staticVariables.idFirstAttacker] = Actions.BallGrab(pi/2)
+        actions[staticVariables.idFirstAttacker] = Actions.BallGrab(pi / 2)
 
-def newIsBallInTest(staticVariables: ClassWithMyStaticVariables, field: fld.Field, actions: list[Optional[Action]])->None:
+
+def newIsBallInTest(
+    staticVariables: ClassWithMyStaticVariables,
+    field: fld.Field,
+    actions: list[Optional[Action]],
+) -> None:
     thisR = field.allies[staticVariables.idFirstAttacker]
     dist2Ball = (thisR.get_pos() - field.ball.get_pos()).mag()
-    angle2Ball = abs(aux.wind_down_angle((field.ball.get_pos() - thisR.get_pos()).arg() - thisR.get_angle()))
-    print(round(dist2Ball), const.BALL_GRABBED_DIST, round(angle2Ball/pi*180, 2), round(const.BALL_GRABBED_ANGLE/pi*180))
-    print(int(dist2Ball<const.BALL_GRABBED_DIST), int(angle2Ball<const.BALL_GRABBED_ANGLE), int(dist2Ball<const.BALL_GRABBED_DIST and angle2Ball<const.BALL_GRABBED_ANGLE))
+    angle2Ball = abs(
+        aux.wind_down_angle(
+            (field.ball.get_pos() - thisR.get_pos()).arg() - thisR.get_angle()
+        )
+    )
+    print(
+        round(dist2Ball),
+        const.BALL_GRABBED_DIST,
+        round(angle2Ball / pi * 180, 2),
+        round(const.BALL_GRABBED_ANGLE / pi * 180),
+    )
+    print(
+        int(dist2Ball < const.BALL_GRABBED_DIST),
+        int(angle2Ball < const.BALL_GRABBED_ANGLE),
+        int(
+            dist2Ball < const.BALL_GRABBED_DIST
+            and angle2Ball < const.BALL_GRABBED_ANGLE
+        ),
+    )

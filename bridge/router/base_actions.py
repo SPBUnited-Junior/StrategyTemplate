@@ -51,7 +51,10 @@ class Actions:
             vec_err = self.target_pos - cur_robot.get_pos()
             cur_vel = cur_robot.get_vel()
 
-            ball_escorting = self.ball_interact and aux.dist(cur_robot.get_pos(), domain.field.ball.get_pos()) < 700
+            ball_escorting = (
+                self.ball_interact
+                and aux.dist(cur_robot.get_pos(), domain.field.ball.get_pos()) < 700
+            )
             if ball_escorting:
                 cur_robot.pos_reg_x.select_mode(tau.Mode.SOFT)
                 cur_robot.pos_reg_y.select_mode(tau.Mode.SOFT)
@@ -59,19 +62,27 @@ class Actions:
                 cur_robot.pos_reg_x.select_mode(tau.Mode.NORMAL)
                 cur_robot.pos_reg_y.select_mode(tau.Mode.NORMAL)
 
-            u_x = cur_robot.pos_reg_x.process_(vec_err.x, -cur_vel.x, time() - cur_robot.prev_sended_time)
-            u_y = cur_robot.pos_reg_y.process_(vec_err.y, -cur_vel.y, time() - cur_robot.prev_sended_time)
+            u_x = cur_robot.pos_reg_x.process_(
+                vec_err.x, -cur_vel.x, time() - cur_robot.prev_sended_time
+            )
+            u_y = cur_robot.pos_reg_y.process_(
+                vec_err.y, -cur_vel.y, time() - cur_robot.prev_sended_time
+            )
             current_action.vel = aux.Point(u_x, u_y)
             # return
             cur_vel_abs = aux.rotate(current_action.vel, -cur_robot.get_angle())
-            prev_vel_abs = aux.rotate(cur_robot.prev_sended_vel, -cur_robot.prev_sended_angle)
+            prev_vel_abs = aux.rotate(
+                cur_robot.prev_sended_vel, -cur_robot.prev_sended_angle
+            )
             if (cur_vel_abs - prev_vel_abs).mag() / (
                 time() - cur_robot.prev_sended_time
             ) > const.MAX_ACCELERATION and cur_vel_abs.mag() > prev_vel_abs.mag():
                 # domain.field.router_image.draw_circle(aux.Point(0, 1000), size_in_mms=200)
                 current_action.vel = aux.rotate(
                     prev_vel_abs
-                    + (cur_vel_abs - prev_vel_abs).unity() * const.MAX_ACCELERATION * (time() - cur_robot.prev_sended_time),
+                    + (cur_vel_abs - prev_vel_abs).unity()
+                    * const.MAX_ACCELERATION
+                    * (time() - cur_robot.prev_sended_time),
                     cur_robot.get_angle(),
                 )
 
@@ -84,7 +95,9 @@ class Actions:
             if self.use_dribbler:
                 current_action.dribbler_speed = 15
 
-            DumbActions.AddFinalVelocityAction(self.target_pos, self.target_vel).process(domain, current_action)
+            DumbActions.AddFinalVelocityAction(
+                self.target_pos, self.target_vel
+            ).process(domain, current_action)
 
     class GoToPoint(Action):
         """Go to point and avoid obstacles"""
@@ -105,46 +118,89 @@ class Actions:
             self.target_vel = target_vel
             self.ignore_robots = ignore_robots
 
-        def use_behavior_of(self, domain: ActionDomain, current_action: ActionValues) -> list["Action"]:
-            avoid_ball = domain.game_state in [GameStates.STOP, GameStates.PREPARE_KICKOFF] or (
-                domain.game_state in [GameStates.FREE_KICK, GameStates.KICKOFF] and not domain.we_active
+        def use_behavior_of(
+            self, domain: ActionDomain, current_action: ActionValues
+        ) -> list["Action"]:
+            avoid_ball = domain.game_state in [
+                GameStates.STOP,
+                GameStates.PREPARE_KICKOFF,
+            ] or (
+                domain.game_state in [GameStates.FREE_KICK, GameStates.KICKOFF]
+                and not domain.we_active
             )
-            self.target_pos = correct_target_pos(domain.field, domain.robot, self.target_pos, avoid_ball)
+            self.target_pos = correct_target_pos(
+                domain.field, domain.robot, self.target_pos, avoid_ball
+            )
 
             angle0 = self.target_angle
             next_point = self.target_pos
 
             if domain.robot.r_id != domain.field.gk_id:
-                if aux.is_point_inside_poly(domain.robot.get_pos(), domain.field.ally_goal.hull):
-                    next_point = aux.nearest_point_on_poly(domain.robot.get_pos(), domain.field.ally_goal.big_hull)
+                if aux.is_point_inside_poly(
+                    domain.robot.get_pos(), domain.field.ally_goal.hull
+                ):
+                    next_point = aux.nearest_point_on_poly(
+                        domain.robot.get_pos(), domain.field.ally_goal.big_hull
+                    )
                     return [Actions.GoToPointIgnore(next_point, angle0)]
-                elif aux.is_point_inside_poly(domain.robot.get_pos(), domain.field.enemy_goal.hull):
-                    next_point = aux.nearest_point_on_poly(domain.robot.get_pos(), domain.field.enemy_goal.big_hull)
+                elif aux.is_point_inside_poly(
+                    domain.robot.get_pos(), domain.field.enemy_goal.hull
+                ):
+                    next_point = aux.nearest_point_on_poly(
+                        domain.robot.get_pos(), domain.field.enemy_goal.big_hull
+                    )
                     return [Actions.GoToPointIgnore(next_point, angle0)]
 
-                pint = aux.segment_poly_intersect(domain.robot.get_pos(), next_point, domain.field.ally_goal.hull)
+                pint = aux.segment_poly_intersect(
+                    domain.robot.get_pos(), next_point, domain.field.ally_goal.hull
+                )
                 if pint is not None:
-                    convex_hull = qh.shortesthull(domain.robot.get_pos(), next_point, domain.field.ally_goal.big_hull)
+                    convex_hull = qh.shortesthull(
+                        domain.robot.get_pos(),
+                        next_point,
+                        domain.field.ally_goal.big_hull,
+                    )
                     for j in range(len(convex_hull) - 2, 0, -1):
                         next_point = convex_hull[j]
 
-                pint = aux.segment_poly_intersect(domain.robot.get_pos(), next_point, domain.field.enemy_goal.hull)
+                pint = aux.segment_poly_intersect(
+                    domain.robot.get_pos(), next_point, domain.field.enemy_goal.hull
+                )
                 if pint is not None:
-                    convex_hull = qh.shortesthull(domain.robot.get_pos(), next_point, domain.field.enemy_goal.big_hull)
+                    convex_hull = qh.shortesthull(
+                        domain.robot.get_pos(),
+                        next_point,
+                        domain.field.enemy_goal.big_hull,
+                    )
                     for j in range(len(convex_hull) - 2, 0, -1):
                         next_point = convex_hull[j]
 
             pth_wp = calc_passthrough_point(
-                domain, next_point, avoid_ball=avoid_ball, ignore_ball=self.ignore_ball, ignore_robots=self.ignore_robots)
+                domain,
+                next_point,
+                avoid_ball=avoid_ball,
+                ignore_ball=self.ignore_ball,
+                ignore_robots=self.ignore_robots,
+            )
             if pth_wp is not None:
                 target_speed = min(const.MAX_SPEED, aux.dist(pth_wp, next_point))
                 target_vel = (pth_wp - domain.robot.get_pos()).unity() * target_speed
                 return [Actions.GoToPointIgnore(pth_wp, angle0, target_vel=target_vel)]
             if next_point != self.target_pos:
-                target_speed = min(const.MAX_SPEED / 2, aux.dist(self.target_pos, next_point))
-                target_vel = (next_point - domain.robot.get_pos()).unity() * target_speed
-                return [Actions.GoToPointIgnore(next_point, angle0, target_vel=target_vel)]
-            return [Actions.GoToPointIgnore(self.target_pos, angle0, self.ball_interact, self.target_vel)]
+                target_speed = min(
+                    const.MAX_SPEED / 2, aux.dist(self.target_pos, next_point)
+                )
+                target_vel = (
+                    next_point - domain.robot.get_pos()
+                ).unity() * target_speed
+                return [
+                    Actions.GoToPointIgnore(next_point, angle0, target_vel=target_vel)
+                ]
+            return [
+                Actions.GoToPointIgnore(
+                    self.target_pos, angle0, self.ball_interact, self.target_vel
+                )
+            ]
 
     class BallPlacement(Action):
         """Move ball to target_point"""
@@ -155,15 +211,22 @@ class Actions:
         def behavior(self, domain: ActionDomain, current_action: ActionValues) -> None:
             current_action.dribbler_speed = 0
 
-        def use_behavior_of(self, domain: ActionDomain, current_action: ActionValues) -> list["Action"]:
+        def use_behavior_of(
+            self, domain: ActionDomain, current_action: ActionValues
+        ) -> list["Action"]:
             # current_action.dribbler_speed = 15
             target_angle = (-domain.field.ball.get_pos() + self.target_point).arg()
             if aux.dist(domain.field.ball.get_pos(), self.target_point) < 10:
                 current_action.dribbler_speed = 0
-                current_action.angle = (self.target_point - domain.robot.get_pos()).arg()
+                current_action.angle = (
+                    self.target_point - domain.robot.get_pos()
+                ).arg()
                 return []
             if domain.field.is_ball_in(domain.robot):
-                return [Actions.GoToPointIgnore(self.target_point, target_angle), DumbActions.LimitSpeed(500)]
+                return [
+                    Actions.GoToPointIgnore(self.target_point, target_angle),
+                    DumbActions.LimitSpeed(500),
+                ]
             return [Actions.BallGrab(target_angle), DumbActions.LimitSpeed(700)]
 
     class BallGrab(Action):
@@ -178,17 +241,28 @@ class Actions:
                 and (
                     domain.robot.r_id == domain.field.gk_id
                     or (
-                        not aux.is_point_inside_poly(domain.field.ball.get_pos(), domain.field.enemy_goal.hull)
-                        and not aux.is_point_inside_poly(domain.field.ball.get_pos(), domain.field.ally_goal.hull)
+                        not aux.is_point_inside_poly(
+                            domain.field.ball.get_pos(), domain.field.enemy_goal.hull
+                        )
+                        and not aux.is_point_inside_poly(
+                            domain.field.ball.get_pos(), domain.field.ally_goal.hull
+                        )
                     )
                 )
-                and domain.game_state not in [GameStates.STOP, GameStates.PREPARE_KICKOFF]
-                and (domain.game_state not in [GameStates.FREE_KICK, GameStates.KICKOFF] or domain.we_active)
+                and domain.game_state
+                not in [GameStates.STOP, GameStates.PREPARE_KICKOFF]
+                and (
+                    domain.game_state not in [GameStates.FREE_KICK, GameStates.KICKOFF]
+                    or domain.we_active
+                )
             )
 
         def behavior(self, domain: ActionDomain, current_action: ActionValues) -> None:
             ball_pos = domain.field.ball.get_pos()
-            align_pos = ball_pos - aux.rotate(aux.RIGHT, self.target_angle) * const.GRAB_ALIGN_DIST
+            align_pos = (
+                ball_pos
+                - aux.rotate(aux.RIGHT, self.target_angle) * const.GRAB_ALIGN_DIST
+            )
             transl_vel = get_grab_speed(
                 domain.robot.get_pos(),
                 current_action.vel,
@@ -204,16 +278,33 @@ class Actions:
             current_action.dribbler_speed = 15
             # current_action.dribbler_speed = 0
 
-        def use_behavior_of(self, domain: ActionDomain, current_action: ActionValues) -> list["Action"]:
+        def use_behavior_of(
+            self, domain: ActionDomain, current_action: ActionValues
+        ) -> list["Action"]:
             ball_pos = domain.field.ball.get_pos()
-            align_pos = ball_pos - aux.rotate(aux.RIGHT, self.target_angle) * const.GRAB_ALIGN_DIST
-            ignore_ball = len(aux.line_circle_intersect(domain.robot.get_pos(), align_pos, ball_pos, const.ROBOT_R, "S")) < 2
+            align_pos = (
+                ball_pos
+                - aux.rotate(aux.RIGHT, self.target_angle) * const.GRAB_ALIGN_DIST
+            )
+            ignore_ball = (
+                len(
+                    aux.line_circle_intersect(
+                        domain.robot.get_pos(), align_pos, ball_pos, const.ROBOT_R, "S"
+                    )
+                )
+                < 2
+            )
             return [Actions.GoToPoint(align_pos, self.target_angle, True, ignore_ball)]
 
     class Velocity(Action):
         """Move robot with velocity and angle_speed"""
 
-        def __init__(self, velocity: aux.Point, angle: float, control_angle_by_speed: bool = False) -> None:
+        def __init__(
+            self,
+            velocity: aux.Point,
+            angle: float,
+            control_angle_by_speed: bool = False,
+        ) -> None:
             self.velocity = velocity
             self.angle = angle  # angle to turn / angle speed
 
@@ -239,10 +330,12 @@ class Actions:
         ) -> None:
             self.kick_args = (target_pos, voltage, is_pass, is_upper)
 
-        def use_behavior_of(self, domain: ActionDomain, current_action: ActionValues) -> list["Action"]:
-            #print(self.kick_args)
+        def use_behavior_of(
+            self, domain: ActionDomain, current_action: ActionValues
+        ) -> list["Action"]:
+            # print(self.kick_args)
             return [KickActions.Straight(*self.kick_args)]
-        
+
     class DelayedSlowKick(Action):
         """Choose type of kick (from KickActions)"""
 
@@ -253,43 +346,73 @@ class Actions:
             is_pass: bool = False,
             is_upper: bool = False,
             timer_for_rotate: float = myConst.timerForRotate,
-            timerForHoldBallForMyIsBallIn: float = myConst.timerForHoldBallForMyIsBallIn
-
+            timerForHoldBallForMyIsBallIn: float = myConst.timerForHoldBallForMyIsBallIn,
         ) -> None:
-            self.kick_args = (target_pos, timer_for_rotate, timerForHoldBallForMyIsBallIn, voltage, is_pass, is_upper)
 
-        def use_behavior_of(self, domain: ActionDomain, current_action: ActionValues) -> list["Action"]:
-            #print(self.kick_args)
+            if not myConst.weUseDribbler:
+                timer_for_rotate = 0
+                timerForHoldBallForMyIsBallIn = 0
+
+            self.kick_args = (
+                target_pos,
+                timer_for_rotate,
+                timerForHoldBallForMyIsBallIn,
+                voltage,
+                is_pass,
+                is_upper,
+            )
+
+        def use_behavior_of(
+            self, domain: ActionDomain, current_action: ActionValues
+        ) -> list["Action"]:
+            # print(self.kick_args)
             return [KickActions.delayedSLowKick(*self.kick_args)]
-        
+
     class CatchBall(Action):
         """catch ball which moves straight to r"""
-        def __init__(self)->None:
+
+        def __init__(self) -> None:
             pass
-            
-        def is_defined(self, domain: ActionDomain)->bool:
+
+        def is_defined(self, domain: ActionDomain) -> bool:
             """if r not on line"""
             ball = domain.field.ball
-            print("USED")   
-            return len(aux.line_circle_intersect(ball.get_pos(), ball.get_pos()+ball.get_vel(), domain.robot.get_pos(), myConst.dForCatchBall, "L")) == 0
-        
-        def behavior(self, domain: ActionDomain, current_action: ActionValues)->None:
+            print("USED")
+            return (
+                len(
+                    aux.line_circle_intersect(
+                        ball.get_pos(),
+                        ball.get_pos() + ball.get_vel(),
+                        domain.robot.get_pos(),
+                        myConst.dForCatchBall,
+                        "L",
+                    )
+                )
+                == 0
+            )
+
+        def behavior(self, domain: ActionDomain, current_action: ActionValues) -> None:
             print("ball not on line")
             return super().behavior(domain, current_action)
-        
-        def use_behavior_of(self, domain: ActionDomain, current_action: ActionValues)-> list["Action"]:
-            return [Actions.GoToPoint(domain.robot.get_pos(), domain.robot.get_angle()).compose(DribblerActions.Dribbler(15))]
-        
+
+        def use_behavior_of(
+            self, domain: ActionDomain, current_action: ActionValues
+        ) -> list["Action"]:
+            return [
+                Actions.GoToPoint(
+                    domain.robot.get_pos(), domain.robot.get_angle()
+                ).compose(DribblerActions.Dribbler(15))
+            ]
+
     class Dribbler(Action):
 
         def __init__(self, dribbler_speed: int) -> None:
             self.dribblerSpeed: int = dribbler_speed
 
-        def use_behavior_of(self, domain: ActionDomain, current_action: ActionValues) -> list["Action"]:
+        def use_behavior_of(
+            self, domain: ActionDomain, current_action: ActionValues
+        ) -> list["Action"]:
             return []
-    
-
-
 
 
 class KickActions:
@@ -322,8 +445,12 @@ class KickActions:
     class Straight(Kick):
         """Grab the ball and kick it straight"""
 
-        def use_behavior_of(self, domain: ActionDomain, current_action: ActionValues) -> list["Action"]:
-            kick_angle = aux.angle_to_point(domain.field.ball.get_pos(), self.target_pos)
+        def use_behavior_of(
+            self, domain: ActionDomain, current_action: ActionValues
+        ) -> list["Action"]:
+            kick_angle = aux.angle_to_point(
+                domain.field.ball.get_pos(), self.target_pos
+            )
 
             actions = [
                 Actions.BallGrab(kick_angle),
@@ -334,8 +461,12 @@ class KickActions:
             return actions
 
     class delayedKick(Kick):
-        def use_behavior_of(self, domain: ActionDomain, current_action: ActionValues) -> list["Action"]:
-            kick_angle = aux.angle_to_point(domain.field.ball.get_pos(), self.target_pos)
+        def use_behavior_of(
+            self, domain: ActionDomain, current_action: ActionValues
+        ) -> list["Action"]:
+            kick_angle = aux.angle_to_point(
+                domain.field.ball.get_pos(), self.target_pos
+            )
 
             actions = [
                 Actions.BallGrab(kick_angle),
@@ -353,8 +484,7 @@ class KickActions:
             timerForHoldBallForMyIsBallIn: float = myConst.timerForHoldBallForMyIsBallIn,
             voltage: int = const.VOLTAGE_SHOOT,
             is_pass: bool = False,
-            is_upper: bool = False
-            
+            is_upper: bool = False,
         ) -> None:
             self.target_pos = target_pos
             self.voltage = voltage  # ignore if is_pass
@@ -371,30 +501,41 @@ class KickActions:
             self.pass_pos: Optional[aux.Point] = None
             if is_pass:
                 self.pass_pos = self.target_pos
-        def use_behavior_of(self, domain: ActionDomain, current_action: ActionValues) -> list["Action"]:
-            kick_angle = aux.angle_to_point(domain.field.ball.get_pos(), self.target_pos)
+
+        def use_behavior_of(
+            self, domain: ActionDomain, current_action: ActionValues
+        ) -> list["Action"]:
+            kick_angle = aux.angle_to_point(
+                domain.field.ball.get_pos(), self.target_pos
+            )
             distToAim = aux.dist(domain.field.ball.get_pos(), self.target_pos)
 
             actions = [
                 Actions.BallGrab(kick_angle),
-                DumbActions.slowRotateWithBall(target_angle=kick_angle, distToAim=distToAim),
-                DumbActions.delayedShootAction(self.target_pos, self.timer_for_rotate, self.timerForHoldBallForMyIsBallIn, self.is_upper),
+                DumbActions.slowRotateWithBall(
+                    target_angle=kick_angle, distToAim=distToAim
+                ),
+                DumbActions.delayedShootAction(
+                    self.target_pos,
+                    self.timer_for_rotate,
+                    self.timerForHoldBallForMyIsBallIn,
+                    self.is_upper,
+                ),
                 DumbActions.ControlVoltageAction(self.voltage, self.pass_pos),
             ]
 
             return actions
-    
+
+
 class DribblerActions:
     class Dribbler(Action):
-        def __init__(self, dribblerSpeed: int)-> None:
+        def __init__(self, dribblerSpeed: int) -> None:
             self.dribblerSpeed = dribblerSpeed
 
     class SetDribblerSpeed(Dribbler):
         def behavior(self, domain: ActionDomain, current_action: ActionValues) -> None:
-            current_action.dribbler_speed =  self.dribblerSpeed
+            current_action.dribbler_speed = self.dribblerSpeed
 
-            
-            
 
 class DumbActions:
     """User-unavailable actions, are used in Actions"""
@@ -414,7 +555,12 @@ class DumbActions:
     class ShootAction(Action):
         """Shoot the target when kick is aligned"""
 
-        def __init__(self, target_pos: aux.Point, is_upper: bool = False, angle_bounds: Optional[float] = None) -> None:
+        def __init__(
+            self,
+            target_pos: aux.Point,
+            is_upper: bool = False,
+            angle_bounds: Optional[float] = None,
+        ) -> None:
             self.target_pos = target_pos
             self.autokick = 2 if is_upper else 1
             self.angle_bounds = angle_bounds
@@ -422,7 +568,9 @@ class DumbActions:
         def is_defined(self, domain: ActionDomain) -> bool:
             kick_angle = aux.angle_to_point(domain.robot.get_pos(), self.target_pos)
             is_aligned = (
-                domain.robot.is_kick_aligned_by_angle(kick_angle, angle_bounds=self.angle_bounds)
+                domain.robot.is_kick_aligned_by_angle(
+                    kick_angle, angle_bounds=self.angle_bounds
+                )
                 if self.angle_bounds is not None
                 else domain.robot.is_kick_aligned_by_angle(kick_angle)
             )
@@ -439,7 +587,14 @@ class DumbActions:
     class delayedShootAction(Action):
         """Shoot the target when kick is aligned"""
 
-        def __init__(self, target_pos: aux.Point, timerForRotate: float = myConst.timerForRotate, timerForHoldBallForMyIsBallIn: float = myConst.timerForHoldBallForMyIsBallIn,  is_upper: bool = False, angle_bounds: Optional[float] = None) -> None:
+        def __init__(
+            self,
+            target_pos: aux.Point,
+            timerForRotate: float = myConst.timerForRotate,
+            timerForHoldBallForMyIsBallIn: float = myConst.timerForHoldBallForMyIsBallIn,
+            is_upper: bool = False,
+            angle_bounds: Optional[float] = None,
+        ) -> None:
             self.target_pos = target_pos
             self.autokick = 2 if is_upper else 1
             self.angle_bounds = angle_bounds
@@ -449,31 +604,41 @@ class DumbActions:
         def is_defined(self, domain: ActionDomain) -> bool:
             kick_angle = aux.angle_to_point(domain.robot.get_pos(), self.target_pos)
             is_aligned = (
-                domain.robot.is_kick_aligned_by_angle(kick_angle, angle_bounds=self.angle_bounds)
+                domain.robot.is_kick_aligned_by_angle(
+                    kick_angle, angle_bounds=self.angle_bounds
+                )
                 if self.angle_bounds is not None
                 else domain.robot.is_kick_aligned_by_angle(kick_angle)
             )
             isBallIn = domain.field.is_ball_in(domain.robot)
-            #print("is_aligned =", is_aligned)
+            # print("is_aligned =", is_aligned)
             if isBallIn and not DumbActions.oldIs_ball_in:
                 DumbActions.oldIs_ball_in = True
                 DumbActions.timerForIsBallIn = time()
             if not isBallIn:
                 DumbActions.timerForIsBallIn = time() + 10**10
                 DumbActions.oldIs_ball_in = False
-            #print(time() - DumbActions.timerForAlignned > 0.1)
-            return isBallIn and is_aligned and time() - DumbActions.timerForIsBallIn > self.timerForHoldBallForMyIsBallIn and time() - DumbActions.timerForAlignned > self.timerForRotate
+            # print(time() - DumbActions.timerForAlignned > 0.1)
+            return (
+                isBallIn
+                and is_aligned
+                and time() - DumbActions.timerForIsBallIn
+                > self.timerForHoldBallForMyIsBallIn
+                and time() - DumbActions.timerForAlignned > self.timerForRotate
+            )
 
         def behavior(self, domain: ActionDomain, current_action: ActionValues) -> None:
             # DumbActions.timerForAlignned = time()+10**10
             # DumbActions.oldAligned = False
             current_action.auto_kick = self.autokick
-            #print("shoot")
+            # print("shoot")
 
     class ControlVoltageAction(Action):
         """Control voltage before shooting"""
 
-        def __init__(self, voltage: int = 15, pass_pos: Optional[aux.Point] = None) -> None:
+        def __init__(
+            self, voltage: int = 15, pass_pos: Optional[aux.Point] = None
+        ) -> None:
             self.voltage = voltage
             self.pass_pos = pass_pos
 
@@ -482,7 +647,9 @@ class DumbActions:
 
         def behavior(self, domain: ActionDomain, current_action: ActionValues) -> None:
             if self.pass_pos is not None:
-                self.voltage = get_pass_voltage(aux.dist(domain.robot.get_pos(), self.pass_pos))
+                self.voltage = get_pass_voltage(
+                    aux.dist(domain.robot.get_pos(), self.pass_pos)
+                )
 
             current_action.kicker_voltage = self.voltage
             # NOTE test 15 when is_pass
@@ -491,7 +658,11 @@ class DumbActions:
         """Add velocity in final target"""
 
         def __init__(
-            self, target: aux.Point, final_velocity: aux.Point, max_dist: float = 300, min_dist: float = 100
+            self,
+            target: aux.Point,
+            final_velocity: aux.Point,
+            max_dist: float = 300,
+            min_dist: float = 100,
         ) -> None:
             self.target = target
             self.final_velocity = final_velocity
@@ -504,7 +675,9 @@ class DumbActions:
         def behavior(self, domain: ActionDomain, current_action: ActionValues) -> None:
             vec_to_target = self.target - domain.robot.get_pos()
             cur_speed = self.final_velocity * aux.minmax(
-                (self.max_dist - vec_to_target.mag()) / (self.max_dist - self.min_dist), 0, 1
+                (self.max_dist - vec_to_target.mag()) / (self.max_dist - self.min_dist),
+                0,
+                1,
             )
 
             current_action.vel += cur_speed
@@ -520,21 +693,36 @@ class DumbActions:
 
     class slowRotateWithBall(Action):
         """slow rotate with ball untill we look at aim"""
-        def __init__(self, target_angle: float, distToAim: float, angle_bounds: float = math.pi / 18) -> None:
+
+        def __init__(
+            self,
+            target_angle: float,
+            distToAim: float,
+            angle_bounds: float = math.pi / 18,
+        ) -> None:
             self.target_angle = target_angle
             minDeltaAngle = myConst.calculateMinAngleErrForRotate(distToAim)
 
-            maxAngle = angle_bounds*180/math.pi-minDeltaAngle
-            difference = (distToAim)/(((const.FIELD_DX*2)**2+(const.FIELD_DY*2)**2)**0.5)*maxAngle*1.4
+            maxAngle = angle_bounds * 180 / math.pi - minDeltaAngle
+            difference = (
+                (distToAim)
+                / (((const.FIELD_DX * 2) ** 2 + (const.FIELD_DY * 2) ** 2) ** 0.5)
+                * maxAngle
+                * 1.4
+            )
             if difference > maxAngle:
                 """if we overreact at angle"""
                 difference = maxAngle
-            self.angle_bounds = angle_bounds-difference/180*math.pi#accuracy of rotate
-            self.rotateVel = myConst.velRotateWithBall#rad/sec
+            self.angle_bounds = (
+                angle_bounds - difference / 180 * math.pi
+            )  # accuracy of rotate
+            self.rotateVel = myConst.velRotateWithBall  # rad/sec
 
         def is_defined(self, domain: ActionDomain) -> bool:
             is_aligned = (
-                domain.robot.is_kick_aligned_by_angle(self.target_angle, angle_bounds=self.angle_bounds)
+                domain.robot.is_kick_aligned_by_angle(
+                    self.target_angle, angle_bounds=self.angle_bounds
+                )
                 if self.angle_bounds is not None
                 else domain.robot.is_kick_aligned_by_angle(self.target_angle)
             )
@@ -544,13 +732,21 @@ class DumbActions:
             if not is_aligned:
                 DumbActions.timerForAlignned = time() + 10**10
                 DumbActions.oldAligned = False
-            return domain.field.is_ball_in(domain.robot) and not is_aligned#TODO think, we need adaptive timer edge
+            return (
+                domain.field.is_ball_in(domain.robot) and not is_aligned
+            )  # TODO think, we need adaptive timer edge
 
         def behavior(self, domain: ActionDomain, current_action: ActionValues) -> None:
             current_action.vel = aux.Point(0, 0)
-            if aux.wind_down_angle(domain.robot.get_angle() - self.target_angle) > self.angle_bounds:
+            if (
+                aux.wind_down_angle(domain.robot.get_angle() - self.target_angle)
+                > self.angle_bounds
+            ):
                 current_action.angle = -self.rotateVel
-            elif aux.wind_down_angle(domain.robot.get_angle() - self.target_angle) < -self.angle_bounds:
+            elif (
+                aux.wind_down_angle(domain.robot.get_angle() - self.target_angle)
+                < -self.angle_bounds
+            ):
                 current_action.angle = self.rotateVel
             else:
                 current_action.angle = 0
@@ -562,7 +758,13 @@ def get_pass_voltage(length: float) -> int:
     if const.IS_SIMULATOR_USED:
         # TODO fix control decoder
         return int(aux.minmax(0.01 * length + 1.8, 4, const.VOLTAGE_SHOOT))
-    r = int(aux.minmax(1 * length/myConst.minDistForOpeningForPass + 2, 5, const.VOLTAGE_SHOOT))
+    r = int(
+        aux.minmax(
+            1 * length / myConst.minDistForOpeningForPass + 2, 5, const.VOLTAGE_SHOOT
+        )
+    )
+    if not myConst.weUseDribbler:
+        r -= 2
     print("pass_voltage =", r)
     return r
 
@@ -587,7 +789,9 @@ def get_grab_speed(
     else:
         offset_angle = math.atan(dist_to_center_line / ball_dist_center_line)
 
-    dist_to_catch = (ball - aux.rotate(aux.RIGHT, grab_angle) * const.GRAB_DIST) - robot_pos
+    dist_to_catch = (
+        ball - aux.rotate(aux.RIGHT, grab_angle) * const.GRAB_DIST
+    ) - robot_pos
 
     vel_to_catch = dist_to_catch * const.GRAB_MULT
 
@@ -606,7 +810,9 @@ def get_grab_speed(
 
     vel_to_align = transl_vel - aux.rotate(aux.RIGHT, grab_angle) * vel_to_align_r
 
-    board = min(offset_angle / const.GRAB_OFFSET_ANGLE, 1)  # 0 - go to ball; 1 - go to grab_point
+    board = min(
+        offset_angle / const.GRAB_OFFSET_ANGLE, 1
+    )  # 0 - go to ball; 1 - go to grab_point
 
     vel_r = vel_to_catch_r * (1 - board) + vel_to_align_r * board
     vel = vel_to_align + aux.rotate(aux.RIGHT, grab_angle) * vel_r

@@ -20,6 +20,7 @@ from bridge.strategy.myFunc import (
     findPointForScore,
     openForPass,
     isBallKickedToR,
+    isBallCatchedWeNotUseDribbler,
 )
 
 
@@ -28,9 +29,11 @@ def simpleTest(
     field: fld.Field,
     actions: list[Optional[Action]],
 ) -> None:
-    point_for_score: Optional[aux.Point] = findPointForScore(
-        field, field.ball.get_pos(), reverse=True, draw=True
-    )
+    print(isBallCatchedWeNotUseDribbler(field, 1, 5))
+    # actions[1] = Actions.DelayedSlowKick(field.enemy_goal.center)
+    # point_for_score: Optional[aux.Point] = findPointForScore(
+    #     field, field.ball.get_pos(), reverse=True, draw=True
+    # )
     # field.strategy_image.draw_circle(point_for_score)
     # field.strategy_image.draw_circle(field.ally_goal.center_up)
     # field.strategy_image.draw_circle(field.ally_goal.center_down)

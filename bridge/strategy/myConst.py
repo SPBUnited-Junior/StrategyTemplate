@@ -21,7 +21,7 @@ distToBlockEnemyPass = 300
 
 minDistForOpeningForPass = 700
 
-idFirstAttacker: int = 3
+idFirstAttacker: int = 1
 idSecondAttacker: int = 5
 
 timerForRotate = 0.5 / 2  # sec
@@ -41,10 +41,6 @@ distToBallForGoOutGKForPenalty = 1500
 velBallForGoOutGK = 400
 distToStopForGoOutGK = 100
 
-spaceFromEdgedForFindingPointsForScore = 100
-spaceFromEdgedForFindingPointsForScorePenalty = 175
-
-
 dForCatchBall = 10
 
 distBetweenRsInWall = 250
@@ -53,7 +49,18 @@ angleBetweenRsInWall = asin(
     / ((distBetweenRsInWall / 2) ** 2 + (const.KEEP_BALL_DIST + 50) ** 2) ** 0.5
 )
 
-whatWeDoAtThisRun: whatWeDoStates = whatWeDoStates.SimpleTest
+""""""
+whatWeDoAtThisRun: whatWeDoStates = whatWeDoStates.BothPlay
+""""""
+
+weUseDribbler = True
+
+if not weUseDribbler:
+    timerForHoldBallForMyIsBallIn = 0
+    timerForRotate = 0
+
+spaceFromEdgedForFindingPointsForScore = 100 + weUseDribbler * 25
+spaceFromEdgedForFindingPointsForScorePenalty = 175 + weUseDribbler * 25
 
 # useDebug = get_from_env("DEBUG_MODE", bool)
 # if not const.IS_SIMULATOR_USED and not useDebug:

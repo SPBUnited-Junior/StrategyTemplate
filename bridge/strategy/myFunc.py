@@ -24,6 +24,60 @@ from bridge.router.base_actions import Action, Actions, KickActions, DribblerAct
 #     RUN = 9
 
 
+def isBallCatchedWeNotUseDribbler(
+    field: fld.Field,
+    receiverRId: int,
+    givingRId: int,
+    check: bool = True,
+    forEnemyes: bool = False,
+) -> bool:
+    ballPos = field.ball.get_pos()
+    receiverR = field.allies[receiverRId]
+    receiverRPos = receiverR.get_pos()
+    givingR = field.allies[givingRId]
+    givingRPos = givingR.get_pos()
+
+    vectFormReceiverPassToGiving = -receiverRPos + givingRPos
+    vectNormalTovectFormReceiverPassToGiving = aux.rotate(
+        vectFormReceiverPassToGiving, 90 / 180 * math.pi
+    )
+    koefForErr = 1.5
+    newErrAngle = myConst.calculateMinAngleErrForRotate(
+        aux.dist(receiverRPos, givingRPos)
+    )
+
+    pointPlusErr = aux.get_line_intersection(
+        receiverRPos,
+        receiverRPos + vectNormalTovectFormReceiverPassToGiving,
+        givingRPos,
+        givingRPos
+        + aux.rotate(
+            vectFormReceiverPassToGiving, newErrAngle / 180 * math.pi * koefForErr
+        ),
+        "LL",
+    )
+    pointMinusErr = aux.get_line_intersection(
+        receiverRPos,
+        receiverRPos + vectNormalTovectFormReceiverPassToGiving,
+        givingRPos,
+        givingRPos
+        + aux.rotate(
+            vectFormReceiverPassToGiving, -newErrAngle / 180 * math.pi * koefForErr
+        ),
+        "LL",
+    )
+    if pointPlusErr is not None and pointMinusErr is not None:
+        polygon1: list[aux.Point] = [givingRPos, pointMinusErr, pointPlusErr]
+        field.strategy_image.draw_poly(polygon1)
+
+        return (
+            aux.dist(aux.nearest_point_in_poly(ballPos, polygon1), ballPos) < 100
+            and field.ball.get_vel().mag() < 300
+        )
+
+    return False
+
+
 def isBallOnOurPartOfField(field: fld.Field) -> bool:
     return field.ball.get_pos().x * field.polarity > 0
 
@@ -153,6 +207,8 @@ def isBallKickedToR(
         vectFormGivingPassToReceiver, 90 / 180 * math.pi
     )
     koefForErr = 1.5
+    if not myConst.weUseDribbler:
+        koefForErr = 4.5
     newErrAngle = myConst.calculateMinAngleErrForRotate(
         aux.dist(receiverRPos, givingRPos)
     )
@@ -263,7 +319,9 @@ def goToNearestScorePoint(
         aimForLookPos = enemysGoalCenter
     pointsForScore = []
     vectFromCenterToR = field.enemy_goal.eye_forw * rCircle
-    for angel in range(-180, 180 + 1, 10):
+    delta = 180 - ((not myConst.weUseDribbler) * 45)
+    print("delta", delta)
+    for angel in range(-delta, delta + 1, 10):
         angelInRad = angel / 180 * math.pi
         maybeScorePoint = aux.rotate(vectFromCenterToR, angelInRad) + enemysGoalCenter
         argVectFromCenterToMaybeScorePoint = aux.wind_down_angle(
@@ -381,11 +439,12 @@ def openForPass(
 
     if vectFromBallToR.mag() < myConst.minDistForOpeningForPass:
         """if we try open for pass at dist < minDistForOpeningForPass, we open for pass at dist minDistForOpeningForPass"""
-        newVect = aux.UP * myConst.minDistForOpeningForPass
+        newVect = field.enemy_goal.eye_forw * myConst.minDistForOpeningForPass
     else:
-        newVect = aux.UP * vectFromBallToR.mag()
+        newVect = field.enemy_goal.eye_forw * vectFromBallToR.mag()
 
-    for angel in range(-180, 180 + 1, 10):
+    delta = 180 - ((not myConst.weUseDribbler) * 45)
+    for angel in range(-delta, delta + 1, 10):
         """add points on circle"""
         angelInRad = angel / 180 * math.pi
         point = aux.rotate(newVect, angelInRad) + ballPos
@@ -398,7 +457,7 @@ def openForPass(
             pointOnCentreVectFromBallToR.unity() * myConst.minDistForOpeningForPass
         )
 
-    maybePointsForOpening.append(pointOnCentreVectFromBallToR + ballPos)
+    # maybePointsForOpening.append(pointOnCentreVectFromBallToR + ballPos)
 
     pointsForOpening = filterPointsForPass(field, maybePointsForOpening, thisRPos)
 

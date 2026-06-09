@@ -174,7 +174,7 @@ def updateTimerAndIdWeTryDoPass(
     elif (
         staticVariables.idGettingPass is None
         and staticVariables.TimeWeTryDoPass is None
-        and staticVariables.myIsBallInClass.myIsBallIn(nearestRToBall)
+        and staticVariables.myIsBallInClass.myIsBallIn(nearestRToBall, field)
     ):
         """if we try do pass, but do not done this yet"""
         staticVariables.TimeWeTryDoPass = time()
@@ -273,6 +273,7 @@ def gettingPass(
 ) -> None:
     thisRId: Optional[int] = staticVariables.idGettingPass
     if thisRId is not None:
+        print("in")
         thisR = field.allies[thisRId]
         thisRPos = thisR.get_pos()
         ballPos = field.ball.get_pos()
@@ -280,10 +281,10 @@ def gettingPass(
         if staticVariables.idDoPass is not None:
             """r not yet kick ball"""
             if test and not sendTelemetry:
-                print("getting pass", "r not yet kick ball")
+                print("status pass:", "r not yet kick ball")
             if test and sendTelemetry:
                 field.strategy_image.send_telemetry(
-                    "getting pass", "r not yet kick ball"
+                    "status pass", "r not yet kick ball"
                 )
 
             if actions[thisRId] is None:
@@ -294,13 +295,13 @@ def gettingPass(
             staticVariables.AngleWithWhatBallKicked = field.allies[
                 staticVariables.idDoPass
             ].get_angle()
-        elif not staticVariables.myIsBallInClass.myIsBallIn(thisR):
+        elif not staticVariables.myIsBallInClass.myIsBallIn(thisR, field):
             """if ball already kicked"""
             if test and not sendTelemetry:
-                print("getting pass:", "if ball already kicked")
+                print("status pass:", "if ball already kicked")
             if test and sendTelemetry:
                 field.strategy_image.send_telemetry(
-                    "getting pass", "if ball already kicked"
+                    "status pass", "if ball already kicked"
                 )
 
             if (
@@ -330,48 +331,35 @@ def gettingPass(
                         abs((vectFromBallToR.arg() - field.ball.get_vel().arg()))
                         < 5 / 180 * math.pi
                     ):
-                        """if ball moves to r"""
+                        print("Intersept")
                         if test:
                             field.strategy_image.send_telemetry(
-                                "getting pass", "Intersept"
+                                "status pass", "Intersept"
                             )
                         """ intersept ball"""
                         actions[thisRId] = Actions.GoToPointIgnore(
                             interseptBallPoint, (ballPos - interseptBallPoint).arg()
                         )
-                    elif myConst.weUseDribbler:
-                        """if ball dont moves to r"""
+                    else:
                         if test:
                             field.strategy_image.send_telemetry(
-                                "getting pass", "Grab ball"
+                                "status pass", "Grab ball"
                             )
                         # actions[thisRId] = Actions.BallGrab((ballPos - thisRPos).arg())
                         actions[thisRId] = Actions.BallGrab(
                             aux.wind_down_angle(vectFromBallToR.arg() + math.pi)
                         )
-                    else:
-                        if not field.is_ball_in(thisR):
-                            actions[thisRId] = Actions.BallGrab(
-                            aux.wind_down_angle(vectFromBallToR.arg() + math.pi)
-                        )
-                        else:
-                            """get pass"""
-                            if test and not sendTelemetry:
-                                print("getting pass:", "get pass")
-                            if test and sendTelemetry:
-                                field.strategy_image.send_telemetry("getting pass", "get pass")
-                            staticVariables.idGettingPass = None
-
-
+                        print("First")
                 else:
                     # actions[thisRId] = Actions.BallGrab((field.ball.get_pos()-field.allies[thisRId].get_pos()).arg())
                     actions[thisRId] = Actions.CatchBall()
-        elif staticVariables.myIsBallInClass.myIsBallIn(field.allies[thisRId]):
+                    print("Second")
+        elif staticVariables.myIsBallInClass.myIsBallIn(field.allies[thisRId], field):
             """get pass"""
             if test and not sendTelemetry:
-                print("getting pass:", "get pass")
+                print("status pass:", "get pass")
             if test and sendTelemetry:
-                field.strategy_image.send_telemetry("getting pass", "get pass")
+                field.strategy_image.send_telemetry("status pass", "get pass")
             staticVariables.idGettingPass = None
 
         actionThisR = actions[thisRId]
@@ -394,7 +382,7 @@ def getStatusOfPassLogic(
     status = None
     if staticVariables.idDoPass == idxThisR:
         if (
-            not staticVariables.myIsBallInClass.myIsBallIn(thisR)
+            not staticVariables.myIsBallInClass.myIsBallIn(thisR, field)
             and myConst.weUseDribbler
         ):
             """if we not yet catch ball"""
@@ -460,7 +448,16 @@ def GK(
     if draw:
         field.strategy_image.draw_circle(field.ally_goal.up, size_in_mms=distToGoOut)
         field.strategy_image.draw_circle(field.ally_goal.down, size_in_mms=distToGoOut)
-        field.strategy_image.draw_line(aux.Point(field.ally_goal.up.x-(field.polarity*distToGoOut), field.ally_goal.up.y), aux.Point(field.ally_goal.down.x-(field.polarity*distToGoOut), field.ally_goal.down.y))
+        field.strategy_image.draw_line(
+            aux.Point(
+                field.ally_goal.up.x - (field.polarity * distToGoOut),
+                field.ally_goal.up.y,
+            ),
+            aux.Point(
+                field.ally_goal.down.x - (field.polarity * distToGoOut),
+                field.ally_goal.down.y,
+            ),
+        )
 
     if draw and pointFromBallKicked is not None and angleWithWhatBallKicked is not None:
         secondPointForLine = pointFromBallKicked + aux.rotate(
@@ -567,7 +564,7 @@ def GK(
         nearestRToBall == field.allies[const.GK]
         and oldGKState != GKStates.Intersept
         and not aux.is_point_inside_poly(ballPos, field.ally_goal.hull)
-        and field.ball.get_vel().mag()<100
+        and field.ball.get_vel().mag() < 100
     ):
         # field.strategy_image.send_telemetry("GK State", "Pass")
         GKState = GKStates.Pass
@@ -644,7 +641,7 @@ def attackerAloneOnField(
     if isBallOnOurPartOfField(field):
         """if ball on our part of field"""
         if (
-            not staticVariables.myIsBallInClass.myIsBallIn(thisR)
+            not staticVariables.myIsBallInClass.myIsBallIn(thisR, field)
             and myConst.weUseDribbler
         ):
             mostLikelyPointForScore = aux.closest_point_on_line(
@@ -736,7 +733,7 @@ def attacker(
                 """if nearest to ball bot this"""
                 status = "if nearest to ball bot this"
                 if (
-                    staticVariables.myIsBallInClass.myIsBallIn(thisR)
+                    staticVariables.myIsBallInClass.myIsBallIn(thisR, field)
                     or not myConst.weUseDribbler
                 ):
                     """if this robot have ball"""

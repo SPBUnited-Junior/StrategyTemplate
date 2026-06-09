@@ -273,7 +273,6 @@ def gettingPass(
 ) -> None:
     thisRId: Optional[int] = staticVariables.idGettingPass
     if thisRId is not None:
-        print("in")
         thisR = field.allies[thisRId]
         thisRPos = thisR.get_pos()
         ballPos = field.ball.get_pos()
@@ -331,7 +330,6 @@ def gettingPass(
                         abs((vectFromBallToR.arg() - field.ball.get_vel().arg()))
                         < 5 / 180 * math.pi
                     ):
-                        print("Intersept")
                         if test:
                             field.strategy_image.send_telemetry(
                                 "status pass", "Intersept"
@@ -349,11 +347,9 @@ def gettingPass(
                         actions[thisRId] = Actions.BallGrab(
                             aux.wind_down_angle(vectFromBallToR.arg() + math.pi)
                         )
-                        print("First")
                 else:
                     # actions[thisRId] = Actions.BallGrab((field.ball.get_pos()-field.allies[thisRId].get_pos()).arg())
                     actions[thisRId] = Actions.CatchBall()
-                    print("Second")
         elif staticVariables.myIsBallInClass.myIsBallIn(field.allies[thisRId], field):
             """get pass"""
             if test and not sendTelemetry:

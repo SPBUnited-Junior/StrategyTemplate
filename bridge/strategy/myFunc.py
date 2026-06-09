@@ -180,7 +180,7 @@ def isBallKickedToR(
     field: fld.Field,
     receiverRId: int,
     givingRId: int,
-    check: bool = True,
+    check: bool = False,
     forEnemyes: bool = False,
 ) -> bool:
     ballPos = field.ball.get_pos()
@@ -520,7 +520,8 @@ def getPointToPassAndRToPass(
                 """if no one enemy r prevent our pass"""
                 rToPass = nearestR
                 pointToPass = maybePassPoint
-        if rToPass == None:
+                break
+        if rToPass is None:
             """if our r now isnt open"""
             openForPass(field, nearestR.r_id, actions)
     return (rToPass, pointToPass)
@@ -540,9 +541,6 @@ def doPassNearAllly(
         """if our rs on field, except GK"""
         if idFrom == const.GK:
             ourRsSortedByDistToBall = fld.find_nearest_robots(pointFrom, points)
-            field.strategy_image.draw_circle(
-                ourRsSortedByDistToBall[0].get_pos(), size_in_mms=1000
-            )
         else:
             """we do not do pass to GK"""
             ourRsSortedByDistToBall = [
@@ -552,7 +550,6 @@ def doPassNearAllly(
         rToPass, pointToPass = getPointToPassAndRToPass(
             field, actions, ourRsSortedByDistToBall, enemys, pointFrom, idFrom
         )
-        ourRsSortedByDistToBall[0].r_id
 
         if pointToPass != None and rToPass != None:
             """if enemy r dont prevent pass"""

@@ -22,7 +22,7 @@ distToBlockEnemyPass = 300
 minDistForOpeningForPass = 700
 
 idFirstAttacker: int = 1
-idSecondAttacker: int = 5
+idSecondAttacker: int = 2
 
 timerForRotate = 0.5 / 2  # sec
 timerForHoldBallForMyIsBallIn = 1.5 / 1.5  # 3#sec
@@ -50,10 +50,10 @@ angleBetweenRsInWall = asin(
 )
 
 """"""
-whatWeDoAtThisRun: whatWeDoStates = whatWeDoStates.BothPlay
+whatWeDoAtThisRun: whatWeDoStates = whatWeDoStates.TestGK
 """"""
 
-weUseDribbler = True
+weUseDribbler = False
 
 if not weUseDribbler:
     timerForHoldBallForMyIsBallIn = 0

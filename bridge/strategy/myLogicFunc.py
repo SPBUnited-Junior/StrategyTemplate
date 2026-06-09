@@ -510,35 +510,38 @@ def GK(
                 aux.dist(field.ally_goal.up, ballPos),
                 aux.dist(field.ally_goal.down, ballPos),
             )
-            < const.ROBOT_R * 2
+            < const.ROBOT_R * 1.4
         ):
             """if ball close to edges of goal"""
-            if not field.is_ball_in(field.allies[const.GK]):
-                if myConst.weUseDribbler:
+            if myConst.weUseDribbler:
+                """normal mode"""
+                if not field.is_ball_in(field.allies[const.GK]):
                     actions[const.GK] = Actions.BallGrab(
                         aux.wind_down_angle(field.ally_goal.eye_forw.arg() - math.pi)
                     )
                 else:
-                    nearestEdge = aux.find_nearest_point(
-                        ballPos, [field.ally_goal.up, field.ally_goal.down]
+                    actions[const.GK] = Actions.DelayedSlowKick(
+                        field.enemy_goal.center, is_upper=True
                     )
-                    vectFromNearestEdgeToBall = ballPos - nearestEdge
-                    isNearestEdgeLeftEdge = (nearestEdge.y * const.POLARITY) > 0
-                    if isNearestEdgeLeftEdge:
-                        pointForKickOut = ballPos + (
-                            aux.rotate(vectFromNearestEdgeToBall, math.pi / 2) * 2
-                        )
-                    else:
-                        pointForKickOut = ballPos + (
-                            aux.rotate(vectFromNearestEdgeToBall, -math.pi / 2) * 2
-                        )
-                    actions[const.GK] = Actions.DelayedSlowKick(pointForKickOut)
             else:
-                actions[const.GK] = Actions.DelayedSlowKick(
-                    field.enemy_goal.center, is_upper=True
+                """mode: we dont use dribbler"""
+                nearestEdge = aux.find_nearest_point(
+                    ballPos, [field.ally_goal.up, field.ally_goal.down]
                 )
+                vectFromNearestEdgeToBall = ballPos - nearestEdge
+                isNearestEdgeLeftEdge = (nearestEdge.y * const.POLARITY) < 0
+                if isNearestEdgeLeftEdge:
+                    pointForKickOut = ballPos + (
+                        aux.rotate(vectFromNearestEdgeToBall, math.pi / 2) * 2
+                    )
+                else:
+                    pointForKickOut = ballPos + (
+                        aux.rotate(vectFromNearestEdgeToBall, -math.pi / 2) * 2
+                    )
+                actions[const.GK] = Actions.DelayedSlowKick(pointForKickOut)
         else:
             if len(field.active_allies(False)) != 0:
+                print("[wrkg]")
                 doPassNearAllly(field, actions)
             else:
                 actions[const.GK] = Actions.DelayedSlowKick(
@@ -548,6 +551,7 @@ def GK(
         nearestRToBall == field.allies[const.GK]
         and oldGKState != GKStates.Intersept
         and not aux.is_point_inside_poly(ballPos, field.ally_goal.hull)
+        and field.ball.get_vel().mag()<100
     ):
         # field.strategy_image.send_telemetry("GK State", "Pass")
         GKState = GKStates.Pass

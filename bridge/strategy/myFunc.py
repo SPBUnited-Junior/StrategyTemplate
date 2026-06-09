@@ -553,7 +553,7 @@ def doPassNearAllly(
 
         if pointToPass != None and rToPass != None:
             """if enemy r dont prevent pass"""
-            field.strategy_image.send_telemetry("status pass", "have point")
+            field.strategy_image.send_telemetry("do pass", "have point")
             pointToOpenForPass, idRWhichOpen = openForPass(field, rToPass.r_id, actions)
             if pointToOpenForPass is not None:
                 """if code works how it must"""
@@ -573,7 +573,7 @@ def doPassNearAllly(
         else:
             """if enemy r prevent pass"""
             field.strategy_image.send_telemetry(
-                "status pass", "dont have straight pass point"
+                "do pass", "dont have straight pass point"
             )
             if actions[ourRsSortedByDistToBall[0].r_id] is not None:
                 """do pass ahead"""

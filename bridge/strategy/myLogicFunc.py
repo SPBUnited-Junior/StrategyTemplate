@@ -273,7 +273,6 @@ def gettingPass(
 ) -> None:
     thisRId: Optional[int] = staticVariables.idGettingPass
     if thisRId is not None:
-        print("in")
         thisR = field.allies[thisRId]
         thisRPos = thisR.get_pos()
         ballPos = field.ball.get_pos()
@@ -281,10 +280,10 @@ def gettingPass(
         if staticVariables.idDoPass is not None:
             """r not yet kick ball"""
             if test and not sendTelemetry:
-                print("status pass:", "r not yet kick ball")
+                print("getting pass", "r not yet kick ball")
             if test and sendTelemetry:
                 field.strategy_image.send_telemetry(
-                    "status pass", "r not yet kick ball"
+                    "getting pass", "r not yet kick ball"
                 )
 
             if actions[thisRId] is None:
@@ -298,10 +297,10 @@ def gettingPass(
         elif not staticVariables.myIsBallInClass.myIsBallIn(thisR):
             """if ball already kicked"""
             if test and not sendTelemetry:
-                print("status pass:", "if ball already kicked")
+                print("getting pass:", "if ball already kicked")
             if test and sendTelemetry:
                 field.strategy_image.send_telemetry(
-                    "status pass", "if ball already kicked"
+                    "getting pass", "if ball already kicked"
                 )
 
             if (
@@ -331,35 +330,48 @@ def gettingPass(
                         abs((vectFromBallToR.arg() - field.ball.get_vel().arg()))
                         < 5 / 180 * math.pi
                     ):
-                        print("Intersept")
+                        """if ball moves to r"""
                         if test:
                             field.strategy_image.send_telemetry(
-                                "status pass", "Intersept"
+                                "getting pass", "Intersept"
                             )
                         """ intersept ball"""
                         actions[thisRId] = Actions.GoToPointIgnore(
                             interseptBallPoint, (ballPos - interseptBallPoint).arg()
                         )
-                    else:
+                    elif myConst.weUseDribbler:
+                        """if ball dont moves to r"""
                         if test:
                             field.strategy_image.send_telemetry(
-                                "status pass", "Grab ball"
+                                "getting pass", "Grab ball"
                             )
                         # actions[thisRId] = Actions.BallGrab((ballPos - thisRPos).arg())
                         actions[thisRId] = Actions.BallGrab(
                             aux.wind_down_angle(vectFromBallToR.arg() + math.pi)
                         )
-                        print("First")
+                    else:
+                        if not field.is_ball_in(thisR):
+                            actions[thisRId] = Actions.BallGrab(
+                            aux.wind_down_angle(vectFromBallToR.arg() + math.pi)
+                        )
+                        else:
+                            """get pass"""
+                            if test and not sendTelemetry:
+                                print("getting pass:", "get pass")
+                            if test and sendTelemetry:
+                                field.strategy_image.send_telemetry("getting pass", "get pass")
+                            staticVariables.idGettingPass = None
+
+
                 else:
                     # actions[thisRId] = Actions.BallGrab((field.ball.get_pos()-field.allies[thisRId].get_pos()).arg())
                     actions[thisRId] = Actions.CatchBall()
-                    print("Second")
         elif staticVariables.myIsBallInClass.myIsBallIn(field.allies[thisRId]):
             """get pass"""
             if test and not sendTelemetry:
-                print("status pass:", "get pass")
+                print("getting pass:", "get pass")
             if test and sendTelemetry:
-                field.strategy_image.send_telemetry("status pass", "get pass")
+                field.strategy_image.send_telemetry("getting pass", "get pass")
             staticVariables.idGettingPass = None
 
         actionThisR = actions[thisRId]
@@ -431,8 +443,8 @@ def GK(
     GKState: GKStates
 
     print(oldGKState)
-    a = aux.dist(field.allies[const.GK].get_pos(), field.ball.get_pos())
-    field.strategy_image.send_telemetry("dist", str(a))
+    # a = aux.dist(field.allies[const.GK].get_pos(), field.ball.get_pos())
+    # field.strategy_image.send_telemetry("dist", str(a))
 
     oldBallPos = field.ball_start_point
     ballPos = field.ball.get_pos()
@@ -445,6 +457,11 @@ def GK(
         distToGoOut = myConst.distToBallForGoOutGKForPenalty
     else:
         distToGoOut = myConst.distToBallForGoOutGK
+    if draw:
+        field.strategy_image.draw_circle(field.ally_goal.up, size_in_mms=distToGoOut)
+        field.strategy_image.draw_circle(field.ally_goal.down, size_in_mms=distToGoOut)
+        field.strategy_image.draw_line(aux.Point(field.ally_goal.up.x-(field.polarity*distToGoOut), field.ally_goal.up.y), aux.Point(field.ally_goal.down.x-(field.polarity*distToGoOut), field.ally_goal.down.y))
+
     if draw and pointFromBallKicked is not None and angleWithWhatBallKicked is not None:
         secondPointForLine = pointFromBallKicked + aux.rotate(
             aux.RIGHT, angleWithWhatBallKicked
@@ -541,7 +558,6 @@ def GK(
                 actions[const.GK] = Actions.DelayedSlowKick(pointForKickOut)
         else:
             if len(field.active_allies(False)) != 0:
-                print("[wrkg]")
                 doPassNearAllly(field, actions)
             else:
                 actions[const.GK] = Actions.DelayedSlowKick(

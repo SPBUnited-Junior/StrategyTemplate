@@ -50,7 +50,7 @@ angleBetweenRsInWall = asin(
 )
 
 """"""
-whatWeDoAtThisRun: whatWeDoStates = whatWeDoStates.TestGK
+whatWeDoAtThisRun: whatWeDoStates = whatWeDoStates.BothPlay
 """"""
 
 weUseDribbler = False

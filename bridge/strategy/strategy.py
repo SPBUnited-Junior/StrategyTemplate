@@ -60,7 +60,7 @@ class Strategy:
         for _ in range(const.TEAM_ROBOTS_MAX_COUNT):
             actions.append(None)
 
-        print(field.game_state)  # for real
+        field.strategy_image.send_telemetry("State", str(field.game_state))
         match field.game_state:
             case GameStates.RUN:  # GOOD
                 self.run(field, actions)
@@ -153,7 +153,7 @@ class Strategy:
                     self.staticVariables.whatWeDoAtThisRun == whatWeDoStates.Play
                     or self.staticVariables.whatWeDoAtThisRun == whatWeDoStates.BothPlay
                 ):
-                    print(field.game_state)  # for real
+                    # print(field.game_state)  # for real
                     attacker(
                         self.staticVariables,
                         field,

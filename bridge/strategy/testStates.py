@@ -30,7 +30,8 @@ def simpleTest(
     actions: list[Optional[Action]],
 ) -> None:
     # print(isBallCatchedWeNotUseDribbler(field, 1, 5))
-    actions[1] = Actions.DelayedSlowKick(field.enemy_goal.center, 2)
+    # actions[6] = Actions.GoToPoint(aux.Point(), 0)
+    actions[7] = Actions.DelayedSlowKick(field.enemy_goal.center)
     # point_for_score: Optional[aux.Point] = findPointForScore(
     #     field, field.ball.get_pos(), reverse=True, draw=True
     # )

@@ -22,8 +22,8 @@ distToBlockEnemyPass = 300
 minDistForOpeningForPass = 700
 maxDistForOpeningForPass = 1200
 
-idFirstAttacker: int = 1
-idSecondAttacker: int = 2
+idFirstAttacker: int = 7
+idSecondAttacker: int = 0
 
 timerForRotate = 0.5 / 2  # sec
 timerForHoldBallForMyIsBallIn = 1  # 3#sec
@@ -40,7 +40,7 @@ maxDistToChangeModeForScroreBallInPenalty = 700
 
 distToBallForGoOutGK = 1000
 distToBallForGoOutGKForPenalty = 1500
-velBallForGoOutGK = 400
+velBallForGoOutGK = 1000
 distToStopForGoOutGK = 100
 
 dForCatchBall = 10
@@ -52,11 +52,11 @@ angleBetweenRsInWall = asin(
 )
 
 """"""
-whatWeDoAtThisRun: whatWeDoStates = whatWeDoStates.BothPlay
+whatWeDoAtThisRun: whatWeDoStates = whatWeDoStates.Play
 """"""
 
-weUseDribbler = False
-weUseUpper = False
+weUseDribbler = True
+weUseUpper = True
 
 if not weUseDribbler:
     timerForHoldBallForMyIsBallIn = 0
@@ -82,5 +82,4 @@ def calculateMinAngleErrForRotate(distToPointForPass: float) -> float:
         lowerEdgeForMinAngleErr,
         upperEdgeForMinAngleErr,
     )
-    # print("minAngleErrForRotate =", minAngleErrForRotate)
     return minAngleErrForRotate

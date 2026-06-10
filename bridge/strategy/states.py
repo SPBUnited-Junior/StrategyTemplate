@@ -94,11 +94,11 @@ def PENALTY(
     ballPos = field.ball.get_pos()
     point_first = aux.Point(const.FIELD_DX / 2 * -field.polarity, const.FIELD_DY / 2)
     point_second = aux.Point(const.FIELD_DX / 2 * -field.polarity, -const.FIELD_DY / 2)
-    if field.ally_color != const.COLOR:
-        we_active = True
-    else:
+    # print(field.active_team)
+    if field.ally_color != field.active_team:
         we_active = False
-    print(field.ally_color, we_active)
+    else:
+        we_active = True
     if we_active:
         actions[gkId] = Actions.GoToPoint(field.ally_goal.frw, 0)
         nearestGoalPoint = aux.closest_point_on_line(
@@ -113,12 +113,13 @@ def PENALTY(
         for id in ids:
             if field.allies[id].is_used():
                 activeId = id
+                break
         if activeId is not None:
 
             if aux.dist(ballPos, nearestGoalPoint) > minDistForScorePenalty:
                 # print("first")
                 actions[activeId] = Actions.DelayedSlowKick(
-                    nearestGoalPoint, voltage=2, timerForHoldBallForMyIsBallIn=0.4
+                    nearestGoalPoint, voltage=1, timerForHoldBallForMyIsBallIn=0.4
                 )
             elif point_for_score is not None:
                 # print("second")
@@ -140,7 +141,6 @@ def PENALTY(
                         field.enemy_goal.center, timerForHoldBallForMyIsBallIn=0
                     )
     else:
-        print(1)
         GKNewState = GK(
             field, actions, GKLastState, pointFromBallKicked, angleFromBallKicked
         )

@@ -4,26 +4,12 @@ from typing import Optional  # type: ignore
 
 from bridge import const
 import bridge.strategy.myConst as myConst
-from bridge.auxiliary import aux, fld, rbt  # type: ignore
+from bridge.auxiliary import aux, fld, rbt, myAux  # type: ignore
 from bridge.const import State as GameStates
 
 # from bridge.const import State as GameStates
 from bridge.router.base_actions import Action, Actions, KickActions, DribblerActions  # type: ignore
 from bridge.strategy.ClassWithMyStaticVariables import ClassWithMyStaticVariables
-
-# class State(Enum):#do GK
-#     """Класс с состояниями игры"""
-
-#     HALT = 0
-#     TIMEOUT = 1
-#     STOP = 2
-#     PREPARE_KICKOFF = 3
-#     BALL_PLACEMENT = 4
-#     PREPARE_PENALTY = 5
-#     KICKOFF = 6
-#     FREE_KICK = 7
-#     PENALTY = 8
-#     RUN = 9
 
 
 def isBallCatchedWeNotUseDribbler(
@@ -106,10 +92,10 @@ def findBetterPointForOpen(
 
         dist2Goal = aux.dist(point, centerEnemyGoal)
         if dist2r < minDist:
-            for i in range(4):
+            for i in range(len(closests)):
                 if dist2r - closests[i][0] < -delta:
                     if i != 3:
-                        for j in range(i + 1, 4):
+                        for j in range(i + 1, len(closests)):
                             closests[j] = (
                                 closests[j - 1][0],
                                 closests[j - 1][1],
@@ -121,7 +107,7 @@ def findBetterPointForOpen(
                     abs(dist2r - closests[i][0]) < delta and dist2Goal < closests[i][1]
                 ):
                     if i != 3:
-                        for j in range(i + 1, 4):
+                        for j in range(i + 1, len(closests)):
                             closests[j] = (
                                 closests[j - 1][0],
                                 closests[j - 1][1],
@@ -134,7 +120,7 @@ def findBetterPointForOpen(
     minDist2Goal = 10.0**10
     betterPoint = aux.Point(0, 0)
 
-    for i in range(4):
+    for i in range(len(closests)):
         dist2Goal = closests[i][1]
         if dist2Goal < minDist2Goal:
             minDist2Goal = dist2Goal
@@ -177,7 +163,6 @@ def canRDoScoreAndInWhatPoint(
 def nearest2BallEnemy(field: fld.Field, includeGK: bool = True) -> rbt.Robot:
     return fld.find_nearest_robot(field.ball.get_pos(), field.active_enemies(includeGK))
 
-
 def isBallKickedToR(
     field: fld.Field,
     receiverRId: int,
@@ -200,7 +185,7 @@ def isBallKickedToR(
         else:
             receiverRPos = (
                 aux.rotate(aux.RIGHT, givingR.get_angle())
-                * (((const.FIELD_DX * 2) ** 2 + (const.FIELD_DY * 2) ** 2) ** 0.5)
+                * myAux.GipotFrom2Katets(const.FIELD_DX * 2, const.FIELD_DY * 2)
                 + givingRPos
             )
 
@@ -322,7 +307,7 @@ def goToNearestScorePoint(
     pointsForScore = []
     vectFromCenterToR = field.enemy_goal.eye_forw * rCircle
     delta = 180 - ((not myConst.weUseDribbler) * 45)
-    print("delta", delta)
+    # print("delta", delta)
     for angel in range(-delta, delta + 1, 10):
         angelInRad = angel / 180 * math.pi
         maybeScorePoint = aux.rotate(vectFromCenterToR, angelInRad) + enemysGoalCenter

@@ -11,6 +11,8 @@ import zmq
 from cattrs import unstructure
 from strategy_bridge.bus import DataBus, DataReader, DataWriter
 from strategy_bridge.processors import BaseProcessor
+from bridge.const import State as GameStates
+
 
 from bridge import const, drawing
 from bridge.auxiliary import aux, fld, rbt
@@ -231,7 +233,7 @@ def command_from_values(
         else:
             robot.delta_angle = values.angle
 
-    if not myConst.weUseDribbler:
+    if not myConst.weUseDribbler or field.game_state in [GameStates.STOP, GameStates.PREPARE_KICKOFF, GameStates.PREPARE_PENALTY]:
         values.dribbler_speed = 0
     if not myConst.weUseUpper:
         if values.auto_kick == 2:

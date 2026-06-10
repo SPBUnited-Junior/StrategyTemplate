@@ -179,7 +179,7 @@ VIEW_DIST = 2500
 KEEP_BALL_DIST = 300 + ROBOT_R  # 300
 
 # is_ball_in
-GRAB_ALIGN_DIST = 130
+GRAB_ALIGN_DIST = 150#130
 BALL_GRABBED_ANGLE = pi / 6  # 0.8
 BALL_GRABBED_DIST = 110
 # is_kick_aligned
@@ -190,9 +190,8 @@ KICK_ALIGN_OFFSET = 40
 
 # for grabbing ball
 GRAB_AREA = GRAB_ALIGN_DIST
-# GRAB_DIST = 45  # 30 is good
-# GRAB_DIST = 10#dribbler
-GRAB_DIST = 55  # NO dribbler
+GRAB_DIST = 10#dribbler
+# GRAB_DIST = 65  # NO dribbler
 GRAB_MULT = 4  # was 5 speed = dist * mult
 GRAB_OFFSET_ANGLE = 0.45  # 0.55
 
@@ -204,8 +203,8 @@ if IS_SIMULATOR_USED:
     GRAB_OFFSET_ANGLE = 0.35
 
 # VOLTAGES
-VOLTAGE_SHOOT = 10  # 5
-VOLTAGE_UP = 3
+VOLTAGE_SHOOT = 7 # 8 - no dribbler
+VOLTAGE_UP = 15
 VOLTAGE_ZERO = 0
 
 MAX_SPEED_BALL = 3000

@@ -9,7 +9,7 @@ from typing import Optional
 import bridge.auxiliary.quickhull as qh
 import bridge.strategy.myConst as myConst
 from bridge import const
-from bridge.auxiliary import aux, fld, tau
+from bridge.auxiliary import aux, fld, tau, myAux
 from bridge.const import State as GameStates
 from bridge.router.action import Action, ActionDomain, ActionValues, limit_action
 from bridge.router.path_generation import calc_passthrough_point, correct_target_pos
@@ -377,7 +377,7 @@ class Actions:
         def is_defined(self, domain: ActionDomain) -> bool:
             """if r not on line"""
             ball = domain.field.ball
-            print("USED")
+            # print("USED")
             return (
                 len(
                     aux.line_circle_intersect(
@@ -392,7 +392,7 @@ class Actions:
             )
 
         def behavior(self, domain: ActionDomain, current_action: ActionValues) -> None:
-            print("ball not on line")
+            # print("ball not on line")
             return super().behavior(domain, current_action)
 
         def use_behavior_of(
@@ -706,7 +706,7 @@ class DumbActions:
             maxAngle = angle_bounds * 180 / math.pi - minDeltaAngle
             difference = (
                 (distToAim)
-                / (((const.FIELD_DX * 2) ** 2 + (const.FIELD_DY * 2) ** 2) ** 0.5)
+                / myAux.GipotFrom2Katets(const.FIELD_DX * 2, const.FIELD_DY * 2)
                 * maxAngle
                 * 1.4
             )
@@ -765,7 +765,7 @@ def get_pass_voltage(length: float) -> int:
     )
     if not myConst.weUseDribbler:
         r -= 2
-    print("pass_voltage =", r)
+    # print("pass_voltage =", r)
     return r
 
 

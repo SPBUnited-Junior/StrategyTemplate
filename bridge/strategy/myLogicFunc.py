@@ -2,7 +2,7 @@ from time import time  # type: ignore
 from typing import Optional
 import math  # type: ignore
 
-from bridge.auxiliary import aux, fld, rbt  # type: ignore
+from bridge.auxiliary import aux, fld, rbt, myAux  # type: ignore
 from bridge.strategy.myConst import (
     angleBetweenRsInWall,
     idFirstAttacker,
@@ -105,13 +105,13 @@ def buildWallInFrontOfBall(field: fld.Field, actions: list[Optional[Action]]) ->
         angle = angleBetweenRsInWall
     else:
         """if ball of our part of field, build wall without space"""
-        nowDistBetweenRsInWall = 200
+        nowDistBetweenRsInWall = const.ROBOT_R * 2
         angle = math.asin(
             (nowDistBetweenRsInWall / 2)
-            / ((nowDistBetweenRsInWall / 2) ** 2 + (const.KEEP_BALL_DIST + 50) ** 2)
-            ** 0.5
+            / myAux.GipotFrom2Katets(
+                nowDistBetweenRsInWall / 2, const.KEEP_BALL_DIST + 50
+            )
         )
-
     vectFromBallToCenter = field.ally_goal.center - ballPos
     angleFromOurGoalToEnemysGoal = getAngleFromOurGoalToEnemysGoal(field)
     if (
@@ -279,7 +279,7 @@ def gettingPass(
     staticVariables: ClassWithMyStaticVariables,
     field: fld.Field,
     actions: list[Optional[Action]],
-    test: bool = True,
+    test: bool = False,
     sendTelemetry: bool = False,
 ) -> None:
     thisRId: Optional[int] = staticVariables.idGettingPass
@@ -382,7 +382,7 @@ def getStatusOfPassLogic(
     idxThisR: int,
     idxOtherAttacker: int,
     test: bool = False,
-    doPrints: bool = True,
+    doPrints: bool = False,
 ) -> Optional[str]:
     thisR = field.allies[idxThisR]
     thisRPos = thisR.get_pos()
@@ -438,7 +438,7 @@ def GK(
 ) -> GKStates:
     GKState: GKStates
 
-    print(oldGKState)
+    # print(oldGKState)
     # a = aux.dist(field.allies[const.GK].get_pos(), field.ball.get_pos())
     # field.strategy_image.send_telemetry("dist", str(a))
 
@@ -467,6 +467,13 @@ def GK(
             ),
         )
 
+    # print("vel: ", field.ball.get_vel().mag() < myConst.velBallForGoOutGK, "dist :", aux.dist(
+    #         aux.closest_point_on_line(
+    #             field.ally_goal.up, field.ally_goal.down, field.ball.get_pos()
+    #         ),
+    #         field.ball.get_pos()) < distToGoOut
+    #     )
+
     if draw and pointFromBallKicked is not None and angleWithWhatBallKicked is not None:
         secondPointForLine = pointFromBallKicked + aux.rotate(
             aux.RIGHT, angleWithWhatBallKicked
@@ -483,7 +490,7 @@ def GK(
     # field.strategy_image.draw_circle(nearestRToBall.get_pos(), color=(0, 255, 0), size_in_mms=50)
     enemyRGrabBall = field.is_ball_in(nearestEnemyRToBall)
 
-    if field.is_ball_moves_to_goal() and not enemyRGrabBall:
+    if field.is_ball_moves_to_goal() and field.ball.get_vel().mag() > myConst.velBallForGoOutGK and not enemyRGrabBall:
         if not aux.is_point_on_line(GKPos, oldBallPos, ballPos, "R"):
             interseptBallPoint = aux.closest_point_on_line(
                 oldBallPos, ballPos, GKPos, "R"
@@ -694,7 +701,7 @@ def attackerAloneOnField(
                 (ballPos - mostLikelyPointForScore).arg()
             )
         else:
-            """try replace ball from our part of field"""
+            """try move ball from our part of field"""
             actions[idxThisR] = Actions.DelayedSlowKick(
                 field.enemy_goal.center, is_upper=myConst.weUseUpper
             )
@@ -806,7 +813,6 @@ def attacker(
                     actions[idxThisR] = Actions.BallGrab(
                         (-field.ball.get_pos() + field.enemy_goal.center).arg()
                     )
-                print("status =", status)
             elif nearestRToBall is field.allies[idxOtherAttacker]:
                 """if other attacker have ball"""
                 status = "if other attacker have ball"
@@ -979,5 +985,5 @@ def attacker(
         else:
             status = "This R is busy"
         """ ↑ ↑ ↑ genegal logic ↑ ↑ ↑ """
-        print("statusAttacker" + str(idxThisR), status, field.ally_color)
+        # print("statusAttacker" + str(idxThisR), status, field.ally_color)
     field.strategy_image.send_telemetry("statusAttacker" + str(idxThisR), status)

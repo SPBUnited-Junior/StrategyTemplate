@@ -20,13 +20,15 @@ class whatWeDoStates(Enum):
 distToBlockEnemyPass = 300
 
 minDistForOpeningForPass = 700
+maxDistForOpeningForPass = 1200
 
 idFirstAttacker: int = 1
 idSecondAttacker: int = 2
 
 timerForRotate = 0.5 / 2  # sec
-timerForHoldBallForMyIsBallIn = 1.5 / 1.5  # 3#sec
+timerForHoldBallForMyIsBallIn = 1  # 3#sec
 constForTimerWeTryDoPass = 3  # sec
+constDelayBeforeNextPass = 1  # sec
 
 velRotateWithBall = 0.4  # rad/sec
 if const.IS_SIMULATOR_USED:

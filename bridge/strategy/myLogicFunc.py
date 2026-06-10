@@ -252,16 +252,18 @@ def doingPass(
                     actions[idxThisR] = Actions.DelayedSlowKick(pointForScore)
                 else:
                     staticVariables.idGettingPass = doPassNearAllly(
-                        field, actions, idxThisR
+                        field, actions, staticVariables, idxThisR
                     )
 
             else:
                 staticVariables.idGettingPass = doPassNearAllly(
-                    field, actions, idxThisR
+                    field, actions, staticVariables, idxThisR
                 )
     else:
         """pass in process"""
-        staticVariables.idGettingPass = doPassNearAllly(field, actions, idxThisR)
+        staticVariables.idGettingPass = doPassNearAllly(
+            field, actions, staticVariables, idxThisR
+        )
 
 
 def gettingPass(
@@ -350,13 +352,14 @@ def gettingPass(
                 else:
                     # actions[thisRId] = Actions.BallGrab((field.ball.get_pos()-field.allies[thisRId].get_pos()).arg())
                     actions[thisRId] = Actions.CatchBall()
-        elif staticVariables.myIsBallInClass.myIsBallIn(field.allies[thisRId], field):
+        else:
             """get pass"""
             if test and not sendTelemetry:
                 print("status pass:", "get pass")
             if test and sendTelemetry:
                 field.strategy_image.send_telemetry("status pass", "get pass")
             staticVariables.idGettingPass = None
+            staticVariables.TimerFromLastPass = time()
 
         actionThisR = actions[thisRId]
         if actionThisR is not None:

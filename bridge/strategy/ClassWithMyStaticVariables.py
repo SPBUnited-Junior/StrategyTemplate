@@ -1,4 +1,5 @@
 from enum import Enum
+from time import time  # type: ignore
 from typing import Optional
 
 from bridge.auxiliary import aux  # type: ignore
@@ -33,6 +34,7 @@ class ClassWithMyStaticVariables:
 
         self.TimeWeTryDoPass: Optional[float] = None
         self.TimerWeHoldBall: Optional[float] = None
+        self.TimerFromLastPass: float = time() - myConst.constDelayBeforeNextPass
 
         self.whatWeDoAtThisRun: whatWeDoStates = myConst.whatWeDoAtThisRun
         self.constForTimerWeTryDoPass: float = myConst.constForTimerWeTryDoPass

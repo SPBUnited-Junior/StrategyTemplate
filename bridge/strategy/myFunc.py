@@ -1,4 +1,5 @@
 import math  # type: ignore
+from time import time  # type: ignore
 from typing import Optional  # type: ignore
 
 from bridge import const
@@ -8,6 +9,7 @@ from bridge.const import State as GameStates
 
 # from bridge.const import State as GameStates
 from bridge.router.base_actions import Action, Actions, KickActions, DribblerActions  # type: ignore
+from bridge.strategy.ClassWithMyStaticVariables import ClassWithMyStaticVariables
 
 # class State(Enum):#do GK
 #     """Класс с состояниями игры"""
@@ -440,6 +442,8 @@ def openForPass(
     if vectFromBallToR.mag() < myConst.minDistForOpeningForPass:
         """if we try open for pass at dist < minDistForOpeningForPass, we open for pass at dist minDistForOpeningForPass"""
         newVect = field.enemy_goal.eye_forw * myConst.minDistForOpeningForPass
+    elif vectFromBallToR.mag() > myConst.maxDistForOpeningForPass:
+        newVect = field.enemy_goal.eye_forw * myConst.maxDistForOpeningForPass
     else:
         newVect = field.enemy_goal.eye_forw * vectFromBallToR.mag()
 
@@ -528,7 +532,10 @@ def getPointToPassAndRToPass(
 
 
 def doPassNearAllly(
-    field: fld.Field, actions: list[Optional[Action]], idFrom: int = const.GK
+    field: fld.Field,
+    actions: list[Optional[Action]],
+    staticVariables: Optional[ClassWithMyStaticVariables] = None,
+    idFrom: int = const.GK,
 ) -> int | None:
     points = field.active_allies(False)
     exclude = [idFrom]
@@ -569,7 +576,18 @@ def doPassNearAllly(
                     """if this r will arrive at point earlyer that ball"""
                     """TODO maybe we do openForPass several times for one run - bad"""
                     pointToPass = pointToOpenForPass
-                actions[idFrom] = Actions.DelayedSlowKick(pointToPass, is_pass=True)  # type: ignore
+                if idFrom != field.gk_id and staticVariables is not None:
+                    """if we need delay before next pass"""
+                    if (
+                        time() - staticVariables.TimerFromLastPass
+                        >= myConst.constDelayBeforeNextPass
+                    ):
+                        actions[idFrom] = Actions.DelayedSlowKick(
+                            pointToPass, is_pass=True
+                        )
+                else:
+                    actions[idFrom] = Actions.DelayedSlowKick(pointToPass, is_pass=True)
+
         else:
             """if enemy r prevent pass"""
             field.strategy_image.send_telemetry(
@@ -577,6 +595,14 @@ def doPassNearAllly(
             )
             if actions[ourRsSortedByDistToBall[0].r_id] is not None:
                 """do pass ahead"""
+                actions[idFrom] = Actions.DelayedSlowKick(
+                    field.enemy_goal.center,
+                    timer_for_rotate=0,
+                    timerForHoldBallForMyIsBallIn=0,
+                )
+                """ TODO DONT WORK, NEED REWORK!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"""
+                """ TODO DONT WORK, NEED REWORK!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"""
+                """ TODO DONT WORK, NEED REWORK!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"""
                 # idRWhichOpen = ourRsSortedByDistToBall[0].r_id
                 # pointToOpenForPass = None
                 # try:

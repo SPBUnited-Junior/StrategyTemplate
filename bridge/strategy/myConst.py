@@ -56,6 +56,7 @@ whatWeDoAtThisRun: whatWeDoStates = whatWeDoStates.BothPlay
 """"""
 
 weUseDribbler = False
+weUseUpper = False
 
 if not weUseDribbler:
     timerForHoldBallForMyIsBallIn = 0

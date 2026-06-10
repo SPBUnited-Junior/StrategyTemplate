@@ -205,13 +205,22 @@ def updateTimerAndIdWeTryDoPass(
                 > staticVariables.constForTimerWeTryDoPass * 2
                 and staticVariables.idDoPass != const.GK
             ):
+                """if we cant do pass normal time"""
                 actions[staticVariables.idDoPass] = Actions.DelayedSlowKick(
                     nearest2BallEnemy(field).get_pos()
                 )
             else:
-                actions[staticVariables.idDoPass] = Actions.DelayedSlowKick(
-                    field.allies[idOtherR].get_pos(), is_upper=True
-                )
+                """if we cant do pass long time"""
+                if myConst.weUseUpper:
+                    actions[staticVariables.idDoPass] = Actions.DelayedSlowKick(
+                        field.allies[idOtherR].get_pos(), is_upper=True
+                    )
+                else:
+                    actions[staticVariables.idDoPass] = Actions.DelayedSlowKick(
+                        field.enemy_goal.center,
+                        timer_for_rotate=0,
+                        timerForHoldBallForMyIsBallIn=0,
+                    )
             if isBallKickedToR(field, idOtherR, staticVariables.idDoPass):
                 staticVariables.TimeWeTryDoPass = None
                 staticVariables.idDoPass = None
@@ -495,11 +504,29 @@ def GK(
                 # field.strategy_image.send_telemetry("GK State", "Grab ball")
                 """grab ball if it maybe in hull and we cant intersept him"""
                 actions[const.GK] = Actions.BallGrab((ballPos - GKPos).arg())
-            else:
+            elif myConst.weUseUpper:
+                """knock out ball from zone, using upper"""
                 GKState = GKStates.KnockOutBall
                 actions[const.GK] = Actions.DelayedSlowKick(
                     field.enemy_goal.center, is_upper=True
                 )
+            else:
+                """trying to stop score"""
+                GKState = GKStates.Intersept
+                pointForStopBall = aux.get_line_intersection(
+                    oldBallPos, ballPos, field.ally_goal.up, field.ally_goal.down, "RS"
+                )
+                if pointForStopBall is not None:
+                    actions[const.GK] = Actions.GoToPoint(
+                        pointForStopBall, field.ally_goal.eye_forw.arg()
+                    )
+                else:
+                    nearest2BallPoint = aux.closest_point_on_line(
+                        field.ally_goal.up, field.ally_goal.down, ballPos, "S"
+                    )
+                    actions[const.GK] = Actions.GoToPoint(
+                        nearest2BallPoint, field.ally_goal.eye_forw.arg()
+                    )
 
         else:
             GKState = GKStates.PassInterstptedBall
@@ -526,7 +553,7 @@ def GK(
             < const.ROBOT_R * 1.4
         ):
             """if ball close to edges of goal"""
-            if myConst.weUseDribbler:
+            if myConst.weUseDribbler and myConst.weUseUpper:
                 """normal mode"""
                 if not field.is_ball_in(field.allies[const.GK]):
                     actions[const.GK] = Actions.BallGrab(
@@ -553,12 +580,29 @@ def GK(
                     )
                 actions[const.GK] = Actions.DelayedSlowKick(pointForKickOut)
         else:
+            """if ball not close to edges of goal"""
             if len(field.active_allies(False)) != 0:
                 doPassNearAllly(field, actions)
             else:
-                actions[const.GK] = Actions.DelayedSlowKick(
-                    field.enemy_goal.center, is_upper=True
-                )
+                if myConst.weUseUpper:
+                    """knock out ball to enemy goal"""
+                    actions[const.GK] = Actions.DelayedSlowKick(
+                        field.enemy_goal.center, is_upper=True
+                    )
+                else:
+                    if abs(ballPos.x) - const.FIELD_DX < const.ROBOT_R:
+                        """if ball so close to score line"""
+                        actions[const.GK] = Actions.DelayedSlowKick(
+                            field.ally_goal.center
+                        )
+                    else:
+                        """knock out ball to out"""
+                        nearestEdge = aux.find_nearest_point(
+                            ballPos,
+                            [field.ally_goal.center_down, field.ally_goal.center_up],
+                        )
+                        actions[const.GK] = Actions.DelayedSlowKick(nearestEdge)
+
     elif (
         nearestRToBall == field.allies[const.GK]
         and oldGKState != GKStates.Intersept
@@ -652,7 +696,7 @@ def attackerAloneOnField(
         else:
             """try replace ball from our part of field"""
             actions[idxThisR] = Actions.DelayedSlowKick(
-                field.enemy_goal.center, is_upper=True
+                field.enemy_goal.center, is_upper=myConst.weUseUpper
             )
     else:
         """if ball on other part of field"""
@@ -669,12 +713,19 @@ def attackerAloneOnField(
                 else:
                     """if this r cant do score, he kick to GK or do upper"""
                     if len(enemysRsWithoutGK) != 0:
-                        actions[idxThisR] = Actions.DelayedSlowKick(
-                            fld.find_nearest_robot(
-                                thisRPos, enemysRsWithoutGK
-                            ).get_pos(),
-                            is_upper=True,
-                        )
+                        if myConst.weUseUpper:
+                            actions[idxThisR] = Actions.DelayedSlowKick(
+                                fld.find_nearest_robot(
+                                    thisRPos, enemysRsWithoutGK
+                                ).get_pos(),
+                                is_upper=myConst.weUseUpper,
+                            )
+                        else:
+                            actions[idxThisR] = Actions.DelayedSlowKick(
+                                fld.find_nearest_robot(
+                                    thisRPos, enemysRsWithoutGK
+                                ).get_pos()
+                            )
                     else:
                         actions[idxThisR] = Actions.DelayedSlowKick(
                             field.enemies[const.ENEMY_GK].get_pos()

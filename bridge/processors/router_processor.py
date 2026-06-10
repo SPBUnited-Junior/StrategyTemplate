@@ -233,6 +233,9 @@ def command_from_values(
 
     if not myConst.weUseDribbler:
         values.dribbler_speed = 0
+    if not myConst.weUseUpper:
+        if values.auto_kick == 2:
+            values.auto_kick = 1
 
     return DecoderCommand(
         robot_id=robot.r_id,

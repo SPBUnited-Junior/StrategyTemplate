@@ -56,6 +56,10 @@ class Strategy:
             case GameStates.STOP:
                 # The router will automatically prevent robots from getting too close to the ball
                 self.run(field, actions)
+            case GameStates.BALL_PLACEMENT:
+                pass
+            case GameStates.DEBUG:
+                pass
 
         return actions
 

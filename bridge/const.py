@@ -3,6 +3,7 @@
 """
 
 from enum import Enum
+from math import pi
 
 from environment.setup_environment import get_from_env, get_from_env_specific_type
 
@@ -175,11 +176,11 @@ match DIV:
 
 # ROUTE CONSTS
 VIEW_DIST = 2500
-KEEP_BALL_DIST = 300 + ROBOT_R
+KEEP_BALL_DIST = 300 + ROBOT_R  # 300
 
 # is_ball_in
-GRAB_ALIGN_DIST = 130
-BALL_GRABBED_ANGLE = 0.8
+GRAB_ALIGN_DIST = 150#130
+BALL_GRABBED_ANGLE = pi / 6  # 0.8
 BALL_GRABBED_DIST = 110
 # is_kick_aligned
 KICK_ALIGN_DIST_MULT = 1.5
@@ -189,10 +190,10 @@ KICK_ALIGN_OFFSET = 40
 
 # for grabbing ball
 GRAB_AREA = GRAB_ALIGN_DIST
-# GRAB_DIST = 45  # 30 is good
-GRAB_DIST = 70
-GRAB_MULT = 5  # speed = dist * mult
-GRAB_OFFSET_ANGLE = 0.55
+GRAB_DIST = 10#dribbler
+# GRAB_DIST = 65  # NO dribbler
+GRAB_MULT = 4  # was 5 speed = dist * mult
+GRAB_OFFSET_ANGLE = 0.45  # 0.55
 
 if IS_SIMULATOR_USED:
     GRAB_ALIGN_DIST = 150
@@ -202,6 +203,8 @@ if IS_SIMULATOR_USED:
     GRAB_OFFSET_ANGLE = 0.35
 
 # VOLTAGES
-VOLTAGE_SHOOT = 8
+VOLTAGE_SHOOT = 7 # 8 - no dribbler
 VOLTAGE_UP = 15
-VOLTAGE_ZERO = 8
+VOLTAGE_ZERO = 0
+
+MAX_SPEED_BALL = 3000

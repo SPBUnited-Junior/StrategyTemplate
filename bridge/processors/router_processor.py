@@ -11,11 +11,16 @@ import zmq
 from cattrs import unstructure
 from strategy_bridge.bus import DataBus, DataReader, DataWriter
 from strategy_bridge.processors import BaseProcessor
+from bridge.const import State as GameStates
+
 
 from bridge import const, drawing
 from bridge.auxiliary import aux, fld, rbt
 from bridge.processors.python_controller import RobotCommand
 from bridge.router.action import Action, ActionDomain, ActionValues
+
+
+import bridge.strategy.myConst as myConst
 
 UDP_IP = "10.0.120.210"
 UDP_PORT = 10000
@@ -48,10 +53,16 @@ class CommandSink(BaseProcessor):
             const.Color.YELLOW: self.field_y,
         }
 
-        self.field[const.COLOR].router_image.timer = drawing.FeedbackTimer(time(), 10, 50)
+        self.field[const.COLOR].router_image.timer = drawing.FeedbackTimer(
+            time(), 10, 50
+        )
 
-        self.waypoints_b: list[Optional[Action]] = [None for _ in range(const.TEAM_ROBOTS_MAX_COUNT)]
-        self.waypoints_y: list[Optional[Action]] = [None for _ in range(const.TEAM_ROBOTS_MAX_COUNT)]
+        self.waypoints_b: list[Optional[Action]] = [
+            None for _ in range(const.TEAM_ROBOTS_MAX_COUNT)
+        ]
+        self.waypoints_y: list[Optional[Action]] = [
+            None for _ in range(const.TEAM_ROBOTS_MAX_COUNT)
+        ]
         self.actions: dict[const.Color, list[Optional[Action]]] = {
             const.Color.BLUE: self.waypoints_b,
             const.Color.YELLOW: self.waypoints_y,
@@ -59,7 +70,8 @@ class CommandSink(BaseProcessor):
 
         context = zmq.Context()
         self.s_control = context.socket(zmq.PUB)
-        self.s_control.connect("tcp://127.0.0.1:5051")
+        # self.s_control.connect("tcp://172.20.10.2:5051") #for my network
+        self.s_control.connect("tcp://172.17.0.1:5051")  # for ITMO GUETS
 
     def process(self) -> None:
         """
@@ -103,7 +115,8 @@ class CommandSink(BaseProcessor):
                     domain = ActionDomain(
                         field=self.field[color],
                         game_state=self.field[color].game_state,
-                        we_active=self.field[color].active_team in [const.Color.ALL, color],
+                        we_active=self.field[color].active_team
+                        in [const.Color.ALL, color],
                         robot=self.field[color].allies[i],
                     )
                     if cur_action is not None:
@@ -113,16 +126,22 @@ class CommandSink(BaseProcessor):
                             domain = ActionDomain(
                                 field=self.field[color],
                                 game_state=self.field[color].game_state,
-                                we_active=self.field[color].active_team in [const.Color.ALL, color],
+                                we_active=self.field[color].active_team
+                                in [const.Color.ALL, color],
                                 robot=self.field[color].allies[i],
                             )
                             values = ActionValues()
                             cur_action.process(domain, values)
 
-                            cur_command = command_from_values(domain.field, domain.robot, values)
+                            cur_command = command_from_values(
+                                domain.field, domain.robot, values
+                            )
                             team_commands.append(cur_command)
                             team_message += create_telemetry(cur_command)
-                        elif time() - self.field[color].allies[i].last_update() > const.TIME_TO_DIE:
+                        elif (
+                            time() - self.field[color].allies[i].last_update()
+                            > const.TIME_TO_DIE
+                        ):
                             cur_command = stop_command(i)
                             team_commands.append(cur_command)
                             team_message += create_telemetry(cur_command)
@@ -134,7 +153,9 @@ class CommandSink(BaseProcessor):
                         isteamyellow=(color == const.Color.YELLOW),
                     )
 
-                    self.s_control.send_json({"control": "actuate_robot", "data": unstructure(control_data)})
+                    self.s_control.send_json(
+                        {"control": "actuate_robot", "data": unstructure(control_data)}
+                    )
 
                 telemetry_message += team_message
                 telemetry_message += "-" * 90 + "\n"
@@ -144,7 +165,9 @@ class CommandSink(BaseProcessor):
             self.field_b.clear_images()
             self.field_y.clear_images()
 
-            self.field[const.COLOR].router_image.send_telemetry("COMMANDS TO ROBOTS", telemetry_message)
+            self.field[const.COLOR].router_image.send_telemetry(
+                "COMMANDS TO ROBOTS", telemetry_message
+            )
         self.image_writer.write(self.field[const.COLOR].router_image)
 
     def finalize(self) -> None:
@@ -168,14 +191,20 @@ class CommandSink(BaseProcessor):
 
         for _ in range(5):
             for team in [True, False]:
-                control_data = DecoderTeamCommand(robot_commands=team_commands, isteamyellow=team)
-                self.s_control.send_json({"control": "actuate_robot", "data": unstructure(control_data)})
+                control_data = DecoderTeamCommand(
+                    robot_commands=team_commands, isteamyellow=team
+                )
+                self.s_control.send_json(
+                    {"control": "actuate_robot", "data": unstructure(control_data)}
+                )
             sleep(0.002)
 
         self.s_control.close()
 
 
-def command_from_values(field: fld.Field, robot: rbt.Robot, values: ActionValues) -> "DecoderCommand":
+def command_from_values(
+    field: fld.Field, robot: rbt.Robot, values: ActionValues
+) -> "DecoderCommand":
     """Turn ActionValues to commands for robots"""
     if const.IS_SIMULATOR_USED:
         robot.beep = 1
@@ -204,6 +233,12 @@ def command_from_values(field: fld.Field, robot: rbt.Robot, values: ActionValues
         else:
             robot.delta_angle = values.angle
 
+    if not myConst.weUseDribbler or field.game_state in [GameStates.STOP, GameStates.PREPARE_KICKOFF, GameStates.PREPARE_PENALTY]:
+        values.dribbler_speed = 0
+    if not myConst.weUseUpper:
+        if values.auto_kick == 2:
+            values.auto_kick = 1
+
     return DecoderCommand(
         robot_id=robot.r_id,
         kick_up=values.kick_up,
@@ -211,7 +246,7 @@ def command_from_values(field: fld.Field, robot: rbt.Robot, values: ActionValues
         auto_kick_up=values.auto_kick == 2,
         auto_kick_forward=values.auto_kick == 1,
         kicker_setting=values.kicker_voltage,
-        dribbler_setting=values.dribbler_speed,
+        dribbler_setting=values.dribbler_speed,  # COMMENT
         forward_vel=robot.speed_x,
         left_vel=-robot.speed_y,
         angular_vel=robot.speed_r if robot.beep else None,
@@ -256,7 +291,8 @@ class DecoderCommand:
 
 
 test_commands = [
-    DecoderCommand(idx, True, False, False, False, 15, 15, 100, 0, 1, None) for idx in range(const.TEAM_ROBOTS_MAX_COUNT)
+    DecoderCommand(idx, True, False, False, False, 15, 15, 100, 0, 1, None)
+    for idx in range(const.TEAM_ROBOTS_MAX_COUNT)
 ]
 
 

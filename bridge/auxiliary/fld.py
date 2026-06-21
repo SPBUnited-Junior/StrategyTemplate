@@ -25,7 +25,7 @@ class Goal:
                     │                down                            up                   │
                     │                                                                     │
                     │                                                                     │
-                    │                                                                     │
+                    │                                 Hull                                │
                     │                                                                     │          ────> eye_up
                     │                                                                     │
                     │                                                                     │

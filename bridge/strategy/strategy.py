@@ -5,76 +5,202 @@ import math  # type: ignore
 from time import time  # type: ignore
 from typing import Optional
 
+import bridge.strategy.states as states
 from bridge import const
 from bridge.auxiliary import aux, fld, rbt  # type: ignore
 from bridge.const import State as GameStates
-from bridge.router.base_actions import Action, Actions, KickActions  # type: ignore
+from bridge.router.base_actions import Action, Actions, KickActions, DribblerActions  # type: ignore
+from bridge.router.myDefaultFunc import myIsBallInClass  # type: ignore
+from bridge.strategy.ClassWithMyStaticVariables import ClassWithMyStaticVariables  # type: ignore
+import bridge.strategy.myConst as myConst
+from bridge.strategy.myConst import whatWeDoStates
+from bridge.strategy.myLogicFunc import (
+    updatePointAndAngleFromWhatBallKicked,
+    updates,
+    attacker,
+    GK,
+)
+from bridge.strategy.testStates import (
+    testPass,
+    simpleTest,
+    testGK,
+    testRotateWithBall,
+    newIsBallInTest,
+)
+
+from typing import Callable
+
+testStates: dict[
+    myConst.whatWeDoStates,
+    Callable[[ClassWithMyStaticVariables, fld.Field, list[Optional[Action]]], None],
+] = {
+    myConst.whatWeDoStates.TestPass: testPass,
+    myConst.whatWeDoStates.SimpleTest: simpleTest,
+    myConst.whatWeDoStates.TestGK: testGK,
+    myConst.whatWeDoStates.TestRotateWithBall: testRotateWithBall,
+    myConst.whatWeDoStates.NewIsBallInTest: newIsBallInTest,
+}
 
 
 class Strategy:
     """Main class of strategy"""
 
-    def __init__(
-        self,
-    ) -> None:
-        self.we_active = False
+    def __init__(self) -> None:
+        self.staticVariables = ClassWithMyStaticVariables()
 
     def process(self, field: fld.Field) -> list[Optional[Action]]:
         """Game State Management"""
         if field.game_state not in [GameStates.KICKOFF, GameStates.PENALTY]:
             if field.active_team in [const.Color.ALL, field.ally_color]:
-                self.we_active = True
+                self.staticVariables.we_active = True
             else:
-                self.we_active = False
+                self.staticVariables.we_active = False
 
         actions: list[Optional[Action]] = []
         for _ in range(const.TEAM_ROBOTS_MAX_COUNT):
             actions.append(None)
 
+        field.strategy_image.send_telemetry("State", str(field.game_state))
         match field.game_state:
-            case GameStates.RUN:
+            case GameStates.RUN:  # GOOD
                 self.run(field, actions)
+
             case GameStates.TIMEOUT:
-                pass
+                states.TIMEOUT(
+                    field,
+                    actions,
+                    self.staticVariables.we_active,
+                    self.staticVariables.idFirstAttacker,
+                    self.staticVariables.idSecondAttacker,
+                )
+
             case GameStates.HALT:
-                return [None] * const.TEAM_ROBOTS_MAX_COUNT
+                return [Actions.Stop()] * const.TEAM_ROBOTS_MAX_COUNT
+
             case GameStates.PREPARE_PENALTY:
-                pass
+                states.PREPARE_PENALTY(
+                    field,
+                    actions,
+                    self.staticVariables.we_active,
+                    self.staticVariables.idFirstAttacker,
+                    self.staticVariables.idSecondAttacker,
+                )
+
             case GameStates.PENALTY:
-                pass
+                updatePointAndAngleFromWhatBallKicked(self.staticVariables, field)
+                place = states.PENALTY(
+                    field,
+                    actions,
+                    self.staticVariables.we_active,
+                    self.staticVariables.idFirstAttacker,
+                    self.staticVariables.idSecondAttacker,
+                    self.staticVariables.GKLastState,
+                    self.staticVariables.PointFromBallKicked,
+                    self.staticVariables.AngleWithWhatBallKicked,
+                )  # one r(our or not) kick ball from center of field, GK other team defend goal
+                if self.staticVariables.we_active and place is not None:
+                    self.staticVariables.GKLastState = place
+
             case GameStates.PREPARE_KICKOFF:
-                pass
+                place = states.PREPARE_KICKOFF(
+                    field,
+                    actions,
+                    self.staticVariables.we_active,
+                    self.staticVariables.idFirstAttacker,
+                    self.staticVariables.idSecondAttacker,
+                    self.staticVariables.GKLastState,
+                )  # our Rs on our part of field
+                if self.staticVariables.we_active and place is not None:
+                    self.staticVariables.GKLastState = place
+
             case GameStates.KICKOFF:
-                pass
+                place = states.KICKOFF(
+                    field,
+                    actions,
+                    self.staticVariables.we_active,
+                    self.staticVariables.idFirstAttacker,
+                    self.staticVariables.idSecondAttacker,
+                    self.staticVariables.GKLastState,
+                )  # our Rs on our part of field
+                if self.staticVariables.we_active and place is not None:
+                    self.staticVariables.GKLastState = place
+
             case GameStates.FREE_KICK:
-                pass
+                self.run(field, actions)
+
             case GameStates.STOP:
                 # The router will automatically prevent robots from getting too close to the ball
-                self.run(field, actions)
+                # self.staticVariables.run(field, actions)
+                place = states.STOP(field, actions, self.staticVariables.GKLastState)
+                if self.staticVariables.we_active and place is not None:
+                    self.staticVariables.GKLastState = place
 
         return actions
 
     def run(self, field: fld.Field, actions: list[Optional[Action]]) -> None:
-        """
-        ONE ITERATION of strategy
-        NOTE: robots will not start acting until this function returns an array of actions,
-              if an action is overwritten during the process, only the last one will be executed)
-
-        Examples of getting coordinates:
-        - field.allies[8].get_pos(): aux.Point -   coordinates  of the 8th  robot from the allies
-        - field.enemies[14].get_angle(): float - rotation angle of the 14th robot from the opponents
-
-        - field.ally_goal.center: Point - center of the ally goal
-        - field.enemy_goal.hull: list[Point] - polygon around the enemy goal area
-
-
-        Examples of robot control:
-        - actions[2] = Actions.GoToPoint(aux.Point(1000, 500), math.pi / 2)
-                The robot number 2 will go to the point (1000, 500), looking in the direction π/2 (up, along the OY axis)
-
-        - actions[3] = Actions.Kick(field.enemy_goal.center)
-                The robot number 3 will hit the ball to 'field.enemy_goal.center' (to the center of the enemy goal)
-
-        - actions[9] = Actions.BallGrab(0.0)
-                The robot number 9 grabs the ball at an angle of 0.0 (it looks to the right, along the OX axis)
-        """
+        # TODO fix problem with that robots comes so close to each other,when they try take ball
+        if len(field.active_allies(True)) != 0:  # if our Rs on field
+            if field.ally_color == const.COLOR:
+                """code for ally"""
+                updates(
+                    self.staticVariables,
+                    field,
+                    actions,
+                    showTimerPass=False,
+                    showIdsPass=False,
+                )
+                if (
+                    self.staticVariables.whatWeDoAtThisRun == whatWeDoStates.Play
+                    or self.staticVariables.whatWeDoAtThisRun == whatWeDoStates.BothPlay
+                ):
+                    # print(field.game_state)  # for real
+                    attacker(
+                        self.staticVariables,
+                        field,
+                        actions,
+                        self.staticVariables.idFirstAttacker,
+                        self.staticVariables.idSecondAttacker,
+                    )
+                    attacker(
+                        self.staticVariables,
+                        field,
+                        actions,
+                        self.staticVariables.idSecondAttacker,
+                        self.staticVariables.idFirstAttacker,
+                    )
+                    if field.allies[const.GK].is_used():
+                        self.staticVariables.GKLastState = GK(
+                            field, actions, self.staticVariables.GKLastState
+                        )
+                    # field.strategy_image.draw_circle(field.ally_goal.center, (0, 0, 255), 20)
+                else:
+                    testStates[self.staticVariables.whatWeDoAtThisRun](
+                        self.staticVariables, field, actions
+                    )
+            else:
+                """code for yellow"""
+                if self.staticVariables.whatWeDoAtThisRun == whatWeDoStates.BothPlay:
+                    if field.allies[const.GK].is_used():
+                        self.staticVariables.GKLastState = GK(
+                            field, actions, self.staticVariables.GKLastState
+                        )
+                    attacker(
+                        self.staticVariables,
+                        field,
+                        actions,
+                        self.staticVariables.idFirstAttacker,
+                        self.staticVariables.idSecondAttacker,
+                    )
+                    attacker(
+                        self.staticVariables,
+                        field,
+                        actions,
+                        self.staticVariables.idSecondAttacker,
+                        self.staticVariables.idFirstAttacker,
+                    )
+                else:
+                    testStates[self.staticVariables.whatWeDoAtThisRun](
+                        self.staticVariables, field, actions
+                    )
+        else:
+            print("WE HAVENT ROBOTS")

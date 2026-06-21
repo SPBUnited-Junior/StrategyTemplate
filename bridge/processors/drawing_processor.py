@@ -16,7 +16,7 @@ class Drawer(BaseProcessor):
     """Class for drawing"""
 
     processing_pause: Optional[float] = 1 / 60
-    reduce_pause_on_process_time: bool = True
+    reduce_pause_on_process_time: bool = False
     commands_sink_reader: DataReader = attr.ib(init=False)
 
     def initialize(self, data_bus: DataBus) -> None:

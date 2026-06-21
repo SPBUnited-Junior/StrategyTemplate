@@ -118,8 +118,9 @@ class FieldCreator(BaseProcessor):
             cur_state = self.referee_processor.state_machine.get_state()
             if cur_state[0] == State.RUN:
                 if self.field.robot_with_ball is not None:
-                    ally = self.field.robot_with_ball
-                    ball = ally.get_pos() + aux.rotate(aux.RIGHT, ally.get_angle()) * 90
+                    #ally = self.field.robot_with_ball
+                    #ball = ally.get_pos() + aux.rotate(aux.RIGHT, ally.get_angle()) * 90
+                    ball = self.field.robot_with_ball.get_pos() + aux.rotate(aux.RIGHT, self.field.robot_with_ball.get_angle()) * 90
                     self.field.update_ball(ball, time())
 
         self.field.update_ball_history()

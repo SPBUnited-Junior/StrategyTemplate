@@ -9,6 +9,7 @@ from bridge.processors.drawing_processor import Drawer
 from bridge.processors.field_creator import FieldCreator
 from bridge.processors.python_controller import SSLController
 from bridge.processors.router_processor import CommandSink
+from bridge.processors.create_pass_point import ExplorePasses
 
 if __name__ == "__main__":
     # config.init_logging("./logs")
@@ -20,6 +21,9 @@ if __name__ == "__main__":
         ),
         Drawer(),
         CommandSink(),
+        ExplorePasses(
+            ally_color=const.COLOR,
+        )
     ]
 
     RUNNER = Runner(processors=PROCESSORS)

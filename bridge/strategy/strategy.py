@@ -1,7 +1,7 @@
 """High-level strategy code"""
 
 # !v DEBUG ONLY
-import math  # type: ignore
+import math  # type: ignore  # noqa: F401
 from time import time  # type: ignore  # noqa: F401
 from typing import Optional
 
@@ -87,4 +87,3 @@ class Strategy:
         - actions[9] = Actions.BallGrab(0.0)
                 The robot number 9 grabs the ball at an angle of 0.0 (it looks to the right, along the OX axis)
         """
-        actions[0] = Actions.GoToPoint(aux.Point(1000, 500), math.pi / 2)

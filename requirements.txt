@@ -1,4 +1,4 @@
-strategy-bridge==0.4.2
+strategy-bridge @ git+https://github.com/SPbUnited/strategy-bridge.git
 numpy==1.26.4
 filterpy==1.4.5
 python-dotenv==1.2.2

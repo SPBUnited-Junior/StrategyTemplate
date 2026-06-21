@@ -78,12 +78,14 @@ class SSLController(BaseProcessor):
 
     def control_assign(self) -> None:
         """Send commands to robots"""
+        commands: list[RobotCommand] = []
         for robot in self.field.active_allies(True):
             cur_action = self.actions[robot.r_id]
             if cur_action is not None:
                 message = RobotCommand(robot.r_id, robot.color, cur_action)
 
-                self.robot_control_writer.write(message)
+                commands.append(message)
+        self.robot_control_writer.write(commands)
 
     def send_image(self) -> None:
         """Send commands to drawer processor"""

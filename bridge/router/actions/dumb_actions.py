@@ -1,5 +1,3 @@
-import math
-from time import time
 from typing import Optional
 
 from bridge import const
@@ -7,6 +5,7 @@ from bridge.auxiliary import aux
 
 from .action import Action, ActionDomain, ActionValues, limit_action
 from .extra_functions import get_pass_voltage
+
 
 class DumbActions:
     """User-unavailable actions, are used in Actions"""
@@ -38,7 +37,6 @@ class DumbActions:
 
         def behavior(self, domain: ActionDomain, current_action: ActionValues) -> None:
             current_action.auto_kick = self.autokick
-
 
     class ControlVoltageAction(Action):
         """Control voltage before shooting"""

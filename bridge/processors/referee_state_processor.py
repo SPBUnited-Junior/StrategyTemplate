@@ -61,6 +61,7 @@ class StateMachine:
             self.add_transition(state, State.HALT, Command.HALT)
             self.add_transition(state, State.STOP, Command.STOP)
             self.add_transition(state, State.TIMEOUT, Command.TIMEOUT)
+            self.add_transition(state, State.BALL_PLACEMENT, Command.BALL_PLACEMENT)
 
         self.add_transition(State.STOP, State.PREPARE_KICKOFF, Command.PREPARE_KICKOFF)
         self.add_transition(State.STOP, State.BALL_PLACEMENT, Command.BALL_PLACEMENT)
@@ -71,6 +72,7 @@ class StateMachine:
         self.add_transition(State.PREPARE_KICKOFF, State.KICKOFF, Command.NORMAL_START)
 
         self.add_transition(State.BALL_PLACEMENT, State.FREE_KICK, Command.CONTINUE)
+        self.add_transition(State.BALL_PLACEMENT, State.FREE_KICK, Command.FREE_KICK)
         self.add_transition(State.BALL_PLACEMENT, State.STOP, Command.STOP)
 
         self.add_transition(State.PREPARE_PENALTY, State.PENALTY, Command.NORMAL_START2)
@@ -129,6 +131,8 @@ class StateMachine:
 
 # SETTING ENVIRONMENT CONSTANTS
 DEBUG_MODE: bool = get_from_env("DEBUG_MODE", bool)
+if not DEBUG_MODE:
+    const.DEBUG_HALF = 0
 DEBUG_GAME_STATE: const.State = get_from_env_specific_type("DEBUG_GAME_STATE", const.State)
 DEBUG_ACTIVE_TEAM: const.Color = get_from_env_specific_type("DEBUG_ACTIVE_TEAM", const.Color)
 DEBUG_PREPARATION_DELAY: float = get_from_env("DEBUG_PREPARATION_DELAY", float)
@@ -150,9 +154,11 @@ class RefereeStateProcessor:
         self.debug_preparation_delay = DEBUG_PREPARATION_DELAY
 
         print(
-            f"Found data about debug mode:\n\tIs used:\t\t{self.debug_mode}\n\tDEBUG game state:\t{self.debug_game_state}\n",
-            f"\tDEBUG active team:\t{self.debug_active_team}\n\tTime for preparation:\t{self.debug_preparation_delay}",
+            f"Found data about debug mode: \n\tIs used: \t\t{self.debug_mode}\n\t",
+            f"DEBUG game state: \t{self.debug_game_state}\n\tDEBUG active team: \t{self.debug_active_team}\n\t",
+            f"Time for preparation: \t{self.debug_preparation_delay}",
         )
+
         # Referee fields
         self.state_machine = StateMachine()
         self.cur_cmd_state: Optional[int] = None
@@ -164,10 +170,7 @@ class RefereeStateProcessor:
         self.preparation_flag = False
         self.preparation_timer = 0.0
         if self.debug_mode:
-            if self.debug_game_state == State.FREE_KICK:
-                self.state_machine.active_team(0)
-            else:
-                self.state_machine.active_team(self.debug_active_team.value)
+            self.state_machine.active_team(0)
 
             if self.debug_game_state in [
                 State.KICKOFF,
@@ -181,8 +184,15 @@ class RefereeStateProcessor:
                 self.preparation_timer = time()
 
                 self.state_machine.set_state(PreparationStateMap[self.debug_game_state])
+
             else:
                 self.state_machine.set_state(self.debug_game_state)
+                if self.debug_game_state in [
+                    State.PREPARE_KICKOFF,
+                    State.PREPARE_PENALTY,
+                    State.BALL_PLACEMENT,
+                ]:
+                    self.state_machine.active_team(self.debug_active_team.value)
 
     def process(self, field: fld.Field) -> tuple[State, const.Color]:
         """
@@ -191,10 +201,12 @@ class RefereeStateProcessor:
         message = self.receiver.next_message()
         if not self.debug_mode and message is not None:
             parsed_message = json.loads(bytes(message))
+            # print(parsed_message)
             cur_command = RefereeCommand(
                 state=parsed_message["state"],
                 commandForTeam=parsed_message["team"],
                 isPartOfFieldLeft=parsed_message["is_left"],
+                ball_pos=parsed_message.get("ball_pos", None),
             )
 
             if cur_command.state != self.cur_cmd_state:
@@ -203,11 +215,21 @@ class RefereeStateProcessor:
                 self.cur_cmd_state = cur_command.state
                 cur_state, _ = self.state_machine.get_state()
 
+                if cur_state == State.BALL_PLACEMENT:
+                    ball_info: Optional[tuple[float, float]] = parsed_message["ball_pos"]
+                    field.ball_placement_pos = aux.Point(ball_info[0], ball_info[1]) if ball_info is not None else None
+                else:
+                    field.ball_placement_pos = None
+
                 self.wait_10_sec_flag = False
                 self.wait_ball_moved_flag = False
 
                 self.update_flags(field, cur_state)
 
+        elif self.debug_mode and self.debug_game_state == State.BALL_PLACEMENT:
+            field.ball_placement_pos = aux.Point(0, 0)
+
+        # TODO add " if self.debug_mode" here and test it
         elif self.preparation_flag and time() - self.preparation_timer > self.debug_preparation_delay:
             self.state_machine.set_state(self.debug_game_state)
             self.state_machine.active_team(self.debug_active_team.value)
@@ -226,7 +248,7 @@ class RefereeStateProcessor:
             self.wait_ball_moved_flag = False
 
         if self.wait_ball_moved_flag:
-            if self.ball_stop_pos is None and field is not None:
+            if self.ball_stop_pos is None:
                 self.ball_stop_pos = field.ball.get_pos()
             elif self.is_ball_moved(field):
                 self.state_machine.make_transition_(Command.BALL_MOVED)
@@ -251,11 +273,8 @@ class RefereeStateProcessor:
             State.FREE_KICK,
         ]:
             self.wait_ball_moved_flag = True
-            if field is not None:
-                self.ball_stop_pos = field.ball.get_pos()
+            self.ball_stop_pos = field.ball.get_pos()
 
     def is_ball_moved(self, field: fld.Field) -> bool:
         """Return true if ball moved"""
-        return (
-            field is not None and self.ball_stop_pos is not None and (field.ball.get_pos() - self.ball_stop_pos).mag() > 50
-        )
+        return self.ball_stop_pos is not None and (field.ball.get_pos() - self.ball_stop_pos).mag() > 50

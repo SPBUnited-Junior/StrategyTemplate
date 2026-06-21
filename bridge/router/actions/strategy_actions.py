@@ -2,14 +2,11 @@
 Class with strategy actions
 """
 
-import math
 
 from bridge import const
-from bridge.auxiliary import aux, fld
-from bridge.router.actions import Actions, KickActions
+from bridge.auxiliary import aux
+from bridge.router.actions import Actions
 from bridge.router.actions.action import Action, ActionDomain, ActionValues
-from bridge.router.actions.dumb_actions import DumbActions
-from bridge.router.actions.extra_functions import get_grab_speed
 
 
 class StrategyActions:

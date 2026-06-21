@@ -1,3 +1,6 @@
+default_language_version:
+  python: python3.12
+
 repos:
 
 - repo: https://github.com/PyCQA/autoflake
@@ -38,7 +41,7 @@ repos:
         - "--line-length=125"
 
 - repo: https://github.com/PyCQA/flake8
-  rev: 4.0.1
+  rev: 5.0.4
   hooks:
     - id: flake8
       name: Flake8 PEP check

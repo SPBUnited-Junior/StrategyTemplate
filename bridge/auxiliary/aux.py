@@ -122,7 +122,7 @@ class Point:
 
     def __str__(self) -> str:
         """String representation with two decimal places."""
-        return f"x = {self.x:.2f}, y = {self.y:.2f}"
+        return f"x = {self.x: .2f}, y = {self.y: .2f}"
 
     def mag(self) -> float:
         """Return magnitude of vector."""
@@ -140,7 +140,7 @@ class Point:
 
     def debug_str(self) -> str:
         """Return string to recreate this point."""
-        return f"aux.Point({self.x:.0f}, {self.y:.0f})"
+        return f"aux.Point({self.x: .0f}, {self.y: .0f})"
 
 
 RIGHT = Point(1, 0)

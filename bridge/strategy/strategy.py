@@ -2,13 +2,18 @@
 
 # !v DEBUG ONLY
 import math  # type: ignore
-from time import time  # type: ignore
+from time import time  # type: ignore  # noqa: F401
 from typing import Optional
 
 from bridge import const
-from bridge.auxiliary import aux, fld, rbt  # type: ignore
+from bridge.auxiliary import aux, fld, rbt  # type: ignore  # noqa: F401
 from bridge.const import State as GameStates
-from bridge.router.actions import Action, Actions, KickActions  # type: ignore
+from bridge.router.actions import (  # type: ignore  # noqa: F401
+    Action,
+    Actions,
+    KickActions,
+    StrategyActions,
+)
 
 
 class Strategy:
@@ -78,3 +83,4 @@ class Strategy:
         - actions[9] = Actions.BallGrab(0.0)
                 The robot number 9 grabs the ball at an angle of 0.0 (it looks to the right, along the OX axis)
         """
+        actions[0] = Actions.GoToPoint(aux.Point(1000, 500), math.pi / 2)

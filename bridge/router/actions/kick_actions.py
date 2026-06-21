@@ -1,18 +1,16 @@
-import math
-from time import time
 from typing import Optional
 
 from bridge import const
-from bridge.auxiliary import aux, fld
+from bridge.auxiliary import aux
 
 from . import Actions
 from .action import Action, ActionDomain, ActionValues
 from .dumb_actions import DumbActions
-from .extra_functions import get_pass_voltage
 
 
 class KickActions:
     """Class with available types of ball kicks"""
+
     class Kick(Action):
         """Base class"""
 

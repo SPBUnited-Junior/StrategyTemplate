@@ -24,11 +24,9 @@ def get_grab_speed(
 ) -> aux.Point:
     """Calculate speed for carefully grabbing a ball"""
     GRAB_DIST, GRAB_MULT, GRAB_OFFSET_ANGLE = (
-        (
-            const.GRAB_DIST,
-            const.GRAB_MULT,
-            const.GRAB_OFFSET_ANGLE,
-        )
+        const.GRAB_DIST,
+        const.GRAB_MULT,
+        const.GRAB_OFFSET_ANGLE,
     )
 
     ball = field.ball.get_pos()

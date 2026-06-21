@@ -31,7 +31,9 @@ class FieldCreator(BaseProcessor):
         self.field_receiver = ZmqReceiver(port=config.VISION_DETECTIONS_SUBSCRIBE_PORT)
 
         self.box_feedback_reader = DataReader(data_bus, config.BOX_FEEDBACK_TOPIC)
-        self.field_writer = DataWriter(data_bus, const.FIELD_TOPIC, 1)
+        self.field_writer = DataWriter(data_bus, const.FIELD_TOPIC, 2)
+        self.image_writer = DataWriter(data_bus, const.IMAGE_TOPIC, 10)
+
         self._ssl_converter = SSL_WrapperPacket()
         self.field = fld.Field(const.COLOR)
         self.field.field_image.timer = drawing.FeedbackTimer(time(), 5, 30)
@@ -57,9 +59,10 @@ class FieldCreator(BaseProcessor):
         if len(queue) == 0:
             return
 
-        self.field.field_image.timer.start(time())
+        now = time()
+        self.field.field_image.timer.start(now)
 
-        # print("field delay:", time() - self.field.last_update)
+        # print("field delay:", now - self.field.last_update)
         balls: list[aux.Point] = []
         b_bots_id: list[int] = []
         b_bots_pos: list[list] = [[] for _ in range(const.TEAM_ROBOTS_MAX_COUNT)]
@@ -86,6 +89,9 @@ class FieldCreator(BaseProcessor):
             #         const.GOAL_DY = geometry.field.goal_width
 
             detection = ssl_package_content.detection
+            self.field.detection_capture_time = detection.t_capture
+            self.field.detection_get_time = now
+
             for ball in detection.balls:
                 if ball.x * const.DEBUG_HALF < 0:
                     continue
@@ -106,27 +112,31 @@ class FieldCreator(BaseProcessor):
                 y_bots_ang[robot_det.robot_id].append(robot_det.orientation)
 
         new_ball_pos = filter_fake_detections(
+            self.field,
+            now,
             self.field.ball.get_pos(),
             self.field.ball_real_update_time,
             const.BALL_MAX_VISION_SPEED,
             balls,
         )
         if new_ball_pos is not None:
-            self.field.update_ball(new_ball_pos[0], time())
-            self.field.ball_real_update_time = time()
+            self.field.update_ball(new_ball_pos[0], now)
+            self.field.ball_real_update_time = now
         else:
             cur_state = self.referee_processor.state_machine.get_state()
-            if cur_state[0] == State.RUN:
+            if cur_state[0] in [State.RUN, State.DEBUG, State.BALL_PLACEMENT, State.PENALTY]:
                 if self.field.robot_with_ball is not None:
                     ally = self.field.robot_with_ball
                     ball = ally.get_pos() + aux.rotate(aux.RIGHT, ally.get_angle()) * 90
-                    self.field.update_ball(ball, time())
+                    self.field.update_ball(ball, now)
 
         self.field.update_ball_history()
 
         for r_id in set(b_bots_id):
             blue_robot = self.field.get_blu_team()[r_id]
             new_pos = filter_fake_detections(
+                self.field,
+                now,
                 blue_robot.get_pos(),
                 blue_robot.last_update(),
                 const.ROBOT_MAX_VISION_SPEED,
@@ -134,18 +144,20 @@ class FieldCreator(BaseProcessor):
                 b_bots_ang[r_id],
             )
             if new_pos is not None:
-                self.field.update_blu_robot(r_id, new_pos[0], new_pos[1], time())
+                self.field.update_blu_robot(r_id, new_pos[0], new_pos[1], now)
 
             live_time = self.field.b_team[r_id].live_time()
-            if live_time is not None and time() - live_time > const.TIME_TO_BORN:
+            if live_time is not None and now - live_time > const.TIME_TO_BORN:
                 self.field.b_team[r_id].used(1)
         for robot in self.field.b_team:
-            if time() - robot.last_update() > const.TIME_TO_DIE:
+            if now - robot.last_update() > const.TIME_TO_DIE:
                 robot.used(0)
 
         for r_id in set(y_bots_id):
             yellow_robot = self.field.get_yel_team()[r_id]
             new_pos = filter_fake_detections(
+                self.field,
+                now,
                 yellow_robot.get_pos(),
                 yellow_robot.last_update(),
                 const.ROBOT_MAX_VISION_SPEED,
@@ -153,13 +165,13 @@ class FieldCreator(BaseProcessor):
                 y_bots_ang[r_id],
             )
             if new_pos is not None:
-                self.field.update_yel_robot(r_id, new_pos[0], new_pos[1], time())
+                self.field.update_yel_robot(r_id, new_pos[0], new_pos[1], now)
 
             live_time = self.field.y_team[r_id].live_time()
-            if live_time is not None and time() - live_time > const.TIME_TO_BORN:
+            if live_time is not None and now - live_time > const.TIME_TO_BORN:
                 self.field.y_team[r_id].used(1)
         for robot in self.field.y_team:
-            if time() - robot.last_update() > const.TIME_TO_DIE:
+            if now - robot.last_update() > const.TIME_TO_DIE:
                 robot.used(0)
 
         active_allies = []
@@ -174,40 +186,31 @@ class FieldCreator(BaseProcessor):
                 active_enemies.append(r)
         self.field.update_active_enemies(active_enemies)
 
-        ENABLE_FEEDBACK = False
-        if ENABLE_FEEDBACK:
-            feedback_record = self.box_feedback_reader.read_last()
-            if feedback_record:
-                result = {}
-                for _, value in feedback_record.content.items():
-                    if isinstance(value, dict) and "address" in value and "ball_checker" in value:
-                        result[value["address"]] = bool(value["ball_checker"])
-                for key, value in result.items():
-                    if value and self.field.allies[int(key)].is_used():
-                        self.field.robot_with_ball = self.field.allies[int(key)]
-
-            if self.field.robot_with_ball is not None:
-                if not self.field._is_ball_in(self.field.robot_with_ball):
-                    self.field.robot_with_ball = None
-            if self.field.robot_with_ball is None:
-                for r in self.field.enemies:
-                    if self.field._is_ball_in(r):
-                        self.field.robot_with_ball = r
-        else:
-            self.field.robot_with_ball = None
+        new_robot_with_ball = None
+        if self.field.robot_with_ball is not None and self.field.robot_with_ball in self.field.allies:
+            if self.field._is_ball_in(self.field.robot_with_ball):
+                new_robot_with_ball = self.field.robot_with_ball
+        if new_robot_with_ball is None:
             for r in self.field.enemies:
                 if self.field._is_ball_in(r):
-                    self.field.robot_with_ball = r
+                    new_robot_with_ball = r
             for r in self.field.allies:
                 if self.field._is_ball_in(r):
-                    self.field.robot_with_ball = r
-        self.field.last_update = time()
+                    new_robot_with_ball = r
+
+        self.field.update_robot_with_ball(new_robot_with_ball)
+
+        self.field.last_update = now
         self.field.field_image.timer.end(time())
+
         lite_field = fld.LiteField(self.field)
         self.field_writer.write(lite_field)
+        self.image_writer.write(self.field.field_image)
 
 
 def filter_fake_detections(
+    field: fld.Field,
+    now_time: float,
     old_pos: aux.Point,
     last_update: float,
     max_vision_speed: float,
@@ -218,8 +221,11 @@ def filter_fake_detections(
     correct_poses: list[aux.Point] = []
     correct_angles: list[float] = []
     for i, new_pos in enumerate(new_poses):
-        if const.IS_SIMULATOR_USED or (
-            new_pos != old_pos or (new_pos - old_pos).mag() / (time() - last_update) < max_vision_speed
+        if (
+            const.IS_SIMULATOR_USED
+            or not aux.is_point_inside_poly(old_pos, field.big_hull)
+            # or new_pos != old_pos
+            or (new_pos - old_pos).mag() / (now_time - last_update) < max_vision_speed
         ):
             correct_poses.append(new_pos)
             if angles is not None:

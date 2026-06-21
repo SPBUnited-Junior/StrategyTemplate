@@ -12,8 +12,8 @@ def shortesthull(p1: aux.Point, p2: aux.Point, points: list[aux.Point]) -> list[
     Получить кратчайший путь от точки p1 до точки p2, огибающий точки points
     """
     hull = []
-    mindist = math.inf
-    minidx = None
+    min_dist = math.inf
+    min_idx = None
     for i in [-1, 1]:
         hull.append(quickhull(p1, p2, points, i))
         dist = 0.0
@@ -21,10 +21,10 @@ def shortesthull(p1: aux.Point, p2: aux.Point, points: list[aux.Point]) -> list[
         for wpt in hull[-1]:
             dist += (wpt - last_wp_pos).mag()
             last_wp_pos = wpt
-        if dist < mindist:
-            mindist = dist
-            minidx = i
-    if minidx == 1:
+        if dist < min_dist:
+            min_dist = dist
+            min_idx = i
+    if min_idx == 1:
         return hull[1]
     return hull[0]
 
@@ -39,7 +39,7 @@ def quickhull(p1: aux.Point, p2: aux.Point, points: list[aux.Point], polarity: i
     if polarity == 1:
         return [p1] + quickhullupper(p1, p2, points) + [p2]
     if polarity == -1:
-        return list(reversed(([p2] + quickhullupper(p2, p1, points) + [p1])))  # pylint: disable = arguments-out-of-order
+        return list(reversed(([p2] + quickhullupper(p2, p1, points) + [p1])))
     return []
 
 
@@ -51,19 +51,19 @@ def quickhullupper(p1: aux.Point, p2: aux.Point, points: list[aux.Point]) -> lis
         return []
 
     vec = p2 - p1
-    uppoints = []
+    points_up = []
 
     for p in points:
         if aux.vec_mult(vec, p - p1) > 0:
-            uppoints.append(p)
+            points_up.append(p)
 
     max_dist = 0.0
     max_p = None
-    for p in uppoints:
-        if aux.dist2line(p2, p1, p) > max_dist:  # pylint: disable = arguments-out-of-order
-            max_dist = aux.dist2line(p2, p1, p)  # pylint: disable = arguments-out-of-order
+    for p in points_up:
+        if aux.dist_to_line(p2, p1, p, "L") > max_dist:
+            max_dist = aux.dist_to_line(p2, p1, p, "L")
             max_p = p
 
     if max_p is None:
         return []
-    return quickhullupper(p1, max_p, uppoints) + [max_p] + quickhullupper(max_p, p2, uppoints)
+    return quickhullupper(p1, max_p, points_up) + [max_p] + quickhullupper(max_p, p2, points_up)

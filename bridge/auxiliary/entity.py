@@ -8,7 +8,6 @@
 - радиус
 """
 
-
 import numpy as np
 from filterpy.common import Q_discrete_white_noise
 from filterpy.kalman import KalmanFilter

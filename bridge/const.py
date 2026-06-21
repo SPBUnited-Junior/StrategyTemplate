@@ -2,6 +2,8 @@
 Определение необходимых констант
 """
 
+# pylint: disable=invalid-name
+import math
 from enum import Enum
 
 from environment.setup_environment import get_from_env, get_from_env_specific_type
@@ -20,6 +22,7 @@ class State(Enum):
     FREE_KICK = 7
     PENALTY = 8
     RUN = 9
+    DEBUG = 10
 
 
 class Color(Enum):
@@ -48,7 +51,7 @@ class Div(Enum):
 
 IS_SIMULATOR_USED: bool = get_from_env("IS_SIMULATOR_USED", bool)
 
-DIV: Div = get_from_env_specific_type("DIV", Div)
+DIV: Div = get_from_env_specific_type("DIVISION", Div)
 COLOR: Color = get_from_env_specific_type("COLOR", Color)
 POLARITY: int = get_from_env("POLARITY", int)
 if POLARITY not in [1, -1]:
@@ -58,11 +61,10 @@ if POLARITY not in [1, -1]:
 
 GK: int = get_from_env("GK", int)
 ENEMY_GK: int = get_from_env("ENEMY_GK", int)
+DEBUG_HALF: int = get_from_env("DEBUG_HALF", int)
 
 
 SELF_PLAY = False
-DEBUG_HALF = 0  # 1 = +x, -1 = -x, 0 = not debug
-
 
 ROBOTS_MAX_COUNT: int = 32
 TEAM_ROBOTS_MAX_COUNT: int = ROBOTS_MAX_COUNT // 2
@@ -122,10 +124,8 @@ Ts = 0.02  # s
 
 # ROBOT SETTING CONSTS
 MAX_SPEED = 1250 if not IS_SIMULATOR_USED else 1000
-MAX_ACCELERATION = 5000
+MAX_ACCELERATION = 4000
 MAX_SPEED_R = 30
-SOFT_MAX_SPEED = 500
-SOFT_MAX_SPEED_R = 16
 
 STOP_SPEED = 1000
 
@@ -141,6 +141,7 @@ BALL_MAX_VISION_SPEED = 10000  # for filter random balls
 ROBOT_MAX_VISION_SPEED = 10000  # for filter random robots
 TIME_TO_BORN = 0.1  # time to add robot to field
 TIME_TO_DIE = 0.5  # time to remove robot from field
+
 
 match DIV:
     case Div.A:
@@ -172,36 +173,47 @@ match DIV:
 
         GK_FORW = 100 + ROBOT_R
 
-
 # ROUTE CONSTS
 VIEW_DIST = 2500
-KEEP_BALL_DIST = 300 + ROBOT_R
+if DIV == Div.C:
+    KEEP_BALL_DIST = 300 + ROBOT_R
+else:
+    KEEP_BALL_DIST = 500 + ROBOT_R
 
 # is_ball_in
-GRAB_ALIGN_DIST = 130
-BALL_GRABBED_ANGLE = 0.8
+GRAB_ALIGN_DIST = ROBOT_R + BALL_R
 BALL_GRABBED_DIST = 110
+BALL_GRABBED_ANGLE = 0.8
+
 # is_kick_aligned
 KICK_ALIGN_DIST_MULT = 1.5
-KICK_ALIGN_ANGLE = 0.1
-KICK_ALIGN_DIST = 150
+KICK_ALIGN_ANGLE = 0.15
+KICK_ALIGN_DIST = 200
 KICK_ALIGN_OFFSET = 40
 
 # for grabbing ball
-GRAB_AREA = GRAB_ALIGN_DIST
-# GRAB_DIST = 45  # 30 is good
-GRAB_DIST = 70
+GRAB_DIST = 80
 GRAB_MULT = 5  # speed = dist * mult
-GRAB_OFFSET_ANGLE = 0.55
+GRAB_OFFSET_ANGLE = 0.4
+# #careful grab
+GRAB_CAREFUL_DIST = 100
+GRAB_CAREFUL_MULT = 4  # speed = dist * mult
+GRAB_CAREFUL_OFFSET_ANGLE = 0.3
 
+FAST_GRAB_DIST = 88
+FAST_GRAB_MULT = 4  # angle_to_turn / angle_to_grab; >2!!!
+MAX_ERR_ANGLE = math.pi / 18
 if IS_SIMULATOR_USED:
-    GRAB_ALIGN_DIST = 150
-    BALL_GRABBED_DIST = 150
-    GRAB_DIST = 85
-    GRAB_MULT = 5
+
     GRAB_OFFSET_ANGLE = 0.35
 
+    GRAB_DIST = 85
 # VOLTAGES
-VOLTAGE_SHOOT = 8
-VOLTAGE_UP = 15
-VOLTAGE_ZERO = 8
+if DIV == Div.C:
+    VOLTAGE_SHOOT = 6
+    VOLTAGE_UP = 10
+    VOLTAGE_ZERO = 6
+else:
+    VOLTAGE_SHOOT = 15
+    VOLTAGE_UP = 15
+    VOLTAGE_ZERO = 15

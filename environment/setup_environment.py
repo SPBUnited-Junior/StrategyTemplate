@@ -10,8 +10,7 @@ DEFAULT_ENV_FILE = "environment/default.env"
 
 
 def check_environment_existence() -> None:
-    if not os.path.exists(USER_ENV_FILE):
-        shutil.copy(DEFAULT_ENV_FILE, USER_ENV_FILE)
+    sync_file_with_template(DEFAULT_ENV_FILE, USER_ENV_FILE)
 
 
 T = TypeVar("T", int, float, bool)
@@ -53,3 +52,21 @@ def get_from_env_specific_type(name: str, specific_type: Type[E]) -> E:
         return specific_type[value]
 
     raise RuntimeError(f"{RED_BOLD}Unsupported type: {specific_type}{RESET}")
+
+
+def get_first_line(path: str) -> str | None:
+    if not os.path.exists(path):
+        return None
+    with open(path, "r", encoding="utf-8") as f:
+        return f.readline().strip()
+
+
+def sync_file_with_template(template: str, target: str) -> None:
+    if not os.path.exists(template):
+        raise RuntimeError(f"Template not found: {template}")
+
+    template_version = get_first_line(template)
+    target_version = get_first_line(target)
+
+    if target_version != template_version:
+        shutil.copy(template, target)

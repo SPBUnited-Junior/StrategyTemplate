@@ -10,3 +10,5 @@ settings.json
 bridge/processors_new/
 bridge/processors/tests_on_filed.py
 .env
+
+.DS_Store

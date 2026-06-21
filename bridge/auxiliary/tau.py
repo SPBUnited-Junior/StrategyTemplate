@@ -3,8 +3,10 @@
 """
 
 import math
-from enum import Enum, auto
+from enum import Enum
+from typing import Optional
 
+from bridge import const
 from bridge.auxiliary import aux
 
 
@@ -102,70 +104,16 @@ class FOLP:
         return self._out
 
 
-class Integrator:
-    """
-    Интегратор
-    """
-
-    def __init__(self, Ts: float, maxI: float = 1e20) -> None:
-        """
-        Конструктор
-
-        dT - период квантования
-        """
-        self._ts = Ts
-        self._int = 0.0
-        self._out = 0.0
-        self.__maxI = maxI
-        self.__int = 0.0
-
-    def reset(self) -> None:
-        """
-        Сбросить значение интегратора
-        """
-        self._int = 0
-
-    def process(self, x: float) -> float:
-        """
-        Рассчитать и получить следующее значение выхода звена
-
-        ВЫЗЫВАТЬ РАЗ В ПЕРИОД КВАНТОВАНИЯ
-
-        x - новое значение входа
-        """
-        self._int += x * self._ts
-        self.__int = aux.minmax(self.__int, self.__maxI)
-        self._out = self._int
-        return self._out
-
-    def process_(self, x: float, dT: float) -> float:
-        """
-        Рассчитать и получить следующее значение выхода звена
-
-        x - новое значение входа
-        """
-        self._int += x * dT
-        self._int = aux.minmax(self._int, self.__maxI)
-        self._out = self._int
-        return self._out
-
-    def get_val(self) -> float:
-        """
-        Получить последнее значение выхода звена без расчета
-        """
-        return self._out
-
-
 class Mode(Enum):
     """
     Названия наборов коэффициентов регулятора
     """
 
     NORMAL = 0
-    SOFT = auto()
+    CATCH = 1
 
 
-class PISD:
+class AdaptivePDController:
     """
     Пропорционально-скользяще-интегральный регулятор
 
@@ -175,11 +123,9 @@ class PISD:
 
     def __init__(
         self,
-        dT: float,
         gain: list[float],
         kd: list[float],
-        ki: list[float],
-        max_out: list[float],
+        kpp: list[float],
     ) -> None:
         """
         Конструктор
@@ -192,68 +138,45 @@ class PISD:
         """
         self.__gain = gain
         self.__kd = kd
-        self.__ki = ki
-        self.__max_out = max_out
-        self.__int = Integrator(dT, 100)
+        self.__kpp = kpp
         self.__out = 0.0
         self.__mode = Mode.NORMAL
-        # self.__limiter = RateLimiter(dT,const.MAX_ACCELERATION)
 
     def select_mode(self, mode: Mode) -> None:
         """
         Выбрать набор коэффициентов регулятора
         """
-        self.__mode = mode
-        self.__int.reset()
+        if self.__mode != mode:
+            self.__mode = mode
 
-    def __get_gains(self) -> tuple[float, float, float, float]:
+    def __get_gains(self) -> tuple[float, float, float]:
         """
         Получить коэффициенты регулятора
         """
         return (
             self.__gain[self.__mode.value],
             self.__kd[self.__mode.value],
-            self.__ki[self.__mode.value],
-            self.__max_out[self.__mode.value],
+            self.__kpp[self.__mode.value],
         )
 
-    def process(self, xerr: float, x_i: float) -> float:
+    def process(self, xerr: float, x_i: float, total_dist: Optional[float] = None) -> float:
         """
         Рассчитать следующий тик регулятора
         """
-        gain, k_d, k_i, max_out = self.__get_gains()
+        gain, k_d, k_pp = self.__get_gains()
 
-        s = xerr + k_d * x_i + k_i * self.__int.get_val()
-        u = gain * s
+        dist_for_gain = total_dist if total_dist is not None else abs(xerr)
 
-        # u_clipped = aux.minmax(u, max_out)
+        effective_gain = gain
+        mult_th = 500.0
 
-        # if u != u_clipped:
-        #     self.__int.process(xerr + k_d * x_i)
+        multiplier = 1.0 + k_pp * (1.0 - aux.minmax((mult_th - dist_for_gain) / mult_th, 0, 1))
+        effective_gain *= multiplier
 
-        # self.__out = u_clipped
-        # if u != aux.minmax(u, max_out):
-        self.__int.process(xerr + k_d * x_i)
-        # self.__limiter.process(x_i)
+        s = xerr + k_d * x_i
+        u = effective_gain * s
+
         self.__out = u
-
-        return self.__out
-
-    def process_(self, xerr: float, x_i: float, dT: float) -> float:
-        """
-        Рассчитать следующий тик регулятора
-        """
-        gain, k_d, k_i, max_out = self.__get_gains()
-        # xerr = aux.minmax(xerr,)
-
-        s = xerr + k_d * x_i + self.__int.get_val()
-        u = gain * s
-
-        self.__int.process_(k_i * (xerr + k_d * x_i), dT)
-
-        # self.__out = u
-
-        self.__out = aux.minmax(u, max_out)  # NOTE
 
         return self.__out
 
@@ -264,26 +187,117 @@ class PISD:
         return self.__out
 
 
-class RateLimiter:
+class PDController:
     """
-    Ограничитель скорости роста
+    Классический пропорционально-дифференциальный (ПД) регулятор.
     """
 
-    def __init__(self, Ts: float, max_der: float) -> None:
+    def __init__(
+        self,
+        gain: list[float],
+        kd: list[float],
+    ) -> None:
+        self.__gain = gain
+        self.__kd = kd
+        self.__out = 0.0
+        self.__mode = Mode.NORMAL
+
+    def select_mode(self, mode: Mode) -> None:
+        """Выбрать набор коэффициентов регулятора"""
+        if self.__mode != mode:
+            self.__mode = mode
+
+    def __get_gains(self) -> tuple[float, float]:
+        """Получить коэффициенты регулятора"""
+        return (
+            self.__gain[self.__mode.value],
+            self.__kd[self.__mode.value],
+        )
+
+    def process(self, xerr: float, x_i: float, total_dist: Optional[float] = None) -> float:
+        """
+        Рассчитать следующий тик классического ПД-регулятора.
+        total_dist принимается для API-совместимости, но математически
+        линейному регулятору проекция не нужна.
+        """
+        gain, k_d = self.__get_gains()
+
+        u = gain * xerr + k_d * x_i
+
+        u = aux.minmax(u, const.MAX_SPEED_R)
+
+        self.__out = u
+        return self.__out
+
+    def get_val(self) -> float:
+        """Получить последнее значение выхода звена без расчета"""
+        return self.__out
+
+
+class SqrtController:
+    """
+    Пропорционально-скользяще-интегральный регулятор
+
+    (В отличие от ПИД берёт производную от скорости изменения регулируемой
+    величины, а не ошибки)
+    """
+
+    def __init__(
+        self,
+        kd: list[float],
+        accl: list[float],
+    ) -> None:
         """
         Конструктор
-        """
-        self.__out = 0.0
-        self.__int = Integrator(Ts)
-        self.__k = 1 / Ts
-        self.__max_der = max_der
 
-    def process(self, x: float) -> float:
+        каждый параметр - список коэффициентов для разных режимов
+        gain - коэффициент усиления регулятора (П составляющая)
+        kd - коэффициент дифференциальной части (типа Д составляющая)
+        ki - коэффициент интегрирующей части (И составляющая)
+        max_out - Максимальное значение управляющего воздействия
         """
-        Рассчитать следующий тик звена
+        self.__kd = kd
+        self.__accl = accl
+        self.__out = 0.0
+        self.__mode = Mode.NORMAL
+
+    def select_mode(self, mode: Mode) -> None:
         """
-        u = aux.minmax(self.__k * (x - self.__out), self.__max_der)
-        self.__out = self.__int.process(u)
+        Выбрать набор коэффициентов регулятора
+        """
+        if self.__mode != mode:
+            self.__mode = mode
+
+    def __get_gains(self) -> tuple[float, float]:
+        """
+        Получить коэффициенты регулятора
+        """
+        return (self.__kd[self.__mode.value], self.__accl[self.__mode.value])
+
+    def process(self, xerr: float, x_i: float, total_dist: Optional[float] = None) -> float:
+        """
+        Рассчитать следующий тик регулятора
+        """
+        k_d, accl = self.__get_gains()
+
+        a_max = accl
+        d_err = total_dist if total_dist is not None else abs(xerr)
+        threshold = 1000.0
+
+        if d_err < threshold:
+            dynamic_gain = math.sqrt(2 * a_max * threshold) / threshold
+            u = dynamic_gain * xerr + k_d * x_i
+        else:
+            v_total = math.sqrt(2 * a_max * d_err)
+            v_total = min(v_total, const.MAX_SPEED)
+
+            if total_dist is not None and total_dist > 0:
+                u = v_total * (xerr / total_dist) + k_d * x_i
+            else:
+                u = math.copysign(v_total, xerr) + k_d * x_i
+
+        self.__out = u
+
         return self.__out
 
     def get_val(self) -> float:

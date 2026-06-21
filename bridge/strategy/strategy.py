@@ -8,7 +8,7 @@ from typing import Optional
 from bridge import const
 from bridge.auxiliary import aux, fld, rbt  # type: ignore
 from bridge.const import State as GameStates
-from bridge.router.base_actions import Action, Actions, KickActions  # type: ignore
+from bridge.router.actions import Action, Actions, KickActions  # type: ignore
 
 
 class Strategy:

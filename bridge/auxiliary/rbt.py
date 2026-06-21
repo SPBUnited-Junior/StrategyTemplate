@@ -34,14 +34,6 @@ class Robot(entity.Entity):
         self.speed_y = 0.0
         self.speed_r = 0.0
         self.delta_angle = 0.0
-        self.kick_up_ = 0
-        self.kick_forward_ = 0
-        self.auto_kick_ = 0
-        self.kicker_voltage_ = 0
-        self.dribbler_enable_ = 0
-        self.dribbler_speed_ = 0
-        self.kicker_charge_enable_ = 0
-        self.beep = 0
 
         # v! SIM
         if const.IS_SIMULATOR_USED:
@@ -63,38 +55,30 @@ class Robot(entity.Entity):
         self.yy_flp = tau.FOLP(self.yy_t, const.Ts)
 
         # !v REAL
-        gains_full = [2.5, 0.07, 0.05, const.MAX_SPEED]
-        gains_soft = gains_full
-        a_gains_full = [15, 0.5, 0, const.MAX_SPEED_R]
+        gains_full = [2, 0.01, 0.3]  # 0.9 for average moving, 1.7 for rickochet and ball catching
+        gains_catch = [2.8, 0.01, 0.87]  # for ricochet and pass receiving
+        if color == const.COLOR and self.r_id == const.GK:
+            gains_catch = [2.8, 0.01, 0.5]
+        a_gains_full = [15, 0.5]
         if const.IS_SIMULATOR_USED:
-            # gains_full = [8, 0.35, 0, const.MAX_SPEED]
-            #            Prop  Diff  Int
-            gains_full = [1.8, 0.06, 0.0, const.MAX_SPEED]
-            gains_soft = gains_full
-            a_gains_full = [8, 0.1, 0.1, const.MAX_SPEED_R]
+            gains_full = [1.8, 0.06, 0.0]
+            gains_catch = gains_full
+            a_gains_full = [8, 0.1]
+        a_gains_catch = a_gains_full
 
-        a_gains_soft = a_gains_full
-
-        self.pos_reg_x = tau.PISD(
-            const.Ts,
-            [gains_full[0], gains_soft[0]],
-            [gains_full[1], gains_soft[1]],
-            [gains_full[2], gains_soft[2]],
-            [gains_full[3], gains_soft[3]],
+        self.pos_reg_x = tau.AdaptivePDController(
+            [gains_full[0], gains_catch[0]],
+            [gains_full[1], gains_catch[1]],
+            [gains_full[2], gains_catch[2]],
         )
-        self.pos_reg_y = tau.PISD(
-            const.Ts,
-            [gains_full[0], gains_soft[0]],
-            [gains_full[1], gains_soft[1]],
-            [gains_full[2], gains_soft[2]],
-            [gains_full[3], gains_soft[3]],
+        self.pos_reg_y = tau.AdaptivePDController(
+            [gains_full[0], gains_catch[0]],
+            [gains_full[1], gains_catch[1]],
+            [gains_full[2], gains_catch[2]],
         )
-        self.angle_reg = tau.PISD(
-            const.Ts,
-            [a_gains_full[0], a_gains_soft[0]],
-            [a_gains_full[1], a_gains_soft[1]],
-            [a_gains_full[2], a_gains_soft[2]],
-            [a_gains_full[3], a_gains_soft[3]],
+        self.angle_reg = tau.PDController(
+            [a_gains_full[0], a_gains_catch[0]],
+            [a_gains_full[1], a_gains_catch[1]],
         )
 
         self.is_kick_committed = False
@@ -102,6 +86,7 @@ class Robot(entity.Entity):
         self.prev_sended_vel = aux.Point(0, 0)
         self.prev_sended_time = time()
         self.prev_sended_angle = 0.0
+        self.prev_ricochet_target: typing.Optional[aux.Point] = None
 
     def __eq__(self, robo: typing.Any) -> bool:
         if not isinstance(robo, Robot):
@@ -158,7 +143,7 @@ class Robot(entity.Entity):
         self._anglevel = lite_robot.anglevel
 
         self._is_used = lite_robot.is_used
-        self.last_update_ = lite_robot.is_used
+        self.last_update_ = lite_robot.last_update
 
     def kick_forward(self) -> None:
         """
@@ -187,14 +172,6 @@ class Robot(entity.Entity):
         self.speed_y = 0.0
         self.speed_r = 0.0
         self.delta_angle = 0.0
-        self.kick_up_ = 0
-        self.kick_forward_ = 0
-        self.auto_kick_ = 0
-        self.kicker_voltage_ = 0
-        self.dribbler_enable_ = 0
-        self.dribbler_speed_ = 0
-        self.kicker_charge_enable_ = 0
-        self.beep = 0
 
     def is_kick_aligned(self, pos: aux.Point, angle: float) -> bool:
         """
@@ -233,62 +210,17 @@ class Robot(entity.Entity):
 
     def update_vel_xy(self, vel: aux.Point) -> None:
         """
-        Выполнить тик низкоуровневых регуляторов скорости робота
+        Выполнить тик низкоуровневых регуляторов скорости робота (no)
 
         vel - требуемый вектор скорости [мм/с]
         """
-        global_speed_x = self.xx_flp.process(vel.x)
-        global_speed_y = self.yy_flp.process(vel.y)
-
-        global_speed = aux.Point(global_speed_x, global_speed_y)
-
-        speed = -aux.rotate(global_speed, -self._angle)
+        speed = -aux.rotate(aux.Point(vel.x, vel.y), -self._angle)
         self.speed_x = -speed.x
         self.speed_y = speed.y
-
-        # if abs(self.speed_r) > const.MAX_SPEED_R:
-        #     self.speed_r = math.copysign(const.MAX_SPEED_R, self.speed_r)
-
-        # vec_speed = math.sqrt(self.speed_x**2 + self.speed_y**2)
-        # r_speed = abs(self.speed_r)
-        # if not const.IS_SIMULATOR_USED:
-        #     vec_speed *= abs((const.MAX_SPEED_R - r_speed) / const.MAX_SPEED_R) ** 2
-        # ang = math.atan2(self.speed_y, self.speed_x)
-
-        # self.speed_x = vec_speed * math.cos(ang)
-        # self.speed_y = vec_speed * math.sin(ang)
 
     def update_vel_w(self, wvel: float) -> None:
         """Update robot angle vel"""
         self.speed_r = wvel
-
-    def update_vel_xy_(self, vel: aux.Point, dT: float) -> None:
-        """
-        Выполнить тик низкоуровневых регуляторов скорости робота
-
-        vel - требуемый вектор скорости [мм/с]
-        """
-        global_speed_x = self.xx_flp.process_(vel.x, dT)
-        global_speed_y = self.yy_flp.process_(vel.y, dT)
-
-        global_speed = aux.Point(global_speed_x, global_speed_y)
-
-        speed = -aux.rotate(global_speed, -self._angle)
-
-        self.speed_x = -speed.x
-        self.speed_y = speed.y
-
-        # if abs(self.speed_r) > const.MAX_SPEED_R:
-        #     self.speed_r = math.copysign(const.MAX_SPEED_R, self.speed_r)
-
-        # vec_speed = math.sqrt(self.speed_x**2 + self.speed_y**2)
-        # r_speed = abs(self.speed_r)
-        # if not const.IS_SIMULATOR_USED:
-        #     vec_speed *= abs((const.MAX_SPEED_R - r_speed) / const.MAX_SPEED_R) ** 2
-        # ang = math.atan2(self.speed_y, self.speed_x)
-
-        # self.speed_x = vec_speed * math.cos(ang)
-        # self.speed_y = vec_speed * math.sin(ang)
 
     def __str__(self) -> str:
         return (

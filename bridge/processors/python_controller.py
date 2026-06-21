@@ -12,7 +12,7 @@ from strategy_bridge.utils.debugger import debugger
 
 from bridge import const, drawing
 from bridge.auxiliary import fld
-from bridge.router.action import Action
+from bridge.router.actions import Action
 from bridge.strategy import strategy
 
 

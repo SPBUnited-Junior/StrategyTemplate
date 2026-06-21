@@ -1,6 +1,5 @@
-strategy-bridge
-numpy
-matplotlib
-scipy
-filterpy
-pygame
+strategy-bridge==0.4.2
+numpy==1.26.4
+filterpy==1.4.5
+python-dotenv==1.2.2
+cattrs==23.2.3

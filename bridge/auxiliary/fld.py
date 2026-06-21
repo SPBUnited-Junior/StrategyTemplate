@@ -2,7 +2,7 @@
 Модуль описания структуры Field для хранения информации об объектах на поле (роботы и мяч)
 """
 
-from math import cos, pi
+from math import pi
 from typing import Optional
 
 from bridge import const, drawing
@@ -70,8 +70,9 @@ class Goal:
         self.wall_hull = aux.offset_polygon(self.hull, const.ROBOT_R * 1.2)
         self.big_hull = aux.offset_polygon(self.hull, const.ROBOT_R * 1.2)
 
-        stop_delta = 500
+        stop_delta = 600
         self.stop_hull = aux.offset_polygon(self.hull, stop_delta)
+        self.big_stop_hull = aux.offset_polygon(self.stop_hull, const.ROBOT_R * 1.2)
 
 
 class Field:
@@ -89,8 +90,14 @@ class Field:
         """
         self.game_state: const.State = const.State.STOP
         self.active_team: const.Color = const.Color.ALL
-        self.last_update = 0.0
+        self.ball_placement_pos: Optional[aux.Point] = None
+
         self.robot_with_ball: Optional[rbt.Robot] = None
+        self.start_dribbling_point: Optional[aux.Point] = None
+
+        self.last_update: float = 0.0
+        self.detection_capture_time: float = 0.0
+        self.detection_get_time: float = 0.0
 
         self.field_image = drawing.Image(drawing.ImageTopic.FIELD)
         self.strategy_image = drawing.Image(drawing.ImageTopic.STRATEGY)
@@ -110,6 +117,21 @@ class Field:
         else:
             self.polarity = const.POLARITY
         # polarity = sign(ally_goal.center.x)
+
+        self.pass_points: list[tuple[aux.Point, float]]
+        self.upper_pass_points: list[tuple[aux.Point, float]]
+        if const.DIV == const.Div.B:
+            self.pass_points = self.upper_pass_points = [
+                (aux.Point(-3500 * self.polarity, 2050), 1),
+                (aux.Point(-3500 * self.polarity, -2050), 1),
+                (aux.Point(-2100 * self.polarity, 0), 1),
+            ]
+        elif const.DIV == const.Div.C:
+            self.pass_points = self.upper_pass_points = [
+                (aux.Point(-1500 * self.polarity, 1250), 1),
+                (aux.Point(-1500 * self.polarity, -1250), 1),
+                (aux.Point(-1000 * self.polarity, 0), 1),
+            ]
 
         self.ball = entity.Entity(aux.GRAVEYARD_POS, 0, const.BALL_R, 0.2)
         self.b_team = [
@@ -162,12 +184,14 @@ class Field:
             aux.Point(-const.FIELD_DX, -const.FIELD_DY),
             aux.Point(-const.FIELD_DX, const.FIELD_DY),
         ]
+        self.small_hull = aux.offset_polygon(self.hull, -const.ROBOT_R)
+        self.so_small_hull = aux.offset_polygon(self.hull, -const.ROBOT_R * 1.2)
         self.big_hull = aux.offset_polygon(self.hull, const.ROBOT_R)
 
         self._active_allies: list[rbt.Robot] = []
         self._active_enemies: list[rbt.Robot] = []
 
-        self.ball_history: list[Optional[aux.Point]] = [None] * round(0.1 / const.Ts)
+        self.ball_history: list[Optional[aux.Point]] = [None] * 10
         self.ball_history_idx = 0
         self.ball_start_point: aux.Point = self.ball.get_pos()
 
@@ -193,10 +217,15 @@ class Field:
             robots.append(self.enemies[self.enemy_gk_id])
         return robots
 
+    def get_number_of_pass_points(self) -> int:
+        return len(self.pass_points) + len(self.upper_pass_points)
+
     def update_field(self, new_field: "LiteField") -> None:
         """update with data from new_field"""
         self.game_state = new_field.game_state
         self.active_team = new_field.active_team
+        self.ball_placement_pos = new_field.ball_placement_pos
+        self.start_dribbling_point = new_field.start_dribbling_point
 
         if new_field.robot_with_ball is None:
             self.robot_with_ball = None
@@ -206,6 +235,8 @@ class Field:
             self.robot_with_ball = self.y_team[new_field.robot_with_ball[1]]
 
         self.last_update = new_field.last_update
+        self.detection_capture_time = new_field.detection_capture_time
+        self.detection_get_time = new_field.detection_get_time
 
         self.ball = new_field.ball
         self.ball_start_point = new_field.ball_start_point
@@ -239,6 +270,17 @@ class Field:
         if self.robot_with_ball is not None:
             length = len(self.ball_history)
             self.ball_history = [self.robot_with_ball.get_pos() for _ in range(length)]
+
+    def update_robot_with_ball(self, new_robot_with_ball: Optional[rbt.Robot]) -> None:
+        if new_robot_with_ball == self.robot_with_ball:
+            return
+        if new_robot_with_ball is None:
+            self.robot_with_ball = None
+            self.start_dribbling_point = None
+            return
+
+        self.robot_with_ball = new_robot_with_ball
+        self.start_dribbling_point = new_robot_with_ball.get_pos()
 
     def _is_ball_in(self, robo: rbt.Robot) -> bool:
         """
@@ -304,16 +346,26 @@ class Field:
         """
         return self.ball.get_vel().mag() > const.INTERCEPT_SPEED
 
-    def is_ball_moves_to_point(self, point: aux.Point, align: float = pi / 2) -> bool:
+    def is_ball_moves_to_point(self, point: aux.Point, align: float = pi / 6) -> bool:
         """
         Определить, движется ли мяч в сторону точки
         """
+        slowdown_acceleration = 500  # на каждом поле свое
         vec_to_point = point - self.ball.get_pos()
+        approx_end_pos = self.ball.get_vel() * self.ball.get_vel().mag() / 2 / slowdown_acceleration
+        mult = aux.scal_mult(approx_end_pos.unity(), vec_to_point)
         return (
-            self.ball.get_vel().mag() * (cos(vec_to_point.arg() - self.ball.get_vel().arg()) ** 5)
-            > const.INTERCEPT_SPEED * 5
+            # self.ball.get_vel().mag() * (cos(vec_to_point.arg() - self.ball.get_vel().arg()) ** 5)
+            # > const.INTERCEPT_SPEED * 5
+            # Предыдущий комментарий не удалять, чтобы потомки помнили, с чего все начиналось
+            self.is_ball_moves()
+            and 0 < mult < approx_end_pos.mag()
             and self.robot_with_ball is None
-            and abs(aux.wind_down_angle(vec_to_point.arg() - self.ball.get_vel().arg())) < align
+            and (
+                abs(aux.wind_down_angle(vec_to_point.arg() - self.ball.get_vel().arg())) < align
+                or aux.dist(vec_to_point, aux.closest_point_on_line(aux.Point(0, 0), approx_end_pos, vec_to_point))
+                < const.ROBOT_R * 1
+            )
         )
 
     def is_ball_moves_to_goal(self) -> bool:
@@ -393,13 +445,43 @@ def find_nearest_robots(
     return sorted_robots[:num]
 
 
+def find_interfering_hulls(
+    field: Field, include_ally_goal: bool = True, include_enemy_goal: bool = True
+) -> list[tuple[aux.Point, aux.Point]]:
+    hulls: list[list[aux.Point]] = []
+    if include_ally_goal:
+        hulls.append(field.ally_goal.hull)
+    if include_enemy_goal:
+        hulls.append(field.enemy_goal.hull)
+    hulls.append(field.hull)
+    interfering_lines: list[tuple[aux.Point, aux.Point]] = []
+    ball = field.ball.get_pos()
+    for hull in hulls:
+        for i, _ in enumerate(hull):
+            pt = aux.closest_point_on_line(hull[i - 1], hull[i], ball)
+            if (
+                aux.dist(pt, ball)
+                < (const.ROBOT_R + const.BALL_R + 10 if include_ally_goal else const.ROBOT_R * 2 + const.BALL_R)
+                and pt is not hull[i]
+                and pt is not hull[i - 1]
+            ):
+                interfering_lines.append((hull[i - 1], hull[i]))
+    return interfering_lines
+
+
 class LiteField:
     """Lite class, to moving information about robots and ball between processes"""
 
     def __init__(self, field: Field) -> None:
         self.game_state: const.State = field.game_state
         self.active_team: const.Color = field.active_team
+        self.ball_placement_pos: Optional[aux.Point] = field.ball_placement_pos
+        self.start_dribbling_point: Optional[aux.Point] = field.start_dribbling_point
+
         self.last_update = field.last_update
+        self.detection_capture_time = field.detection_capture_time
+        self.detection_get_time = field.detection_get_time
+
         self.robot_with_ball: Optional[tuple[const.Color, int]]
         if field.robot_with_ball is None:
             self.robot_with_ball = None

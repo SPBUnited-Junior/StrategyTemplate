@@ -149,7 +149,7 @@ GRAVEYARD_POS = Point(0, const.GRAVEYARD_POS_X)
 FIELD_INF = Point(const.GRAVEYARD_POS_X, 0)
 
 
-def dist2line(line_start: Point, line_end: Point, point: Point) -> float:
+def dist_to_line(line_start: Point, line_end: Point, point: Point, is_inf: str = "S") -> float:
     """
     Calculate the distance from a point to the line formed by two other points.
 
@@ -161,7 +161,10 @@ def dist2line(line_start: Point, line_end: Point, point: Point) -> float:
     Returns:
         float: The perpendicular distance from the point to the line.
     """
-    return abs(vec_mult((line_end - line_start).unity(), point - line_start))
+    if is_inf == "L":
+        return abs(vec_mult((line_end - line_start).unity(), point - line_start))
+    closest_point = closest_point_on_line(line_start, line_end, point, is_inf)
+    return dist(closest_point, point)
 
 
 def segment_poly_intersect(segment_start: Point, segment_end: Point, polygon: list[Point]) -> typing.Optional[Point]:
@@ -180,6 +183,27 @@ def segment_poly_intersect(segment_start: Point, segment_end: Point, polygon: li
         p = get_line_intersection(segment_start, segment_end, polygon[i], polygon[i + 1], "SS")
         if p is not None:
             return p
+    return None
+
+
+def segment_poly_intersect_return_line(
+    segment_start: Point, segment_end: Point, polygon: list[Point]
+) -> typing.Optional[tuple[Point, Point, Point]]:
+    """
+    Check if the segment intersects with the polygon and return line that intersects.
+
+    Args:
+        segment_start (Point): Start point of the segment.
+        segment_end (Point): End point of the segment.
+        polygon (list[Point]): Vertices of the polygon.
+
+    Returns:
+        typing.Optional[tuple[Point,Point,Point]] - point of intersection and points of line that intersect, otherwise None
+    """
+    for i in range(-1, len(polygon) - 1):
+        p = get_line_intersection(segment_start, segment_end, polygon[i], polygon[i + 1], "SS")
+        if p is not None:
+            return p, polygon[i], polygon[i + 1]
     return None
 
 
@@ -371,6 +395,24 @@ def find_nearest_point(center: Point, points: list[Point], exclude: Optional[lis
             min_dist = dist(center, point)
             closest = point
     return closest
+
+
+def get_circle_by_tangents(p1: Point, p2: Point, p3: Point, rad: float) -> Point:
+    """
+    find circle center by given angle
+
+    Args:
+        p1 (Point): 1st pooint of angle
+        p2 (Point): 2nd pooint of angle_
+        p3 (Point): 3rd pooint of angle
+        rad (float): radius of circle
+
+    Returns:
+        Point: center of circle
+    """
+    alpha = get_angle_between_points(p1, p2, p3)
+    zl = rad / math.sin(alpha / 2)
+    return p2 + ((p1 - p2).unity() / 2 + (p3 - p2).unity() / 2).unity() * zl
 
 
 def wind_down_angle(angle: float) -> float:
@@ -584,7 +626,7 @@ def in_place(point: Point, target: Point, epsilon: float) -> bool:
     return (point - target).mag() < epsilon
 
 
-def circles_inter(center1: Point, center2: Point, radius1: float, radius2: float) -> tuple[Point, Point]:
+def circles_inter(center1: Point, center2: Point, radius1: float, radius2: float) -> list[Point]:
     """
     Find the intersection points of two circles.
 
@@ -606,7 +648,7 @@ def circles_inter(center1: Point, center2: Point, radius1: float, radius2: float
     y3 = y2 - h * (center2.x - center1.x) / d
     x4 = x2 - h * (center2.y - center1.y) / d
     y4 = y2 + h * (center2.x - center1.x) / d
-    return Point(x3, y3), Point(x4, y4)
+    return [Point(x3, y3), Point(x4, y4)]
 
 
 def get_tangent_points(center: Point, point: Point, r: float) -> list[Point]:
@@ -625,12 +667,11 @@ def get_tangent_points(center: Point, point: Point, r: float) -> list[Point]:
     if d < r:
         return []
 
-    if d == r:
+    if abs(d - r) < 1e-9:
         return [point]
 
     mid = (center + point) / 2
-    p2, p3 = circles_inter(center, mid, r, d / 2)
-    return [p2, p3]
+    return circles_inter(center, mid, r, d / 2)
 
 
 def get_angle_between_points(end1: Point, start: Point, end2: Point) -> float:
@@ -685,7 +726,7 @@ def line_circle_intersect(
     Returns:
         list[Point]: List of intersection points (empty if none).
     """
-    h = closest_point_on_line(line_start, line_end, center, is_inf)
+    h = closest_point_on_line(line_start, line_end, center, "L")
     if radius < dist(center, h):
         return []
     if radius == dist(center, h):
@@ -755,6 +796,34 @@ def is_point_on_line(point: Point, line_start: Point, line_end: Point, is_inf: s
         bool: True if point lies on the defined line, False otherwise.
     """
     return point == closest_point_on_line(line_start, line_end, point, is_inf)
+
+
+def dist_between_segments(p1: Point, p2: Point, p3: Point, p4: Point) -> float:
+    """
+    Calculate the shortest distance between two line segments p1p2 and p3p4.
+
+    Args:
+        p1 (Point): Start of first segment.
+        p2 (Point): End of first segment.
+        p3 (Point): Start of second segment.
+        p4 (Point): End of second segment.
+
+    Returns:
+        float: Shortest distance between the two segments.
+    """
+    # Shortest distance can be between endpoints, or an endpoint and a segment
+    dists = [
+        dist_to_line(p1, p2, p3, "S"),
+        dist_to_line(p1, p2, p4, "S"),
+        dist_to_line(p3, p4, p1, "S"),
+        dist_to_line(p3, p4, p2, "S"),
+    ]
+
+    # Also check if segments intersect
+    if get_line_intersection(p1, p2, p3, p4, "SS") is not None:
+        return 0.0
+
+    return min(dists)
 
 
 def offset_polygon(peaks: list[Point], distance: float) -> list[Point]:

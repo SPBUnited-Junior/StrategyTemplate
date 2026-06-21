@@ -15,7 +15,7 @@ from strategy_bridge.processors import BaseProcessor
 from bridge import const, drawing
 from bridge.auxiliary import aux, fld, rbt
 from bridge.processors.python_controller import RobotCommand
-from bridge.router.action import Action, ActionDomain, ActionValues
+from bridge.router.actions.action import Action, ActionDomain, ActionValues
 
 UDP_IP = "10.0.120.210"
 UDP_PORT = 10000
